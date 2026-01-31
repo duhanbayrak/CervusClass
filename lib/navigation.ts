@@ -1,0 +1,54 @@
+import {
+    LayoutDashboard,
+    Calendar,
+    Library,
+    Award,
+    ClipboardList,
+    Users,
+    BookOpen,
+    FileText,
+    GraduationCap,
+    School,
+    BarChart,
+    Building,
+    Settings,
+    CalendarCheck
+} from 'lucide-react';
+
+export interface NavItem {
+    title: string;
+    href: string;
+    icon: any;
+    badge?: number; // Optional badge count
+}
+
+export const STUDENT_NAV: NavItem[] = [
+    { title: 'Kontrol Paneli', href: '/student/dashboard', icon: LayoutDashboard },
+    { title: 'Ders Programım', href: '/student/schedule', icon: Calendar },
+    { title: 'Etüt Talepleri', href: '/student/study-requests', icon: Library },
+    { title: 'Notlarım', href: '/student/grades', icon: Award },
+    { title: 'Ödevler', href: '/student/homework', icon: ClipboardList, badge: 3 },
+];
+
+export const TEACHER_NAV: NavItem[] = [
+    { title: 'Kontrol Paneli', href: '/teacher/dashboard', icon: LayoutDashboard },
+    { title: 'Ders Programı', href: '/teacher/schedule', icon: Calendar },
+    { title: 'Öğrencilerim', href: '/teacher/students', icon: Users }, // Changed from 'Öğrenciler' to 'Öğrencilerim'
+    { title: 'Yoklama', href: '/teacher/attendance', icon: CalendarCheck }, // Added Attendance item
+    { title: 'Ödev Yönetimi', href: '/teacher/homework', icon: BookOpen },
+    { title: 'Sınavlar', href: '/teacher/exams', icon: FileText },
+];
+
+export const ADMIN_NAV: NavItem[] = [
+    { title: 'Kontrol Paneli', href: '/admin/dashboard', icon: LayoutDashboard },
+    { title: 'Öğretmenler', href: '/admin/teachers', icon: GraduationCap },
+    { title: 'Öğrenciler', href: '/admin/students', icon: Users },
+    { title: 'Sınıflar', href: '/admin/classes', icon: School },
+    { title: 'Raporlar', href: '/admin/reports', icon: BarChart },
+];
+
+export const SUPER_ADMIN_NAV: NavItem[] = [
+    { title: 'Kontrol Paneli', href: '/super-admin/dashboard', icon: LayoutDashboard },
+    { title: 'Kurumlar (Tenants)', href: '/super-admin/tenants', icon: Building },
+    { title: 'Ayarlar', href: '/super-admin/settings', icon: Settings },
+];
