@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -10,15 +10,23 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import { Calendar as CalendarIcon, Loader2, CheckCircle2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Loader2, CheckCircle2, Users } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { useToast } from '@/components/ui/use-toast';
 
 interface ClassItem {
     id: string;
     name: string;
+}
+
+interface Student {
+    id: string;
+    full_name: string;
 }
 
 interface UpdateAssignmentFormProps {
@@ -27,6 +35,7 @@ interface UpdateAssignmentFormProps {
         description: string;
         class_id: string;
         due_date: string;
+        target_students: string[] | null;
     };
     classes: ClassItem[];
     userId: string;
@@ -34,25 +43,89 @@ interface UpdateAssignmentFormProps {
 
 export default function UpdateAssignmentForm({ assignment, classes, userId }: UpdateAssignmentFormProps) {
     const router = useRouter();
+    const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [success, setSuccess] = useState(false);
 
     // Form State populated from assignment
     const [description, setDescription] = useState(assignment.description);
-    // Be careful, class_id must exist in classes list
     const [classId, setClassId] = useState(assignment.class_id);
     const [date, setDate] = useState<Date | undefined>(new Date(assignment.due_date));
+
+    // Student selection state
+    const [students, setStudents] = useState<Student[]>([]);
+    const [selectedStudents, setSelectedStudents] = useState<string[]>(assignment.target_students || []);
+    const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+    const [isPersonal, setIsPersonal] = useState(!!assignment.target_students && assignment.target_students.length > 0);
+    const [studentSelectorOpen, setStudentSelectorOpen] = useState(false);
 
     const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
+    // Fetch students when class changes
+    useEffect(() => {
+        if (!classId) return;
+
+        const fetchStudents = async () => {
+            setIsLoadingStudents(true);
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id, full_name')
+                .eq('class_id', classId)
+                .eq('role', 'student')
+                .order('full_name');
+
+            if (error) {
+                toast({
+                    variant: "destructive",
+                    title: "Hata",
+                    description: "Öğrenci listesi alınamadı."
+                });
+            } else {
+                setStudents(data || []);
+            }
+            setIsLoadingStudents(false);
+        };
+
+        fetchStudents();
+
+        // If class changed from original, reset student selection
+        if (classId !== assignment.class_id) {
+            setSelectedStudents([]);
+            setIsPersonal(false);
+        }
+    }, [classId, toast, assignment.class_id, supabase]);
+
+    // Toggle student selection
+    const toggleStudent = (studentId: string) => {
+        setSelectedStudents(prev =>
+            prev.includes(studentId)
+                ? prev.filter(id => id !== studentId)
+                : [...prev, studentId]
+        );
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!description || !classId || !date) {
-            alert("Lütfen tüm alanları doldurunuz.");
+            toast({
+                variant: "destructive",
+                title: "Eksik Alan",
+                description: "Lütfen tüm alanları doldurunuz."
+            });
+            return;
+        }
+
+        // Validation: if personal, must have students selected
+        if (isPersonal && selectedStudents.length === 0) {
+            toast({
+                variant: "destructive",
+                title: "Öğrenci Seçilmedi",
+                description: "Kişiye özel ödev için en az bir öğrenci seçmelisiniz."
+            });
             return;
         }
 
@@ -65,11 +138,18 @@ export default function UpdateAssignmentForm({ assignment, classes, userId }: Up
                     description: description,
                     class_id: classId,
                     due_date: date.toISOString(),
+                    target_students: isPersonal ? selectedStudents : null,
                 })
                 .eq('id', assignment.id)
                 .eq('teacher_id', userId); // Ensure security
 
             if (error) throw error;
+
+            toast({
+                title: "Başarılı",
+                description: "Ödev başarıyla güncellendi.",
+                className: "bg-green-50 border-green-200"
+            });
 
             setSuccess(true);
             setTimeout(() => {
@@ -79,7 +159,11 @@ export default function UpdateAssignmentForm({ assignment, classes, userId }: Up
 
         } catch (error: any) {
             console.error("Error updating assignment:", error);
-            alert("Ödev güncellenirken bir hata meydana geldi: " + error.message);
+            toast({
+                variant: "destructive",
+                title: "Hata",
+                description: "Ödev güncellenirken bir hata meydana geldi: " + error.message
+            });
         } finally {
             setIsLoading(false);
         }
@@ -159,6 +243,76 @@ export default function UpdateAssignmentForm({ assignment, classes, userId }: Up
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                         />
+                    </div>
+
+                    {/* Student Selection */}
+                    <div className="space-y-3 pt-4 border-t">
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="is_personal"
+                                checked={isPersonal}
+                                onCheckedChange={(checked) => {
+                                    setIsPersonal(!!checked);
+                                    if (!checked) {
+                                        setSelectedStudents([]);
+                                    }
+                                }}
+                            />
+                            <Label htmlFor="is_personal" className="font-medium cursor-pointer">
+                                Kişiye Özel Ödev (Belirli öğrencilere ata)
+                            </Label>
+                        </div>
+
+                        {isPersonal && (
+                            <div className="space-y-2 pl-6">
+                                <Label>Öğrenci Seçimi</Label>
+                                <Popover open={studentSelectorOpen} onOpenChange={setStudentSelectorOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            className="w-full justify-between"
+                                            disabled={isLoadingStudents}
+                                        >
+                                            <Users className="mr-2 h-4 w-4" />
+                                            {selectedStudents.length > 0
+                                                ? `${selectedStudents.length} öğrenci seçildi`
+                                                : "Öğrenci seç..."}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-full p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Öğrenci ara..." />
+                                            <CommandEmpty>
+                                                {isLoadingStudents ? "Yükleniyor..." : "Öğrenci bulunamadı."}
+                                            </CommandEmpty>
+                                            <CommandGroup className="max-h-64 overflow-auto">
+                                                {students.map((student) => (
+                                                    <CommandItem
+                                                        key={student.id}
+                                                        onSelect={() => toggleStudent(student.id)}
+                                                    >
+                                                        <Checkbox
+                                                            checked={selectedStudents.includes(student.id)}
+                                                            className="mr-2"
+                                                        />
+                                                        {student.full_name}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                {selectedStudents.length > 0 && (
+                                    <p className="text-sm text-muted-foreground">
+                                        Seçili öğrenciler: {students
+                                            .filter(s => selectedStudents.includes(s.id))
+                                            .map(s => s.full_name)
+                                            .join(', ')}
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                 </CardContent>

@@ -54,7 +54,7 @@ async function getStudentData(userId: string) {
             .eq('day_of_week', todayDow)
             .order('start_time', { ascending: true }),
 
-        // Get Upcoming Assignments
+        // Get Upcoming Assignments (Fetch more than needed for client-side filtering)
         supabase
             .from('homework')
             .select(`
@@ -63,9 +63,8 @@ async function getStudentData(userId: string) {
             `)
             .eq('class_id', profile.class_id)
             .gte('due_date', new Date().toISOString())
-            .or(`target_students.is.null,target_students.cs.["${userId}"]`)
             .order('due_date', { ascending: true })
-            .limit(5),
+            .limit(50), // Fetch more to allow filtering
 
         // Get Recent Exam Results
         supabase
@@ -87,10 +86,24 @@ async function getStudentData(userId: string) {
             .order('scheduled_at', { ascending: true })
     ]);
 
+    // Client-side filtering for personalized homework
+    // Show homework if: no target_students (class-wide) OR user is in target_students
+    const allHomework = homeworkResult.data || [];
+    const filteredHomework = allHomework
+        .filter((hw: any) => {
+            // If target_students is null or empty, it's for everyone in the class
+            if (!hw.target_students || hw.target_students.length === 0) {
+                return true;
+            }
+            // Check if current student is in the target list
+            return Array.isArray(hw.target_students) && hw.target_students.includes(userId);
+        })
+        .slice(0, 5); // Take only top 5 after filtering
+
     return {
         profile,
         schedule: scheduleResult.data || [],
-        homework: homeworkResult.data || [],
+        homework: filteredHomework,
         exams: examsResult.data || [],
         etuts: etutsResult.data || []
     };
