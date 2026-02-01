@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { BookOpen, Calendar as CalendarIcon, Clock, TrendingUp, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { redirect } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 async function getStudentData(userId: string) {
     const cookieStore = await cookies();
@@ -62,6 +63,7 @@ async function getStudentData(userId: string) {
             `)
             .eq('class_id', profile.class_id)
             .gte('due_date', new Date().toISOString())
+            .or(`target_students.is.null,target_students.cs.["${userId}"]`)
             .order('due_date', { ascending: true })
             .limit(5),
 
@@ -273,12 +275,23 @@ export default async function StudentDashboardPage() {
                     <CardContent>
                         <ScrollArea className="h-[300px] pr-4">
                             <div className="space-y-3">
-                                {homework.map((hw) => (
-                                    <div key={hw.id} className="p-3 rounded-lg border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/50 dark:bg-indigo-900/10">
+                                {homework.map((hw: any) => (
+                                    <div key={hw.id} className={cn("p-3 rounded-lg border bg-indigo-50/50 dark:bg-indigo-900/10",
+                                        hw.target_students?.length > 0
+                                            ? "border-amber-200 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-900/10"
+                                            : "border-indigo-100 dark:border-indigo-900/30"
+                                    )}>
                                         <div className="flex justify-between items-start mb-2">
-                                            <Badge variant="secondary" className="bg-white text-indigo-600 hover:bg-white border-indigo-200 shadow-sm text-[10px]">
-                                                {new Date(hw.due_date).toLocaleDateString('tr-TR')}
-                                            </Badge>
+                                            <div className="flex gap-2">
+                                                <Badge variant="secondary" className="bg-white text-indigo-600 hover:bg-white border-indigo-200 shadow-sm text-[10px]">
+                                                    {new Date(hw.due_date).toLocaleDateString('tr-TR')}
+                                                </Badge>
+                                                {hw.target_students?.length > 0 && (
+                                                    <Badge variant="outline" className="border-amber-400 text-amber-600 bg-amber-50 text-[10px] px-1.5 h-5">
+                                                        Özel
+                                                    </Badge>
+                                                )}
+                                            </div>
                                             <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Fizik</span>
                                         </div>
                                         <p className="text-sm font-medium text-slate-800 dark:text-slate-200 line-clamp-2">
