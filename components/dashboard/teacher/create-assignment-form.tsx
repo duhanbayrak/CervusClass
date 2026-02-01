@@ -7,29 +7,19 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import { Calendar as CalendarIcon, Loader2, CheckCircle2, ChevronsUpDown, Check } from 'lucide-react';
+import { Calendar as CalendarIcon, Loader2, CheckCircle2, Users, UserCheck, ChevronDown } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Removed to fix error
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import { createHomework } from '@/app/teacher/(portal)/homework/actions';
-import { createBrowserClient } from '@supabase/ssr';
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
+import { supabase } from '@/lib/supabase';
 
 interface ClassItem {
     id: string;
@@ -39,7 +29,7 @@ interface ClassItem {
 interface StudentItem {
     id: string;
     full_name: string;
-    avatar_url: string | null;
+    avatar_url?: string | null;
 }
 
 interface CreateAssignmentFormProps {
@@ -51,87 +41,96 @@ interface CreateAssignmentFormProps {
 const formSchema = z.object({
     description: z.string().min(3, { message: "Ödev açıklaması en az 3 karakter olmalıdır." }),
     class_id: z.string().min(1, { message: "Lütfen bir sınıf seçiniz." }),
-    due_date: z.date(),
-    target_students: z.array(z.string()),
-    is_personal: z.boolean(),
-}).refine((data) => {
-    if (data.is_personal && data.target_students.length === 0) {
-        return false;
-    }
-    return true;
-}, {
-    message: "Kişiye özel ödev için en az bir öğrenci seçmelisiniz.",
-    path: ["target_students"],
+    due_date: z.date({
+        message: "Lütfen geçerli bir tarih seçiniz."
+    }),
+    assignment_mode: z.enum(['entire_class', 'selected_students']),
 });
-
-type FormValues = z.infer<typeof formSchema>;
 
 export default function CreateAssignmentForm({ classes, userId, organizationId }: CreateAssignmentFormProps) {
     const router = useRouter();
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
     const [success, setSuccess] = useState(false);
-
-    // State for students in selected class
     const [students, setStudents] = useState<StudentItem[]>([]);
-    const [isLoadingStudents, setIsLoadingStudents] = useState(false);
     const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+    const [loadingStudents, setLoadingStudents] = useState(false);
 
-    const { control, handleSubmit, setError, watch, setValue, formState: { errors } } = useForm<FormValues>({
+    const { control, handleSubmit, setError, watch, formState: { errors } } = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             description: "",
             class_id: "",
-            is_personal: false,
-            target_students: [],
+            assignment_mode: "entire_class",
         },
     });
 
     const selectedClassId = watch('class_id');
-    const isPersonal = watch('is_personal');
+    const assignmentMode = watch('assignment_mode');
 
-    // Fetch students when class changes
+    // Fetch students when class is selected
     useEffect(() => {
-        if (!selectedClassId) {
+        if (selectedClassId) {
+            setLoadingStudents(true);
+            supabase
+                .from('profiles')
+                .select('id, full_name, avatar_url')
+                .eq('class_id', selectedClassId)
+                .order('full_name', { ascending: true })
+                .then(({ data, error }) => {
+                    if (error) {
+                        console.error('Error fetching students:', error);
+                        toast({
+                            variant: "destructive",
+                            title: "Hata",
+                            description: "Öğrenciler yüklenirken bir hata oluştu."
+                        });
+                    } else {
+                        setStudents(data as StudentItem[] || []);
+                    }
+                    setLoadingStudents(false);
+                });
+        } else {
             setStudents([]);
+            setSelectedStudents([]);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedClassId]);
+
+    // Reset selected students when mode changes
+    useEffect(() => {
+        if (assignmentMode === 'entire_class') {
+            setSelectedStudents([]);
+        }
+    }, [assignmentMode]);
+
+    const toggleStudent = (studentId: string) => {
+        setSelectedStudents(prev =>
+            prev.includes(studentId)
+                ? prev.filter(id => id !== studentId)
+                : [...prev, studentId]
+        );
+    };
+
+    const selectAllStudents = () => {
+        setSelectedStudents(students.map(s => s.id));
+    };
+
+    const deselectAllStudents = () => {
+        setSelectedStudents([]);
+    };
+
+    function onSubmit(values: z.infer<typeof formSchema>) {
+        // Validate student selection if mode is selected_students
+        if (values.assignment_mode === 'selected_students' && selectedStudents.length === 0) {
+            toast({
+                variant: "destructive",
+                title: "Hata",
+                description: "Lütfen en az bir öğrenci seçiniz."
+            });
             return;
         }
 
-        const fetchStudents = async () => {
-            setIsLoadingStudents(true);
-            const supabase = createBrowserClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-            );
-
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('id, full_name, avatar_url, class_id')
-                .eq('class_id', selectedClassId)
-                .order('full_name');
-
-            if (error) {
-                console.error("Error fetching students:", error);
-                toast({
-                    variant: "destructive",
-                    title: "Hata",
-                    description: "Öğrenci listesi alınamadı."
-                });
-            } else {
-                setStudents(data || []);
-            }
-            setIsLoadingStudents(false);
-        };
-
-        fetchStudents();
-        // Reset selection on class change
-        setSelectedStudents([]);
-        setValue('target_students', []);
-        setValue('is_personal', false);
-
-    }, [selectedClassId, toast, setValue]);
-
-    function onSubmit(values: z.infer<typeof formSchema>) {
         startTransition(async () => {
             const formData = new FormData();
             formData.append('description', values.description);
@@ -139,10 +138,10 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
             formData.append('due_date', values.due_date.toISOString());
             formData.append('teacher_id', userId);
             formData.append('organization_id', organizationId);
+            formData.append('assignment_mode', values.assignment_mode);
 
-            // If personalized, append student IDs
-            if (values.is_personal && selectedStudents.length > 0) {
-                formData.append('target_students', JSON.stringify(selectedStudents));
+            if (values.assignment_mode === 'selected_students') {
+                formData.append('assigned_student_ids', JSON.stringify(selectedStudents));
             }
 
             const result = await createHomework(undefined, formData);
@@ -151,47 +150,35 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
                 if (result.errors.description) setError('description', { message: result.errors.description[0] });
                 if (result.errors.class_id) setError('class_id', { message: result.errors.class_id[0] });
                 if (result.errors.due_date) setError('due_date', { message: result.errors.due_date[0] });
-                // Check for other errors too if needed
 
                 toast({
                     variant: "destructive",
                     title: "Hata",
                     description: result.message || "Form alanlarını kontrol ediniz."
                 });
-            } else if (result?.message && !result.errors) {
+            } else if (result?.message === 'Ödev başarıyla oluşturuldu') {
+                setSuccess(true);
+                toast({
+                    title: "Başarılı",
+                    description: result.message,
+                });
+
+                // Redirect user after short delay
+                setTimeout(() => {
+                    router.push('/teacher/homework');
+                }, 2000);
+            } else if (result?.message) {
                 toast({
                     variant: "destructive",
                     title: "İşlem Başarısız",
                     description: result.message
                 });
             } else {
+                // Fallback success logic if actions.ts behavior changes
                 setSuccess(true);
-                toast({
-                    title: "Başarılı",
-                    description: "Ödev başarıyla oluşturuldu.",
-                });
             }
         });
     }
-
-    const toggleStudent = (studentId: string) => {
-        const current = [...selectedStudents];
-        const index = current.indexOf(studentId);
-        if (index > -1) {
-            current.splice(index, 1);
-        } else {
-            current.push(studentId);
-        }
-        setSelectedStudents(current);
-        setValue('target_students', current);
-
-        // Auto-switch radio logic if needed, but manual switch is clearer
-        if (current.length > 0 && !isPersonal) {
-            setValue('is_personal', true);
-        } else if (current.length === 0 && isPersonal) {
-            // Maybe keep it personal but empty? Or switch back? Let's keep it manual.
-        }
-    };
 
     if (success) {
         return (
@@ -211,7 +198,7 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
             <Card className="border-slate-200 dark:border-slate-700 shadow-sm">
                 <CardHeader>
                     <CardTitle>Ödev Detayları</CardTitle>
-                    <CardDescription>Ödev içeriğini, sınıfı ve teslim tarihini belirleyin.</CardDescription>
+                    <CardDescription>Ödev içeriğini ve teslim tarihini belirleyin.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
 
@@ -221,18 +208,25 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
                             control={control}
                             name="class_id"
                             render={({ field }) => (
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <SelectTrigger id="class_id" className={cn(errors.class_id && "border-red-500 focus:ring-red-500")}>
-                                        <SelectValue placeholder="Bir sınıf seçin" />
-                                    </SelectTrigger>
-                                    <SelectContent>
+                                <div className="relative">
+                                    <select
+                                        className={cn(
+                                            "flex h-10 w-full appearance-none items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                                            errors.class_id && "border-red-500 focus:ring-red-500"
+                                        )}
+                                        {...field}
+                                        value={field.value || ""}
+                                        id="class_id"
+                                    >
+                                        <option value="" disabled>Bir sınıf seçin</option>
                                         {classes.map((cls) => (
-                                            <SelectItem key={cls.id} value={cls.id}>
+                                            <option key={cls.id} value={cls.id}>
                                                 {cls.name}
-                                            </SelectItem>
+                                            </option>
                                         ))}
-                                    </SelectContent>
-                                </Select>
+                                    </select>
+                                    <ChevronDown className="absolute right-3 top-3 h-4 w-4 opacity-50 pointer-events-none" />
+                                </div>
                             )}
                         />
                         {errors.class_id && (
@@ -240,97 +234,140 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
                         )}
                     </div>
 
-                    {/* Student Selection Logic */}
+                    {/* Assignment Mode Selection */}
                     {selectedClassId && (
-                        <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800">
-                            <div className="flex items-center justify-between">
-                                <Label>Kimlere Atanacak?</Label>
-                                <div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-1 rounded-md border text-sm">
-                                    <button
-                                        type="button"
-                                        onClick={() => { setValue('is_personal', false); setSelectedStudents([]); }}
-                                        className={cn(
-                                            "px-3 py-1 rounded-sm transition-all",
-                                            !isPersonal ? "bg-indigo-100 text-indigo-700 font-medium" : "text-slate-500 hover:text-slate-700"
-                                        )}
-                                    >
-                                        Tüm Sınıf
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setValue('is_personal', true)}
-                                        className={cn(
-                                            "px-3 py-1 rounded-sm transition-all",
-                                            isPersonal ? "bg-indigo-100 text-indigo-700 font-medium" : "text-slate-500 hover:text-slate-700"
-                                        )}
-                                    >
-                                        Özel Seçim
-                                    </button>
-                                </div>
-                            </div>
+                        <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <Label>Ödev Atama Türü</Label>
+                            <Controller
+                                control={control}
+                                name="assignment_mode"
+                                render={({ field }) => (
+                                    <div className="space-y-3" role="radiogroup">
 
-                            {isPersonal && (
-                                <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-2">
-                                    {isLoadingStudents ? (
-                                        <div className="flex items-center text-sm text-slate-500 p-2">
-                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                            Öğrenciler yükleniyor...
+                                        {/* Option 1: Entire Class */}
+                                        <div
+                                            className={cn(
+                                                "flex items-center space-x-3 p-3 rounded-md border transition-colors cursor-pointer",
+                                                field.value === "entire_class"
+                                                    ? "border-primary bg-primary/5 dark:bg-primary/10"
+                                                    : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
+                                            )}
+                                            onClick={() => field.onChange("entire_class")}
+                                        >
+                                            <input
+                                                type="radio"
+                                                id="entire_class"
+                                                name="assignment_mode"
+                                                value="entire_class"
+                                                checked={field.value === "entire_class"}
+                                                onChange={() => field.onChange("entire_class")}
+                                                className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer accent-primary"
+                                            />
+                                            <Label htmlFor="entire_class" className="flex items-center gap-2 cursor-pointer flex-1 user-select-none">
+                                                <Users className="w-4 h-4 text-indigo-600" />
+                                                <span className="font-medium">Tüm Sınıf</span>
+                                                <span className="text-sm text-slate-500">({students.length} öğrenci)</span>
+                                            </Label>
                                         </div>
-                                    ) : (
-                                        <Command className="border rounded-md max-h-[200px]">
-                                            <CommandInput placeholder="Öğrenci ara..." />
-                                            <CommandList>
-                                                <CommandEmpty>Öğrenci bulunamadı.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {students.map((student) => (
-                                                        <CommandItem
-                                                            key={student.id}
-                                                            onSelect={() => toggleStudent(student.id)}
-                                                            className="cursor-pointer"
-                                                        >
-                                                            <div className={cn(
-                                                                "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                                                                selectedStudents.includes(student.id)
-                                                                    ? "bg-primary text-primary-foreground"
-                                                                    : "opacity-50 [&_svg]:invisible"
-                                                            )}>
-                                                                <Check className="h-4 w-4" />
-                                                            </div>
-                                                            <span>{student.full_name}</span>
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    )}
-                                    <div className="flex flex-wrap gap-1 mt-2">
-                                        {selectedStudents.map(id => {
-                                            const st = students.find(s => s.id === id);
-                                            if (!st) return null;
-                                            return (
-                                                <Badge key={id} variant="secondary" className="text-xs">
-                                                    {st.full_name}
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => { e.stopPropagation(); toggleStudent(id); }}
-                                                        className="ml-1 hover:text-red-500"
-                                                    >
-                                                        ×
-                                                    </button>
-                                                </Badge>
-                                            );
-                                        })}
-                                        {selectedStudents.length === 0 && (
-                                            <span className="text-xs text-amber-600 font-medium px-1">
-                                                * Lütfen listeden en az bir öğrenci seçiniz.
-                                            </span>
-                                        )}
+
+                                        {/* Option 2: Selected Students */}
+                                        <div
+                                            className={cn(
+                                                "flex items-center space-x-3 p-3 rounded-md border transition-colors cursor-pointer",
+                                                field.value === "selected_students"
+                                                    ? "border-primary bg-primary/5 dark:bg-primary/10"
+                                                    : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
+                                            )}
+                                            onClick={() => field.onChange("selected_students")}
+                                        >
+                                            <input
+                                                type="radio"
+                                                id="selected_students"
+                                                name="assignment_mode"
+                                                value="selected_students"
+                                                checked={field.value === "selected_students"}
+                                                onChange={() => field.onChange("selected_students")}
+                                                className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer accent-primary"
+                                            />
+                                            <Label htmlFor="selected_students" className="flex items-center gap-2 cursor-pointer flex-1 user-select-none">
+                                                <UserCheck className="w-4 h-4 text-emerald-600" />
+                                                <span className="font-medium">Öğrenci Seç</span>
+                                                <span className="text-sm text-slate-500">
+                                                    (Sadece seçili öğrencilere)
+                                                </span>
+                                            </Label>
+                                        </div>
+
                                     </div>
+                                )}
+                            />
+
+                            {/* Student Selection List */}
+                            {assignmentMode === 'selected_students' && (
+                                <div className="mt-4 space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <Label className="text-sm font-semibold">Öğrencileri Seç</Label>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={selectAllStudents}
+                                                className="h-7 text-xs"
+                                            >
+                                                Tümünü Seç
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={deselectAllStudents}
+                                                className="h-7 text-xs"
+                                            >
+                                                Temizle
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    {loadingStudents ? (
+                                        <div className="flex items-center justify-center py-8">
+                                            <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                                        </div>
+                                    ) : students.length === 0 ? (
+                                        <p className="text-sm text-slate-500 text-center py-4">Bu sınıfta öğrenci bulunmamaktadır.</p>
+                                    ) : (
+                                        <div className="max-h-64 overflow-y-auto space-y-2 p-3 bg-white dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700">
+                                            {students.map((student) => (
+                                                <div
+                                                    key={student.id}
+                                                    className={cn(
+                                                        "flex items-center space-x-3 p-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer",
+                                                        selectedStudents.includes(student.id) && "bg-blue-50 dark:bg-blue-900/20"
+                                                    )}
+                                                    onClick={(e) => {
+                                                        // Prevent double toggling if clicking directly on the input
+                                                        if ((e.target as HTMLElement).tagName !== 'INPUT') {
+                                                            toggleStudent(student.id);
+                                                        }
+                                                    }}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedStudents.includes(student.id)}
+                                                        onChange={() => toggleStudent(student.id)}
+                                                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer accent-primary"
+                                                    />
+                                                    <Label className="flex-1 cursor-pointer font-normal user-select-none">
+                                                        {student.full_name}
+                                                    </Label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
                     )}
-
 
                     <div className="space-y-2">
                         <Label htmlFor="due_date">Son Teslim Tarihi</Label>
@@ -408,7 +445,7 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
                     <Button
                         type="submit"
                         className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[120px]"
-                        disabled={isPending || (isPersonal && selectedStudents.length === 0)}
+                        disabled={isPending}
                     >
                         {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                         Ödevi Yayınla

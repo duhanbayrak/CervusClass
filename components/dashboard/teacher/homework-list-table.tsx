@@ -17,7 +17,6 @@ interface Assignment {
     id: string;
     description: string;
     due_date: string;
-    target_students: string[] | null;
     classes: {
         name: string;
     } | null;
@@ -90,7 +89,6 @@ export default function HomeworkListTable({ assignments }: HomeworkListTableProp
                 <TableRow>
                     <TableHead>Ödev Başlığı</TableHead>
                     <TableHead>Sınıf</TableHead>
-                    <TableHead>Hedef</TableHead>
                     <TableHead>Son Teslim Tarihi</TableHead>
                     <TableHead>Durum</TableHead>
                     <TableHead className="text-right">İşlemler</TableHead>
@@ -107,17 +105,6 @@ export default function HomeworkListTable({ assignments }: HomeworkListTableProp
                                 </TableCell>
                                 <TableCell>
                                     <Badge variant="outline">{hw.classes?.name}</Badge>
-                                </TableCell>
-                                <TableCell>
-                                    {!hw.target_students || hw.target_students.length === 0 ? (
-                                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
-                                            Tüm Sınıf
-                                        </Badge>
-                                    ) : (
-                                        <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-purple-200">
-                                            {hw.target_students.length} Öğrenci
-                                        </Badge>
-                                    )}
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-2">
@@ -174,7 +161,7 @@ export default function HomeworkListTable({ assignments }: HomeworkListTableProp
                     })
                 ) : (
                     <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-slate-400">
+                        <TableCell colSpan={5} className="text-center py-8 text-slate-400">
                             Henüz ödev kaydı oluşturulmamış.
                         </TableCell>
                     </TableRow>

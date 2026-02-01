@@ -25,10 +25,15 @@ export default async function Home() {
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('*')
+      .select(`
+        *,
+        roles!inner (
+          name
+        )
+      `)
       .eq('id', user.id)
       .single();
-    userRole = profile?.role;
+    userRole = profile?.roles?.name;
     userProfile = profile;
   }
 

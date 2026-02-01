@@ -89,5 +89,6 @@ export interface Homework {
     description: string;
     due_date: string | null;
     completion_status: Record<string, boolean>; // JSONB: { student_id: true }
+    assigned_student_ids: string[] | null; // null = entire class, array = specific students
     created_at: string;
 }

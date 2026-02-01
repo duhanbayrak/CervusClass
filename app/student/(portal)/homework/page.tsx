@@ -35,6 +35,7 @@ async function getHomework(userId: string) {
             teacher:profiles!teacher_id(full_name)
         `)
         .eq('class_id', profile.class_id)
+        .or(`assigned_student_ids.is.null,assigned_student_ids.cs.["${userId}"]`)
         .order('due_date', { ascending: true });
 
     return homework || [];

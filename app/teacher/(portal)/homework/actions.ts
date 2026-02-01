@@ -13,7 +13,8 @@ const CreateHomeworkSchema = z.object({
     due_date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Geçerli bir tarih seçiniz." }),
     teacher_id: z.string().uuid(),
     organization_id: z.string().uuid(),
-    target_students: z.array(z.string().uuid()).optional().nullable()
+    assignment_mode: z.enum(['entire_class', 'selected_students']),
+    assigned_student_ids: z.string().nullable().optional(), // JSON string of student IDs or null
 });
 
 export type CreateHomeworkState = {
@@ -21,7 +22,6 @@ export type CreateHomeworkState = {
         description?: string[];
         class_id?: string[];
         due_date?: string[];
-        target_students?: string[];
         _form?: string[];
     };
     message?: string;
@@ -45,17 +45,6 @@ export async function createHomework(prevState: CreateHomeworkState, formData: F
         }
     );
 
-    // Parse target_students from JSON string
-    const rawTargetStudents = formData.get('target_students');
-    let parsedTargetStudents: string[] | null = null;
-    if (rawTargetStudents && typeof rawTargetStudents === 'string') {
-        try {
-            parsedTargetStudents = JSON.parse(rawTargetStudents);
-        } catch (e) {
-            console.error("Failed to parse target_students", e);
-        }
-    }
-
     // Validate fields
     const validatedFields = CreateHomeworkSchema.safeParse({
         description: formData.get('description'),
@@ -63,7 +52,8 @@ export async function createHomework(prevState: CreateHomeworkState, formData: F
         due_date: formData.get('due_date'),
         teacher_id: formData.get('teacher_id'),
         organization_id: formData.get('organization_id'),
-        target_students: parsedTargetStudents
+        assignment_mode: formData.get('assignment_mode'),
+        assigned_student_ids: formData.get('assigned_student_ids'),
     });
 
     if (!validatedFields.success) {
@@ -73,7 +63,7 @@ export async function createHomework(prevState: CreateHomeworkState, formData: F
         };
     }
 
-    const { description, class_id, due_date, teacher_id, organization_id, target_students } = validatedFields.data;
+    const { description, class_id, due_date, teacher_id, organization_id, assignment_mode, assigned_student_ids } = validatedFields.data;
 
     // Verify auth again for extra security
     const { data: { user } } = await supabase.auth.getUser();
@@ -84,6 +74,11 @@ export async function createHomework(prevState: CreateHomeworkState, formData: F
     }
 
     try {
+        // Prepare assigned_student_ids based on mode
+        const studentIdsArray = assignment_mode === 'selected_students' && assigned_student_ids
+            ? JSON.parse(assigned_student_ids)
+            : null;
+
         const { error } = await supabase
             .from('homework')
             .insert({
@@ -93,7 +88,7 @@ export async function createHomework(prevState: CreateHomeworkState, formData: F
                 organization_id,
                 due_date,
                 completion_status: {}, // Initial empty status
-                target_students: target_students || null // Store as jsonb or null
+                assigned_student_ids: studentIdsArray // null for entire class, array for specific students
             });
 
         if (error) {
@@ -111,5 +106,5 @@ export async function createHomework(prevState: CreateHomeworkState, formData: F
 
     // If successful:
     revalidatePath('/teacher/homework');
-    return { message: 'Ödev başarıyla oluşturuldu' };
+    return { message: 'Ödev başarıyla oluşturuldu' }; // Don't redirect inside try-catch block, return success state or redirect after
 }
