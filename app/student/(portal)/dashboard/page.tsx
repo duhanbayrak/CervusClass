@@ -34,61 +34,63 @@ async function getStudentData(userId: string) {
 
     if (!profile) return null;
 
-    // 2. Get Today's Schedule
+    // 2. Parallel Data Fetching
     const today = new Date();
     // JS getDay() 0=Sunday. Postgres often uses 1=Monday...7=Sunday or 0=Sunday. 
     // Assuming our schema uses 1=Monday, 7=Sunday.
     let todayDow = today.getDay();
     if (todayDow === 0) todayDow = 7;
 
-    // Note: Creating a map for Turkish day names if needed, but we rely on DB query for day_of_week int
-    const { data: schedule } = await supabase
-        .from('schedule')
-        .select(`
-            *,
-            teacher:profiles!teacher_id(full_name)
-        `)
-        .eq('class_id', profile.class_id)
-        .eq('day_of_week', todayDow)
-        .order('start_time', { ascending: true });
+    const [scheduleResult, homeworkResult, examsResult, etutsResult] = await Promise.all([
+        // Get Today's Schedule
+        supabase
+            .from('schedule')
+            .select(`
+                *,
+                teacher:profiles!teacher_id(full_name)
+            `)
+            .eq('class_id', profile.class_id)
+            .eq('day_of_week', todayDow)
+            .order('start_time', { ascending: true }),
 
-    // 3. Get Upcoming Assignments (Homework)
-    const { data: homework } = await supabase
-        .from('homework')
-        .select(`
-            *,
-            teacher:profiles!teacher_id(full_name)
-        `)
-        .eq('class_id', profile.class_id)
-        .gte('due_date', new Date().toISOString())
-        .order('due_date', { ascending: true })
-        .limit(5);
+        // Get Upcoming Assignments
+        supabase
+            .from('homework')
+            .select(`
+                *,
+                teacher:profiles!teacher_id(full_name)
+            `)
+            .eq('class_id', profile.class_id)
+            .gte('due_date', new Date().toISOString())
+            .order('due_date', { ascending: true })
+            .limit(5),
 
-    // 4. Get Recent Exam Results
-    const { data: exams } = await supabase
-        .from('exam_results')
-        .select('*')
-        .eq('student_id', userId)
-        .order('exam_date', { ascending: false })
-        .limit(3);
+        // Get Recent Exam Results
+        supabase
+            .from('exam_results')
+            .select('*')
+            .eq('student_id', userId)
+            .order('exam_date', { ascending: false })
+            .limit(3),
 
-    // 5. Get Study Session Requests
-    const { data: etuts } = await supabase
-        .from('study_sessions')
-        .select(`
-            *,
-            teacher:profiles!teacher_id(full_name)
-        `)
-        .eq('student_id', userId)
-        .neq('status', 'completed')
-        .order('scheduled_at', { ascending: true });
+        // Get Study Session Requests
+        supabase
+            .from('study_sessions')
+            .select(`
+                *,
+                teacher:profiles!teacher_id(full_name)
+            `)
+            .eq('student_id', userId)
+            .neq('status', 'completed')
+            .order('scheduled_at', { ascending: true })
+    ]);
 
     return {
         profile,
-        schedule: schedule || [],
-        homework: homework || [],
-        exams: exams || [],
-        etuts: etuts || []
+        schedule: scheduleResult.data || [],
+        homework: homeworkResult.data || [],
+        exams: examsResult.data || [],
+        etuts: etutsResult.data || []
     };
 }
 
@@ -314,8 +316,8 @@ export default async function StudentDashboardPage() {
                             {etuts.map((etut) => (
                                 <div key={etut.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
                                     <div className={`w-2 h-full min-h-[40px] rounded-full ${etut.status === 'pending' ? 'bg-yellow-400' :
-                                            etut.status === 'approved' ? 'bg-green-500' :
-                                                etut.status === 'rejected' ? 'bg-red-500' : 'bg-slate-300'
+                                        etut.status === 'approved' ? 'bg-green-500' :
+                                            etut.status === 'rejected' ? 'bg-red-500' : 'bg-slate-300'
                                         }`}></div>
                                     <div className="flex-1">
                                         <h5 className="text-sm font-bold text-slate-800 dark:text-slate-200">{etut.topic}</h5>
@@ -324,8 +326,8 @@ export default async function StudentDashboardPage() {
                                         </p>
                                     </div>
                                     <Badge variant="outline" className={`capitalize text-[10px] ${etut.status === 'pending' ? 'text-yellow-600 border-yellow-200 bg-yellow-50' :
-                                            etut.status === 'approved' ? 'text-green-600 border-green-200 bg-green-50' :
-                                                'text-slate-500'
+                                        etut.status === 'approved' ? 'text-green-600 border-green-200 bg-green-50' :
+                                            'text-slate-500'
                                         }`}>
                                         {etut.status === 'pending' ? 'Bekliyor' : etut.status === 'approved' ? 'Onaylandı' : 'Reddedildi'}
                                     </Badge>

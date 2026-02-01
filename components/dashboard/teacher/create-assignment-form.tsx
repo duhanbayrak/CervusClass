@@ -1,20 +1,24 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { createBrowserClient } from '@supabase/ssr';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Calendar as CalendarIcon, Loader2, CheckCircle2 } from 'lucide-react';
+
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import { createHomework } from '@/app/teacher/(portal)/homework/actions';
 
 interface ClassItem {
     id: string;
@@ -27,61 +31,69 @@ interface CreateAssignmentFormProps {
     organizationId: string;
 }
 
+const formSchema = z.object({
+    description: z.string().min(3, { message: "Ödev açıklaması en az 3 karakter olmalıdır." }),
+    class_id: z.string().min(1, { message: "Lütfen bir sınıf seçiniz." }),
+    due_date: z.date({
+        required_error: "Lütfen son teslim tarihini seçiniz.",
+        invalid_type_error: "Lütfen geçerli bir tarih seçiniz."
+    }),
+});
+
 export default function CreateAssignmentForm({ classes, userId, organizationId }: CreateAssignmentFormProps) {
     const router = useRouter();
-    const [isLoading, setIsLoading] = useState(false);
+    const { toast } = useToast();
+    const [isPending, startTransition] = useTransition();
     const [success, setSuccess] = useState(false);
 
-    // Form State
-    const [description, setDescription] = useState("");
-    const [classId, setClassId] = useState("");
-    const [date, setDate] = useState<Date | undefined>(undefined);
+    const { control, handleSubmit, setError, formState: { errors } } = useForm<z.infer<typeof formSchema>>({
+        resolver: zodResolver(formSchema),
+        defaultValues: {
+            description: "",
+            class_id: "",
+        },
+    });
 
-    const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    function onSubmit(values: z.infer<typeof formSchema>) {
+        startTransition(async () => {
+            const formData = new FormData();
+            formData.append('description', values.description);
+            formData.append('class_id', values.class_id);
+            formData.append('due_date', values.due_date.toISOString());
+            formData.append('teacher_id', userId);
+            formData.append('organization_id', organizationId);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+            const result = await createHomework(undefined, formData);
 
-        if (!description || !classId || !date) {
-            alert("Lütfen tüm alanları doldurunuz.");
-            return;
-        }
+            if (result?.errors) {
+                if (result.errors.description) setError('description', { message: result.errors.description[0] });
+                if (result.errors.class_id) setError('class_id', { message: result.errors.class_id[0] });
+                if (result.errors.due_date) setError('due_date', { message: result.errors.due_date[0] });
 
-        setIsLoading(true);
-
-        try {
-            const { error } = await supabase
-                .from('homework')
-                .insert({
-                    description: description,
-                    class_id: classId,
-                    teacher_id: userId,
-                    due_date: date.toISOString(),
-                    organization_id: organizationId // Added organization_id
+                toast({
+                    variant: "destructive",
+                    title: "Hata",
+                    description: result.message || "Form alanlarını kontrol ediniz."
                 });
-
-            if (error) throw error;
-
-            setSuccess(true);
-            setTimeout(() => {
-                router.push('/teacher/homework');
-                router.refresh();
-            }, 1000);
-
-        } catch (error: any) {
-            console.error("Error creating assignment:", error);
-            alert("Ödev oluşturulurken bir hata meydana geldi: " + error.message);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+            } else if (result?.message && !result.errors) {
+                toast({
+                    variant: "destructive",
+                    title: "İşlem Başarısız",
+                    description: result.message
+                });
+            } else {
+                setSuccess(true);
+                toast({
+                    title: "Başarılı",
+                    description: "Ödev başarıyla oluşturuldu.",
+                });
+            }
+        });
+    }
 
     if (success) {
         return (
-            <Card className="border-green-100 bg-green-50 dark:bg-green-900/20 dark:border-green-900 h-96 flex flex-col items-center justify-center text-center">
+            <Card className="border-green-100 bg-green-50 dark:bg-green-900/20 dark:border-green-900 h-96 flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-300">
                 <div className="bg-green-100 dark:bg-green-800 p-3 rounded-full mb-4">
                     <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-300" />
                 </div>
@@ -93,7 +105,7 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
     }
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <Card className="border-slate-200 dark:border-slate-700 shadow-sm">
                 <CardHeader>
                     <CardTitle>Ödev Detayları</CardTitle>
@@ -102,57 +114,91 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
                 <CardContent className="space-y-6">
 
                     <div className="space-y-2">
-                        <Label htmlFor="class">Sınıf Seçimi</Label>
-                        <Select value={classId} onValueChange={setClassId}>
-                            <SelectTrigger id="class" className="w-full">
-                                <SelectValue placeholder="Bir sınıf seçin" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {classes.map((cls) => (
-                                    <SelectItem key={cls.id} value={cls.id}>
-                                        {cls.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <Label htmlFor="class_id">Sınıf Seçimi</Label>
+                        <Controller
+                            control={control}
+                            name="class_id"
+                            render={({ field }) => (
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <SelectTrigger id="class_id" className={cn(errors.class_id && "border-red-500 focus:ring-red-500")}>
+                                        <SelectValue placeholder="Bir sınıf seçin" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {classes.map((cls) => (
+                                            <SelectItem key={cls.id} value={cls.id}>
+                                                {cls.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        />
+                        {errors.class_id && (
+                            <p className="text-sm font-medium text-red-500">{errors.class_id.message}</p>
+                        )}
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="date">Son Teslim Tarihi</Label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                        "w-full justify-start text-left font-normal",
-                                        !date && "text-muted-foreground"
-                                    )}
-                                >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {date ? format(date, "PPP", { locale: tr }) : <span>Tarih seçin</span>}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                                <Calendar
-                                    mode="single"
-                                    selected={date}
-                                    onSelect={setDate}
-                                    initialFocus
-                                    locale={tr}
-                                />
-                            </PopoverContent>
-                        </Popover>
+                        <Label htmlFor="due_date">Son Teslim Tarihi</Label>
+                        <Controller
+                            control={control}
+                            name="due_date"
+                            render={({ field }) => (
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "w-full justify-start text-left font-normal",
+                                                !field.value && "text-muted-foreground",
+                                                errors.due_date && "border-red-500 text-red-500"
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {field.value ? (
+                                                format(field.value, "PPP", { locale: tr })
+                                            ) : (
+                                                <span>Tarih seçin</span>
+                                            )}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={field.value}
+                                            onSelect={field.onChange}
+                                            disabled={(date) =>
+                                                date < new Date() || date < new Date("1900-01-01")
+                                            }
+                                            initialFocus
+                                            locale={tr}
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            )}
+                        />
+                        {errors.due_date && (
+                            <p className="text-sm font-medium text-red-500">{errors.due_date.message}</p>
+                        )}
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="description">Ödev Açıklaması / Konu</Label>
-                        <Textarea
-                            id="description"
-                            placeholder="Ödevin içeriğini ve gereksinimlerini buraya yazın..."
-                            className="min-h-[120px]"
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
+                        <Controller
+                            control={control}
+                            name="description"
+                            render={({ field }) => (
+                                <Textarea
+                                    id="description"
+                                    placeholder="Ödevin içeriğini ve gereksinimlerini buraya yazın..."
+                                    className={cn("min-h-[120px]", errors.description && "border-red-500 focus:ring-red-500")}
+                                    {...field}
+                                />
+                            )}
                         />
+                        {errors.description && (
+                            <p className="text-sm font-medium text-red-500">{errors.description.message}</p>
+                        )}
                     </div>
 
                 </CardContent>
@@ -161,16 +207,16 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
                         type="button"
                         variant="ghost"
                         onClick={() => router.back()}
-                        disabled={isLoading}
+                        disabled={isPending}
                     >
                         İptal
                     </Button>
                     <Button
                         type="submit"
                         className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[120px]"
-                        disabled={isLoading}
+                        disabled={isPending}
                     >
-                        {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                        {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                         Ödevi Yayınla
                     </Button>
                 </CardFooter>
