@@ -53,7 +53,7 @@ async function getStudentData(userId: string) {
             .eq('day_of_week', todayDow)
             .order('start_time', { ascending: true }),
 
-        // Get Upcoming Assignments
+        // Get Upcoming Assignments (only those assigned to this student or entire class)
         supabase
             .from('homework')
             .select(`
@@ -62,6 +62,7 @@ async function getStudentData(userId: string) {
             `)
             .eq('class_id', profile.class_id)
             .gte('due_date', new Date().toISOString())
+            .or(`assigned_student_ids.is.null,assigned_student_ids.cs.["${userId}"]`)
             .order('due_date', { ascending: true })
             .limit(5),
 
