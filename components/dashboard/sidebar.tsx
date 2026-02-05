@@ -89,7 +89,7 @@ export default function Sidebar({ items, basePath, title = "CervusClass", subtit
                         </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56" forceMount>
-                        <DropdownMenuItem className="cursor-pointer text-red-600 focus:text-red-600" onClick={signOut}>
+                        <DropdownMenuItem className="cursor-pointer text-red-600 focus:text-red-600" onSelect={() => signOut()}>
                             <LogOut className="mr-2 h-4 w-4" />
                             <span>Çıkış Yap</span>
                         </DropdownMenuItem>

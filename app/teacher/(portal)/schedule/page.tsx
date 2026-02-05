@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase-server'
-import { WeeklyScheduler } from '@/components/schedule/WeeklyScheduler'
+import { TeacherScheduleClient } from '@/components/schedule/teacher-schedule-client'
 import { Card, CardContent } from '@/components/ui/card'
 
 export default async function TeacherSchedulePage() {
@@ -11,15 +11,30 @@ export default async function TeacherSchedulePage() {
     console.log("Teacher Schedule Debug - User ID:", user.id);
     console.log("Teacher Schedule Debug - Metadata:", JSON.stringify(user.app_metadata, null, 2));
 
-    const { data: events } = await supabase
-        .from('schedule')
-        .select(`
-      *,
-      courses ( name, code ),
-      classes ( name ),
-      profiles ( full_name )
-    `)
-        .eq('teacher_id', user.id)
+    // Parallel Fetching
+    const [scheduleResponse, studySessionsResponse] = await Promise.all([
+        supabase
+            .from('schedule')
+            .select(`
+                *,
+                courses ( name, code ),
+                classes ( name ),
+                profiles ( full_name )
+            `)
+            .eq('teacher_id', user.id),
+
+        supabase
+            .from('study_sessions')
+            .select(`
+                *,
+                profiles:student_id ( full_name )
+            `)
+            .eq('teacher_id', user.id)
+            .neq('status', 'cancelled') // Assuming we filter cancelled
+    ]);
+
+    const events = scheduleResponse.data;
+    const studySessions = studySessionsResponse.data;
 
     return (
         <div className="space-y-6 h-full">
@@ -28,9 +43,10 @@ export default async function TeacherSchedulePage() {
             <div className="h-[850px]">
                 <Card className="h-full">
                     <CardContent className="h-full p-2">
-                        <WeeklyScheduler
+                        <TeacherScheduleClient
                             events={(events as any) || []}
-                            role="teacher"
+                            studySessions={(studySessions as any) || []}
+                            currentUserId={user.id}
                         />
                     </CardContent>
                 </Card>

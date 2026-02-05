@@ -20,20 +20,23 @@ async function getData() {
     if (!user) return { pending: [], history: [] };
 
     // Fetch all requests for this teacher
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from('study_sessions')
         .select(`
             id,
             topic,
             scheduled_at,
             status,
-            student_note,
-            student:profiles!student_id(full_name, avatar_url, classes(name))
+            student:profiles!student_id(full_name, avatar_url)
         `)
         .eq('teacher_id', user.id)
         .order('created_at', { ascending: false });
 
     const requests = data || [];
+
+    if (error) {
+        console.error("TeacherStudyRequestsPage: Supabase Error:", error);
+    }
 
     const pending = requests.filter(r => r.status === 'pending');
     const history = requests.filter(r => r.status !== 'pending');

@@ -469,7 +469,7 @@ export type Database = {
                     organization_id: string
                     scheduled_at: string
                     status: string | null
-                    student_id: string
+                    student_id: string | null
                     teacher_id: string
                     topic: string | null
                 }
@@ -479,7 +479,7 @@ export type Database = {
                     organization_id: string
                     scheduled_at: string
                     status?: string | null
-                    student_id: string
+                    student_id?: string | null
                     teacher_id: string
                     topic?: string | null
                 }
@@ -489,7 +489,7 @@ export type Database = {
                     organization_id?: string
                     scheduled_at?: string
                     status?: string | null
-                    student_id?: string
+                    student_id?: string | null
                     teacher_id?: string
                     topic?: string | null
                 }

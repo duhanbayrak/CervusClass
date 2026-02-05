@@ -31,6 +31,8 @@ async function getRequests(userId: string) {
     return requests || [];
 }
 
+import { BookSessionDialog } from '@/components/student/book-session-dialog';
+
 export default async function StudentStudyRequestsPage() {
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -57,10 +59,7 @@ export default async function StudentStudyRequestsPage() {
                     <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Etüt Talepleri</h2>
                     <p className="text-slate-500 dark:text-slate-400">Birebir ders taleplerinizi yönetin</p>
                 </div>
-                <Button className="bg-[#135bec] hover:bg-blue-700 text-white shadow-md">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Yeni Talep Oluştur
-                </Button>
+                <BookSessionDialog />
             </div>
 
             <div className="grid grid-cols-1 gap-4">
@@ -69,8 +68,8 @@ export default async function StudentStudyRequestsPage() {
                         <Card key={req.id} className="border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden hover:border-blue-200 transition-colors">
                             <div className="flex flex-col sm:flex-row">
                                 <div className={`w-full sm:w-2 ${req.status === 'pending' ? 'bg-yellow-400' :
-                                        req.status === 'approved' ? 'bg-green-500' :
-                                            req.status === 'rejected' ? 'bg-red-500' : 'bg-slate-300'
+                                    req.status === 'approved' ? 'bg-green-500' :
+                                        req.status === 'rejected' ? 'bg-red-500' : 'bg-slate-300'
                                     } h-2 sm:h-auto`}></div>
 
                                 <div className="p-6 flex-1 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -78,8 +77,8 @@ export default async function StudentStudyRequestsPage() {
                                         <div className="flex items-center gap-2">
                                             <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">{req.topic}</h3>
                                             <Badge variant="outline" className={`capitalize ${req.status === 'pending' ? 'text-yellow-600 border-yellow-200 bg-yellow-50' :
-                                                    req.status === 'approved' ? 'text-green-600 border-green-200 bg-green-50' :
-                                                        'text-slate-500'
+                                                req.status === 'approved' ? 'text-green-600 border-green-200 bg-green-50' :
+                                                    'text-slate-500'
                                                 }`}>
                                                 {req.status === 'pending' ? 'Bekliyor' : req.status === 'approved' ? 'Onaylandı' : 'Reddedildi'}
                                             </Badge>
@@ -112,9 +111,9 @@ export default async function StudentStudyRequestsPage() {
                         <p className="text-slate-500 mb-6 max-w-sm">
                             Henüz hiç etüt talebi oluşturmadınız. Eksik hissettiğiniz konularda öğretmenlerinizden yardım isteyebilirsiniz.
                         </p>
-                        <Button className="bg-[#135bec] hover:bg-blue-700 text-white">
-                            İlk Talebini Oluştur
-                        </Button>
+                        <div className="mt-4">
+                            <BookSessionDialog />
+                        </div>
                     </div>
                 )}
             </div>
