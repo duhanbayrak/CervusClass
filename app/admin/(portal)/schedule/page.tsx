@@ -39,7 +39,7 @@ export default async function AdminSchedulePage() {
         id: t.id,
         label: t.full_name || 'İsimsiz',
         branchName: t.branches?.name,
-        branchId: t.branch_id
+        branchId: t.branch_id || undefined
     }));
 
     // 3. Courses
@@ -48,7 +48,7 @@ export default async function AdminSchedulePage() {
     const courseOptions = courses?.map(c => ({
         id: c.id,
         label: c.name,
-        branchId: c.branch_id
+        branchId: c.branch_id || undefined
     })) || [];
 
     // 3. Classes
