@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .from('profiles')
                 .select(`
                     *,
-                    roles!inner (
+                    roles (
                         name
                     )
                 `)
@@ -103,11 +103,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    // Safely extract role
+    const rolesData = profile?.roles as any;
+    const roleName = Array.isArray(rolesData) ? rolesData[0]?.name : rolesData?.name;
+
     const value = {
         user,
         profile,
-        // @ts-ignore
-        role: (profile?.roles?.name as ProfileRole) || null,
+        role: (roleName as ProfileRole) || null,
         loading,
         signOut,
     };

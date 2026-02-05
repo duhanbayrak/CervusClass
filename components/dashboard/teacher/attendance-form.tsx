@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+// import { supabase } from '@/lib/supabase'; // Removed client usage
+import { saveAttendance } from '@/lib/actions/attendance';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -82,24 +83,11 @@ export default function AttendanceForm({
         setLoading(true);
 
         try {
-            // Get current user's organization_id
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('Oturum bulunamadı');
-
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('organization_id')
-                .eq('id', user.id)
-                .single();
-
-            if (!profile?.organization_id) throw new Error('Kurum bilgisi bulunamadı');
-
-            // Prepare upsert data
-            const upsertData = students.map(student => {
+            // Prepare data
+            const items = students.map(student => {
                 const existingId = attendanceMap[student.id]?.id;
                 return {
                     ...(existingId ? { id: existingId } : {}),
-                    organization_id: profile.organization_id,
                     student_id: student.id,
                     schedule_id: scheduleId,
                     date: date,
@@ -108,13 +96,10 @@ export default function AttendanceForm({
                 };
             });
 
-            const { error } = await supabase
-                .from('attendance')
-                .upsert(upsertData, { onConflict: 'student_id,schedule_id,date' });
+            const result = await saveAttendance(items);
 
-            if (error) {
-                console.error('Upsert error:', error);
-                throw error;
+            if (!result.success) {
+                throw new Error(result.error);
             }
 
             toast({

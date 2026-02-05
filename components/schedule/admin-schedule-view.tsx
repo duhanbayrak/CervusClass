@@ -1,0 +1,86 @@
+'use client';
+
+import { useState } from 'react';
+import { WeeklyScheduler, ScheduleEvent } from '@/components/schedule/WeeklyScheduler';
+import { EditScheduleDialog } from '@/components/schedule/edit-schedule-dialog';
+
+interface Option {
+    id: string;
+    label: string;
+    branchId?: string;
+    branchName?: string;
+}
+
+interface AdminScheduleViewProps {
+    events: ScheduleEvent[];
+    teachers: Option[];
+    courses: Option[];
+    classes: Option[];
+}
+
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+
+export function AdminScheduleView({ events, teachers, courses, classes }: AdminScheduleViewProps) {
+    const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [selectedTeacherId, setSelectedTeacherId] = useState<string>(teachers[0]?.id || '');
+
+    const handleEventClick = (event: ScheduleEvent) => {
+        setSelectedEvent(event);
+        setIsEditDialogOpen(true);
+    };
+
+    // Filter events based on selected teacher
+    const filteredEvents = events.filter(e => e.teacher_id === selectedTeacherId);
+
+    return (
+        <div className="flex flex-col h-full space-y-4">
+            <div className="flex items-center space-x-4 bg-background p-2 rounded-md border">
+                <Label className="text-sm font-medium">Öğretmen Filtresi:</Label>
+                <div className="w-[250px]">
+                    <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Öğretmen Seçiniz" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {teachers.length === 0 && <SelectItem value="empty" disabled>Öğretmen Bulunamadı</SelectItem>}
+                            {teachers.map(t => (
+                                <SelectItem key={t.id} value={t.id}>
+                                    {t.label}
+                                    {t.branchName && <span className="text-muted-foreground ml-2 text-xs">({t.branchName})</span>}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="text-xs text-muted-foreground ml-auto">
+                    {filteredEvents.length} ders gösteriliyor
+                </div>
+            </div>
+
+            <div className="flex-1 overflow-hidden">
+                <WeeklyScheduler
+                    events={filteredEvents}
+                    role="admin"
+                    onEventClick={handleEventClick}
+                />
+            </div>
+
+            <EditScheduleDialog
+                open={isEditDialogOpen}
+                onOpenChange={setIsEditDialogOpen}
+                event={selectedEvent}
+                teachers={teachers}
+                courses={courses}
+                classes={classes}
+            />
+        </div>
+    );
+}

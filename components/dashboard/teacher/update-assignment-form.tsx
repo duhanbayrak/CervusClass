@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -15,10 +15,18 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Calendar as CalendarIcon, Loader2, CheckCircle2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ClassItem {
     id: string;
     name: string;
+}
+
+interface Student {
+    id: string;
+    full_name: string;
 }
 
 interface UpdateAssignmentFormProps {
@@ -27,6 +35,7 @@ interface UpdateAssignmentFormProps {
         description: string;
         class_id: string;
         due_date: string;
+        assigned_student_ids: string[] | null;
     };
     classes: ClassItem[];
     userId: string;
@@ -37,16 +46,83 @@ export default function UpdateAssignmentForm({ assignment, classes, userId }: Up
     const [isLoading, setIsLoading] = useState(false);
     const [success, setSuccess] = useState(false);
 
-    // Form State populated from assignment
+    // Form State
     const [description, setDescription] = useState(assignment.description);
-    // Be careful, class_id must exist in classes list
     const [classId, setClassId] = useState(assignment.class_id);
     const [date, setDate] = useState<Date | undefined>(new Date(assignment.due_date));
 
-    const supabase = createBrowserClient(
+    // Assignment Mode State
+    const [assignmentMode, setAssignmentMode] = useState<'entire_class' | 'selected_students'>(
+        assignment.assigned_student_ids && assignment.assigned_student_ids.length > 0
+            ? 'selected_students'
+            : 'entire_class'
+    );
+    const [students, setStudents] = useState<Student[]>([]);
+    const [selectedStudents, setSelectedStudents] = useState<string[]>(
+        assignment.assigned_student_ids || []
+    );
+    const [loadingStudents, setLoadingStudents] = useState(false);
+
+    // Create supabase client once
+    const [supabase] = useState(() => createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    ));
+
+    // Fetch students when classId changes
+    useEffect(() => {
+        const fetchStudents = async () => {
+            if (!classId) return;
+
+            setLoadingStudents(true);
+            try {
+                // Get students for this class from profiles
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('id, full_name')
+                    .eq('class_id', classId)
+                    .eq('role_id', '380914a0-783e-4300-8fb7-b55c81f575b7') // Student role
+                    .order('full_name');
+
+                if (error) {
+                    console.error('Error fetching students:', error);
+                    return;
+                }
+
+                setStudents(data || []);
+
+                // If class changed and we are not in initial load (simple check), maybe reset selection?
+                // But for update form, we want to keep initial selection if class hasn't changed.
+                // If class changes, existing selection might be invalid.
+                if (classId !== assignment.class_id) {
+                    setSelectedStudents([]);
+                }
+
+            } catch (err) {
+                console.error('Fetch error:', err);
+            } finally {
+                setLoadingStudents(false);
+            }
+        };
+
+        fetchStudents();
+    }, [classId, supabase, assignment.class_id]);
+
+    const handleStudentToggle = (studentId: string) => {
+        setSelectedStudents(prev =>
+            prev.includes(studentId)
+                ? prev.filter(id => id !== studentId)
+                : [...prev, studentId]
+        );
+    };
+
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setSelectedStudents(students.map(s => s.id));
+        } else {
+            setSelectedStudents([]);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -56,18 +132,26 @@ export default function UpdateAssignmentForm({ assignment, classes, userId }: Up
             return;
         }
 
+        if (assignmentMode === 'selected_students' && selectedStudents.length === 0) {
+            alert("Lütfen en az bir öğrenci seçiniz.");
+            return;
+        }
+
         setIsLoading(true);
 
         try {
+            const assignedIds = assignmentMode === 'selected_students' ? selectedStudents : null;
+
             const { error } = await supabase
                 .from('homework')
                 .update({
                     description: description,
                     class_id: classId,
                     due_date: date.toISOString(),
+                    assigned_student_ids: assignedIds, // This corresponds to jsonb column
                 })
                 .eq('id', assignment.id)
-                .eq('teacher_id', userId); // Ensure security
+                .eq('teacher_id', userId);
 
             if (error) throw error;
 
@@ -122,6 +206,67 @@ export default function UpdateAssignmentForm({ assignment, classes, userId }: Up
                             </SelectContent>
                         </Select>
                     </div>
+
+                    {/* Assignment Mode */}
+                    <div className="space-y-3">
+                        <Label>Atama Kapsamı</Label>
+                        <RadioGroup
+                            value={assignmentMode}
+                            onValueChange={(val: 'entire_class' | 'selected_students') => setAssignmentMode(val)}
+                            className="flex flex-col sm:flex-row gap-4"
+                        >
+                            <div className="flex items-center space-x-2 border rounded-md p-3 flex-1 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer" onClick={() => setAssignmentMode('entire_class')}>
+                                <RadioGroupItem value="entire_class" id="entire_class" />
+                                <Label htmlFor="entire_class" className="cursor-pointer flex-1">Tüm Sınıf</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 border rounded-md p-3 flex-1 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer" onClick={() => setAssignmentMode('selected_students')}>
+                                <RadioGroupItem value="selected_students" id="selected_students" />
+                                <Label htmlFor="selected_students" className="cursor-pointer flex-1">Belirli Öğrenciler</Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+
+                    {/* Student Selection List */}
+                    {assignmentMode === 'selected_students' && (
+                        <div className="space-y-2 border rounded-md p-4 bg-slate-50 dark:bg-slate-900/50 animate-in slide-in-from-top-2 duration-300">
+                            <div className="flex items-center justify-between mb-2">
+                                <Label>Öğrenci Seçimi ({selectedStudents.length} Seçili)</Label>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="select-all"
+                                        checked={students.length > 0 && selectedStudents.length === students.length}
+                                        onCheckedChange={handleSelectAll}
+                                    />
+                                    <Label htmlFor="select-all" className="text-sm font-normal cursor-pointer text-muted-foreground">Tümünü Seç</Label>
+                                </div>
+                            </div>
+
+                            {loadingStudents ? (
+                                <div className="flex justify-center p-4">
+                                    <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                                </div>
+                            ) : students.length === 0 ? (
+                                <p className="text-sm text-muted-foreground text-center py-4">Bu sınıfta kayıtlı öğrenci bulunamadı.</p>
+                            ) : (
+                                <ScrollArea className="h-[200px] pr-4">
+                                    <div className="space-y-2">
+                                        {students.map((student) => (
+                                            <div key={student.id} className="flex items-center space-x-2 p-2 rounded hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                                                <Checkbox
+                                                    id={`student-${student.id}`}
+                                                    checked={selectedStudents.includes(student.id)}
+                                                    onCheckedChange={() => handleStudentToggle(student.id)}
+                                                />
+                                                <Label htmlFor={`student-${student.id}`} className="flex-1 cursor-pointer font-normal">
+                                                    {student.full_name}
+                                                </Label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            )}
+                        </div>
+                    )}
 
                     <div className="space-y-2">
                         <Label htmlFor="date">Son Teslim Tarihi</Label>

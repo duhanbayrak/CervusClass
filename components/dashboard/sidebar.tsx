@@ -71,7 +71,7 @@ export default function Sidebar({ items, basePath, title = "CervusClass", subtit
             <div className="p-4 border-t border-slate-200 dark:border-slate-800">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors w-full group">
+                        <div suppressHydrationWarning className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors w-full group">
                             <Avatar className="h-10 w-10 border-2 border-white dark:border-slate-700 shadow-sm">
                                 <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || 'User'} />
                                 <AvatarFallback>{profile?.full_name?.substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>

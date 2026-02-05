@@ -41,6 +41,7 @@ export const TEACHER_NAV: NavItem[] = [
 
 export const ADMIN_NAV: NavItem[] = [
     { title: 'Kontrol Paneli', href: '/admin/dashboard', icon: LayoutDashboard },
+    { title: 'Ders Programı', href: '/admin/schedule', icon: Calendar },
     { title: 'Öğretmenler', href: '/admin/teachers', icon: GraduationCap },
     { title: 'Öğrenciler', href: '/admin/students', icon: Users },
     { title: 'Sınıflar', href: '/admin/classes', icon: School },

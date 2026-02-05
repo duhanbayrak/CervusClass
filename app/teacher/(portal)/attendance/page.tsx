@@ -57,6 +57,7 @@ async function getSchedule(dayOfWeek: number) {
         .select(`
             *,
             classes (name),
+            courses (name),
             attendance (
                 id,
                 created_at,
@@ -71,13 +72,6 @@ async function getSchedule(dayOfWeek: number) {
         console.error('Schedule fetch error:', error);
         return [];
     }
-
-    // Filter attendance to only check for TODAY's records? 
-    // Or just identifying if there is an attendance record for "today".
-    // The query above returns ALL attendance records for that schedule item. We need to filter in JS or upgrade query.
-    // Query upgrade: attendance(id) .eq('date', today) -> This would filter PARENT rows if inner join.
-    // Supabase filtering on nested resource: .eq('attendance.date', today) is not directly supported like this easily without filtering the parent.
-    // Best way: Process in JS.
 
     const processedSchedules = schedules?.map(item => {
         const todaysAttendance = item.attendance?.find((att: any) => att.date === today);
@@ -153,7 +147,7 @@ export default async function AttendancePage(props: PageProps) {
                                     )}
                                 </div>
                                 <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">
-                                    {item.course_name}
+                                    {item.courses?.name}
                                 </CardTitle>
                                 <CardDescription className="flex items-center gap-1 mt-1">
                                     <Clock className="w-3 h-3" />

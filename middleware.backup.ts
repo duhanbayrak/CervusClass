@@ -62,10 +62,22 @@ export async function middleware(request: NextRequest) {
 
     // If user is Logged In
     if (user) {
-        // Optimized: Fetch user role from JWT metadata
-        const role = user.user_metadata?.role as ProfileRole || user.app_metadata?.role as ProfileRole;
+        // Fetch user role from profiles table
+        // Note: In a high-traffic production app, you might want to cache this in a cookie or custom claim
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select(`
+                *,
+                roles (
+                    name
+                )
+            `)
+            .eq('id', user.id)
+            .single()
 
-        console.log(`[Middleware Debug] Path: ${path}, UserID: ${user.id}, Role: ${role}`);
+        // Safely extract role name whether it's an object or array
+        const rolesData = profile?.roles as any;
+        const role = (Array.isArray(rolesData) ? rolesData[0]?.name : rolesData?.name) as ProfileRole;
 
         console.log(`[Middleware Debug] Path: ${path}, UserID: ${user.id}, Role: ${role}`);
 

@@ -3,6 +3,7 @@ import { School, GraduationCap, Users, ShieldCheck, ArrowRight, LogOut, LayoutDa
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import SignOutButton from "@/components/auth/sign-out-button";
 
 export default async function Home() {
   const cookieStore = await cookies();
@@ -27,13 +28,16 @@ export default async function Home() {
       .from('profiles')
       .select(`
         *,
-        roles!inner (
+        roles (
           name
         )
       `)
       .eq('id', user.id)
       .single();
-    userRole = profile?.roles?.name;
+
+    // Safely extract role name whether it's an object or array
+    const rolesData = profile?.roles as any;
+    userRole = Array.isArray(rolesData) ? rolesData[0]?.name : rolesData?.name;
     userProfile = profile;
   }
 
@@ -77,10 +81,10 @@ export default async function Home() {
 
           <div className="flex flex-col gap-3">
             <Link
-              href={userRole === 'super_admin' ? '/super-admin/dashboard' : `/${userRole}/dashboard`}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#135bec] hover:bg-blue-700 text-white font-bold h-12 transition-all shadow-md shadow-blue-600/20"
+              href={!userRole ? '#' : (userRole === 'super_admin' ? '/super-admin/dashboard' : `/${userRole}/dashboard`)}
+              className={`flex w-full items-center justify-center gap-2 rounded-xl bg-[#135bec] hover:bg-blue-700 text-white font-bold h-12 transition-all shadow-md shadow-blue-600/20 ${!userRole ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
             >
-              Continue to Dashboard <ArrowRight className="w-4 h-4" />
+              {userRole ? 'Continue to Dashboard' : 'Role Not Found (Contact Admin)'} <ArrowRight className="w-4 h-4" />
             </Link>
 
             {/* 
@@ -88,9 +92,10 @@ export default async function Home() {
                     users should go to dashboard to logout.
                     But for convenience, we will add a simple hint.
                  */}
-            <p className="text-xs text-slate-400 mt-4">
-              Want to switch accounts? Logs out from the Dashboard profile menu.
-            </p>
+            {/* Log Out Button */}
+            <div className="mt-4 flex justify-center">
+              <SignOutButton variant="ghost" className="text-slate-500 hover:text-red-600" />
+            </div>
           </div>
         </div>
       ) : (
