@@ -118,20 +118,85 @@ export async function createAvailability(date: string, startTime: string, endTim
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized' }
 
-    // Get current user's organization_id to be safe (though RLS enforces it, good to include)
+    // Get current user's organization_id
     const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single()
     if (!profile) return { error: 'Profile not found' }
 
-    // scheduled_at should be a timestamp. We need to combine date and startTime.
-    const scheduledAt = new Date(`${date}T${startTime}:00`).toISOString()
+    // 1. Calculate Timestamps considering Timezone (Assuming input is local time string, we construct date object)
+    // Note: The system seems to rely on ISO strings. 
+    // We treat the input strings as local time and construct the ISO for DB.
+    const startDateTime = new Date(`${date}T${startTime}:00`)
+    const endDateTime = new Date(`${date}T${endTime}:00`)
 
+    if (endDateTime <= startDateTime) {
+        return { error: 'Bitiş saati başlangıç saatinden sonra olmalıdır.' }
+    }
+
+    // 2. Check for conflicts with Weekly Schedule (Classes)
+    // We need to map the specific date to a day of week (1-7).
+    // JS getDay(): 0=Sun, 1=Mon ... 6=Sat.
+    // DB schedule uses: 1=Mon ... 7=Sun (ISO/Postgres convention usually? or existing app convention?)
+    // Let's check `WeeklyScheduler.tsx`: 
+    // const dayNumber = date.getDay() || 7; // 1 (Mon) - 7 (Sun)
+    const dayOfWeek = startDateTime.getDay() || 7;
+
+    const { data: classes, error: scheduleError } = await supabase
+        .from('schedule')
+        .select('start_time, end_time, courses(name)')
+        .eq('teacher_id', user.id)
+        .eq('day_of_week', dayOfWeek)
+
+    if (scheduleError) {
+        return { error: 'Ders programı kontrol edilirken hata oluştu.' }
+    }
+
+    // Check overlap with classes
+    // Class times are HH:MM:SS strings.
+    for (const cls of classes || []) {
+        const classStart = new Date(`${date}T${cls.start_time}`)
+        const classEnd = new Date(`${date}T${cls.end_time}`)
+
+        // Simple Overlap: (StartA < EndB) and (EndA > StartB)
+        if (startDateTime < classEnd && endDateTime > classStart) {
+            return { error: `Bu saatte dersiniz var: ${cls.courses?.name || 'Ders'}` }
+        }
+    }
+
+    // 3. Check for conflicts with existing Study Sessions
+    // We fetch sessions for this day. 
+    // Since we don't store duration/end_time for sessions, we assume they are 1 hour (fixed).
+    const dayStart = new Date(`${date}T00:00:00`).toISOString()
+    const dayEnd = new Date(`${date}T23:59:59`).toISOString()
+
+    const { data: existingSessions, error: sessionError } = await supabase
+        .from('study_sessions')
+        .select('scheduled_at')
+        .eq('teacher_id', user.id)
+        .gte('scheduled_at', dayStart)
+        .lte('scheduled_at', dayEnd)
+        .neq('status', 'cancelled') // Ignore cancelled
+
+    if (sessionError) {
+        return { error: 'Mevcut etütler kontrol edilirken hata oluştu.' }
+    }
+
+    for (const session of existingSessions || []) {
+        const sessionStart = new Date(session.scheduled_at)
+        const sessionEnd = new Date(sessionStart.getTime() + 60 * 60 * 1000) // Assume 1 hour
+
+        if (startDateTime < sessionEnd && endDateTime > sessionStart) {
+            return { error: 'Bu saat aralığında başka bir etüt veya müsaitlik var.' }
+        }
+    }
+
+    // 4. Insert if no conflicts
     const { error } = await supabase.from('study_sessions').insert({
         teacher_id: user.id,
         organization_id: profile.organization_id,
-        student_id: null, // Explicitly null for availability
+        student_id: null,
         status: 'available',
-        scheduled_at: scheduledAt,
-        topic: 'Müsaitlik' // Default topic or leave empty?
+        scheduled_at: startDateTime.toISOString(),
+        topic: 'Müsaitlik'
     })
 
     if (error) {
@@ -142,7 +207,7 @@ export async function createAvailability(date: string, startTime: string, endTim
     revalidatePath('/teacher/schedule')
     revalidatePath('/teacher/study-requests')
     revalidatePath('/teacher/dashboard')
-    revalidatePath('/student/study-requests') // In case availability update impacts student view
+    revalidatePath('/student/study-requests')
     return { success: true }
 }
 

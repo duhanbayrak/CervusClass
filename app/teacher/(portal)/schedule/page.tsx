@@ -37,12 +37,12 @@ export default async function TeacherSchedulePage() {
     const studySessions = studySessionsResponse.data;
 
     return (
-        <div className="space-y-6 h-full">
-            <h1 className="text-3xl font-bold tracking-tight">Haftalık Ders Programım</h1>
+        <div className="space-y-6 h-full flex flex-col">
+            <h1 className="text-3xl font-bold tracking-tight shrink-0">Haftalık Ders Programım</h1>
 
-            <div className="h-[850px]">
-                <Card className="h-full">
-                    <CardContent className="h-full p-2">
+            <div className="flex-1 min-h-0">
+                <Card className="h-full flex flex-col">
+                    <CardContent className="h-full p-2 flex flex-col">
                         <TeacherScheduleClient
                             events={(events as any) || []}
                             studySessions={(studySessions as any) || []}

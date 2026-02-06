@@ -88,7 +88,7 @@ export default function AuthForm({ role }: AuthFormProps) {
         <div className="flex min-h-screen w-full font-sans text-slate-900 bg-[#f6f6f8] dark:bg-[#101622] dark:text-white overflow-x-hidden">
             {/* Left Side: Visual / Hero Section */}
             <div className="hidden lg:flex w-1/2 relative flex-col justify-between bg-cover bg-center overflow-hidden"
-                style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBUmYaTEtnV-CMQSawNcE--fI7OMDJ1j-lqGxBazIAxY07sqnvVcxDiy77v0qSFvQwxgDV47Tz8qgAuji2zHKL8UQGd38Ws3fecPX8AkicBKAh74X1ZtK1f0pMm5YPzDAh1qqUvVt3-3vDIREeLdX3YV0rjiTuQeI_bCpGQ_wQlyj0Aw14ZedkZDlx69xsOUmEQ9Bfc8lBCHzEgv7h66iIz6IuXSWHhXOP6o3JaOS9qj6FyUwst8We6R5orc_DGV2KOlSakL-Sr_So")' }}>
+                style={{ backgroundImage: 'url("/login-bg.jpg")' }}>
 
                 {/* Blue Tint Overlay */}
                 <div className="absolute inset-0 bg-[#135bec]/90 mix-blend-multiply"></div>

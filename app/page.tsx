@@ -65,7 +65,7 @@ export default async function Home() {
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">CervusClass</h1>
         </div>
         <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-          Welcome to the next generation education management system.
+          Yeni nesil eğitim yönetim sistemine hoş geldiniz.
         </p>
       </div>
 
@@ -75,9 +75,9 @@ export default async function Home() {
           <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center text-green-600 mx-auto mb-4">
             <LayoutDashboard className="w-10 h-10" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Welcome back, {userProfile?.full_name || 'User'}!</h2>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Tekrar hoş geldiniz, {userProfile?.full_name || 'Kullanıcı'}!</h2>
           <p className="text-slate-500 dark:text-slate-400 mb-8">
-            You are currently signed in as a <span className="font-bold capitalize text-[#135bec]">{userRole?.replace('_', ' ')}</span>.
+            Şu anda <span className="font-bold capitalize text-[#135bec]">{userRole === 'admin' ? 'Yönetici' : userRole === 'teacher' ? 'Öğretmen' : userRole === 'student' ? 'Öğrenci' : userRole?.replace('_', ' ')}</span> olarak oturum açtınız.
           </p>
 
           <div className="flex flex-col gap-3">
@@ -85,7 +85,7 @@ export default async function Home() {
               href={!userRole ? '#' : (userRole === 'super_admin' ? '/super-admin/dashboard' : `/${userRole}/dashboard`)}
               className={`flex w-full items-center justify-center gap-2 rounded-xl bg-[#135bec] hover:bg-blue-700 text-white font-bold h-12 transition-all shadow-md shadow-blue-600/20 ${!userRole ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
             >
-              {userRole ? 'Continue to Dashboard' : 'Role Not Found (Contact Admin)'} <ArrowRight className="w-4 h-4" />
+              {userRole ? 'Panele Devam Et' : 'Rol Bulunamadı (Yöneticiyle İletişime Geçin)'} <ArrowRight className="w-4 h-4" />
             </Link>
 
             {/* 
@@ -108,12 +108,12 @@ export default async function Home() {
             <div className="w-16 h-16 bg-blue-50 dark:bg-slate-700/50 rounded-full flex items-center justify-center text-[#135bec] mb-4 group-hover:scale-110 transition-transform">
               <GraduationCap className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Student Portal</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Öğrenci Portalı</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-6">
-              View grades, schedule study sessions, and track your progress.
+              Notlarınızı görüntüleyin, etüt alın ve gelişiminizi takip edin.
             </p>
             <div className="mt-auto flex items-center text-[#135bec] font-semibold text-sm group-hover:gap-2 transition-all">
-              Login as Student <ArrowRight className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />
+              Öğrenci Girişi <ArrowRight className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />
             </div>
           </Link>
 
@@ -122,12 +122,12 @@ export default async function Home() {
             <div className="w-16 h-16 bg-indigo-50 dark:bg-slate-700/50 rounded-full flex items-center justify-center text-indigo-600 mb-4 group-hover:scale-110 transition-transform">
               <Users className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Teacher Portal</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Öğretmen Portalı</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-6">
-              Manage classes, assign homework, and track student attendance.
+              Sınıfları yönetin, ödev atayın ve yoklama takibi yapın.
             </p>
             <div className="mt-auto flex items-center text-indigo-600 font-semibold text-sm group-hover:gap-2 transition-all">
-              Login as Teacher <ArrowRight className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />
+              Öğretmen Girişi <ArrowRight className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />
             </div>
           </Link>
 
@@ -136,12 +136,12 @@ export default async function Home() {
             <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700/50 rounded-full flex items-center justify-center text-slate-700 dark:text-slate-300 mb-4 group-hover:scale-110 transition-transform">
               <ShieldCheck className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Admin Portal</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Yönetici Paneli</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-6">
-              Administrative controls, user management, and system reports.
+              İdari kontroller, kullanıcı yönetimi ve sistem raporları.
             </p>
             <div className="mt-auto flex items-center text-slate-700 dark:text-slate-300 font-semibold text-sm group-hover:gap-2 transition-all">
-              Login as Admin <ArrowRight className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />
+              Yönetici Girişi <ArrowRight className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />
             </div>
           </Link>
 
@@ -149,7 +149,7 @@ export default async function Home() {
       )}
 
       <div className="mt-12 text-center text-xs text-slate-400">
-        &copy; {new Date().getFullYear()} Cervus Labs. All rights reserved.
+        &copy; {new Date().getFullYear()} Cervus Labs. Tüm hakları saklıdır.
       </div>
 
     </div>

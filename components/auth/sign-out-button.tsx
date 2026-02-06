@@ -48,7 +48,7 @@ export default function SignOutButton({ variant = "outline", className }: { vari
                 className={className}
             >
                 <LogOut className="w-4 h-4 mr-2" />
-                {loading ? 'Çıkış Yapılıyor...' : 'Çıkış Yap (Log Out)'}
+                {loading ? 'Çıkış Yapılıyor...' : 'Çıkış Yap'}
             </Button>
         </form>
     );

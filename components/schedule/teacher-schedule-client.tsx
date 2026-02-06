@@ -29,7 +29,17 @@ export function TeacherScheduleClient({ events, studySessions, currentUserId }: 
     }
 
     return (
-        <>
+        <div className="space-y-4 h-full flex flex-col">
+            <div className="bg-blue-50/50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 px-4 py-3 rounded-md text-sm flex items-start gap-3 border border-blue-100 dark:border-blue-800">
+                <div className="mt-0.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-info"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+                </div>
+                <div>
+                    <p className="font-medium">Etüt Slotu Oluşturma</p>
+                    <p className="opacity-90">Takvimdeki boş alanlara tıklayarak öğrencileriniz için yeni etüt slotları oluşturabilirsiniz. Mobilde yatay kaydırarak diğer günleri görebilirsiniz.</p>
+                </div>
+            </div>
+
             <WeeklyScheduler
                 events={events}
                 studySessions={studySessions}
@@ -44,6 +54,6 @@ export function TeacherScheduleClient({ events, studySessions, currentUserId }: 
                 session={selectedSession}
                 onClose={() => setOpen(false)}
             />
-        </>
+        </div>
     )
 }

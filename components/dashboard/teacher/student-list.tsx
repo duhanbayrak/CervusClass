@@ -151,9 +151,9 @@ export default function StudentList({ students, classes }: StudentListProps) {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Öğrenci</TableHead>
+                                <TableHead className="w-[100px]">Numara</TableHead>
+                                <TableHead>Ad Soyad</TableHead>
                                 <TableHead>Sınıf</TableHead>
-                                <TableHead className="hidden md:table-cell">İletişim</TableHead>
                                 <TableHead className="text-right">İşlemler</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -161,28 +161,22 @@ export default function StudentList({ students, classes }: StudentListProps) {
                             {students.length > 0 ? (
                                 students.map((student) => (
                                     <TableRow key={student.id}>
-                                        <TableCell className="font-medium">
+                                        <TableCell className="font-medium font-mono">
+                                            {student.student_number || '-'}
+                                        </TableCell>
+                                        <TableCell>
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="h-9 w-9">
+                                                <Avatar className="h-8 w-8">
                                                     <AvatarImage src={student.avatar_url || undefined} alt={student.full_name} />
                                                     <AvatarFallback>{student.full_name?.slice(0, 2).toUpperCase()}</AvatarFallback>
                                                 </Avatar>
-                                                <div className="flex flex-col">
-                                                    <span>{student.full_name}</span>
-                                                    <span className="text-xs text-slate-500">#{student.student_number || student.id.slice(0, 8)}</span>
-                                                </div>
+                                                <span>{student.full_name}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant="outline" className="bg-slate-50">
                                                 {student.classes?.name || 'Sınıfsız'}
                                             </Badge>
-                                        </TableCell>
-                                        <TableCell className="hidden md:table-cell">
-                                            <div className="flex items-center text-sm text-slate-500">
-                                                <Mail className="w-4 h-4 mr-2" />
-                                                {student.email || 'N/A'}
-                                            </div>
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <DropdownMenu>
@@ -200,8 +194,6 @@ export default function StudentList({ students, classes }: StudentListProps) {
                                                         </Link>
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem>Not Gir</DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem>Mesaj Gönder</DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </TableCell>

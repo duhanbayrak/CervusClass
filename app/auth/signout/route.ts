@@ -21,12 +21,9 @@ export async function POST(request: Request) {
         }
     )
 
-    // Check if user is logged in first (optional but good for logs)
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (user) {
-        await supabase.auth.signOut()
-    }
+    // Sign out functionality
+    // We don't need to check getUser() first - if there's a session it kills it, if not it does nothing
+    await supabase.auth.signOut()
 
     // Redirect to home page
     // Using 302/303 to ensure browser redirects correctly after POST
