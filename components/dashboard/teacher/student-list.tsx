@@ -15,6 +15,7 @@ import Link from 'next/link';
 
 interface Student {
     id: string;
+    student_number?: string;
     full_name: string;
     email?: string;
     avatar_url: string | null;
@@ -152,7 +153,7 @@ export default function StudentList({ students, classes }: StudentListProps) {
                             <TableRow>
                                 <TableHead>Öğrenci</TableHead>
                                 <TableHead>Sınıf</TableHead>
-                                <TableHead>İletişim</TableHead>
+                                <TableHead className="hidden md:table-cell">İletişim</TableHead>
                                 <TableHead className="text-right">İşlemler</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -168,7 +169,7 @@ export default function StudentList({ students, classes }: StudentListProps) {
                                                 </Avatar>
                                                 <div className="flex flex-col">
                                                     <span>{student.full_name}</span>
-                                                    <span className="text-xs text-slate-500">#{student.id.slice(0, 8)}</span>
+                                                    <span className="text-xs text-slate-500">#{student.student_number || student.id.slice(0, 8)}</span>
                                                 </div>
                                             </div>
                                         </TableCell>
@@ -177,7 +178,7 @@ export default function StudentList({ students, classes }: StudentListProps) {
                                                 {student.classes?.name || 'Sınıfsız'}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="hidden md:table-cell">
                                             <div className="flex items-center text-sm text-slate-500">
                                                 <Mail className="w-4 h-4 mr-2" />
                                                 {student.email || 'N/A'}

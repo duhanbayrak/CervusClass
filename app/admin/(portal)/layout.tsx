@@ -1,6 +1,7 @@
 'use client';
 
 import Sidebar from '@/components/dashboard/sidebar';
+import MobileSidebar from '@/components/dashboard/mobile-sidebar';
 import DashboardHeader from '@/components/dashboard/header';
 import { ADMIN_NAV } from '@/lib/navigation';
 
@@ -22,8 +23,16 @@ export default function AdminLayout({
                     title="Yönetim"
                     description="Kurumunuza genel bakış."
                     actionButtonText="Kullanıcı Ekle"
+                    mobileNav={
+                        <MobileSidebar
+                            items={ADMIN_NAV}
+                            basePath="/admin"
+                            title="Cervus Class"
+                            subtitle="Yönetici Paneli"
+                        />
+                    }
                 />
-                <div className="flex-1 overflow-y-auto p-8 scroll-smooth">
+                <div className="flex-1 overflow-y-auto p-2 md:p-8 scroll-smooth">
                     {children}
                 </div>
             </main>

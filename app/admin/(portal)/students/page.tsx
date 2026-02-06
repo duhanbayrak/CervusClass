@@ -3,7 +3,7 @@ import { StudentUploader } from "@/components/student/student-uploader";
 
 export default function StudentManagementPage() {
     return (
-        <div className="flex flex-col gap-4 p-8">
+        <div className="flex flex-col gap-4 p-0 md:p-0">
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight">Öğrenci Yönetimi</h2>
@@ -13,10 +13,8 @@ export default function StudentManagementPage() {
                 </div>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <div className="md:col-span-1">
-                    <StudentUploader />
-                </div>
+            <div className="w-full">
+                <StudentUploader />
             </div>
 
             <StudentList />

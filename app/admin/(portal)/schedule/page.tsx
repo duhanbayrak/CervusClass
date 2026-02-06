@@ -60,40 +60,44 @@ export default async function AdminSchedulePage() {
         <div className="space-y-6">
             <h1 className="text-3xl font-bold tracking-tight">Ders Programı Yönetimi</h1>
 
-            <div className="grid gap-6 md:grid-cols-4">
+            <div className="flex flex-col md:grid md:grid-cols-4 gap-6 h-full">
                 <div className="md:col-span-1 space-y-4">
                     <Card>
                         <CardHeader>
                             <CardTitle>İşlemler</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <ScheduleUploader />
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center">
-                                    <span className="w-full border-t" />
-                                </div>
-                                <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-background px-2 text-muted-foreground">veya</span>
+                            <div>
+                                <ScheduleUploader />
+                                <div className="relative my-4">
+                                    <div className="absolute inset-0 flex items-center">
+                                        <span className="w-full border-t" />
+                                    </div>
+                                    <div className="relative flex justify-center text-xs uppercase">
+                                        <span className="bg-background px-2 text-muted-foreground">veya</span>
+                                    </div>
                                 </div>
                             </div>
+                            {/* Mobile specific simple add button could go here if needed, but ManualSchedulerDialog handles trigger */}
                             <ManualSchedulerDialog
                                 teachers={teacherOptions}
                                 courses={courseOptions}
                                 classes={classOptions}
                             />
-                            <div className="pt-4 border-t">
+                            {/* Actions visible on desktop or put in a dropdown/drawer on mobile later. For now, keep as is. */}
+                            <div className="pt-4 border-t hidden md:block">
                                 <ScheduleActions />
                             </div>
                         </CardContent>
                     </Card>
                 </div>
 
-                <div className="md:col-span-3 h-[900px]">
-                    <Card className="h-full">
-                        <CardHeader>
+                <div className="md:col-span-3 h-[600px] md:h-[900px]">
+                    <Card className="h-full flex flex-col">
+                        <CardHeader className="flex-none">
                             <CardTitle>Haftalık Program</CardTitle>
                         </CardHeader>
-                        <CardContent className="h-[800px] p-0">
+                        <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
                             <AdminScheduleView
                                 events={(events as any) || []}
                                 teachers={teacherOptions}

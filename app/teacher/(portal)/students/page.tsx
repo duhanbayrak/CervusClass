@@ -34,6 +34,7 @@ async function getData(query?: string, className?: string) {
         .from('profiles')
         .select(`
             id,
+            student_number,
             full_name,
             email,
             avatar_url,

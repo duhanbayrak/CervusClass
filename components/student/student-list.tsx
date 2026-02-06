@@ -119,7 +119,7 @@ export function StudentList() {
                             <TableHead>Öğrenci No</TableHead>
                             <TableHead>Ad Soyad</TableHead>
                             <TableHead>Sınıf</TableHead>
-                            <TableHead>Email</TableHead>
+                            <TableHead className="hidden md:table-cell">Email</TableHead>
                             <TableHead className="text-right">İşlemler</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -142,7 +142,7 @@ export function StudentList() {
                                     <TableCell>{student.student_number || '-'}</TableCell>
                                     <TableCell className="font-medium">{student.full_name}</TableCell>
                                     <TableCell>{student.class?.name || '-'}</TableCell>
-                                    <TableCell>{student.email || '-'}</TableCell>
+                                    <TableCell className="hidden md:table-cell">{student.email || '-'}</TableCell>
                                     <TableCell className="text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>

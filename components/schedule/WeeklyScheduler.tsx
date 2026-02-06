@@ -212,7 +212,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
             {/* Scrollable Container */}
             <div
                 className={cn(
-                    "flex-1 overflow-auto relative touch-pan-x select-none",
+                    "flex-1 overflow-auto relative select-none",
                     isDragging ? "cursor-grabbing" : "cursor-grab"
                 )}
                 ref={scrollRef}
@@ -244,7 +244,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                         const daySessions = studySessions.filter(s => isSameDate(date, s.scheduled_at));
 
                         return (
-                            <div key={i} className="flex-none w-[180px] border-r border-b relative group/col">
+                            <div key={i} className="flex-none w-[calc(100vw-4rem)] md:w-[180px] border-r border-b relative group/col">
                                 {/* Header */}
                                 <div className="h-14 sticky top-0 bg-background z-20 border-b flex flex-col items-center justify-center font-medium shadow-sm">
                                     <span className="text-sm text-muted-foreground">{dayName}</span>

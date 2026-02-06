@@ -1,6 +1,7 @@
 'use client';
 
 import Sidebar from '@/components/dashboard/sidebar';
+import MobileSidebar from '@/components/dashboard/mobile-sidebar';
 import DashboardHeader from '@/components/dashboard/header';
 import { SUPER_ADMIN_NAV } from '@/lib/navigation';
 
@@ -22,6 +23,14 @@ export default function SuperAdminLayout({
                     title="Platform Yönetimi"
                     description="Global sistem ayarları ve kurumlar."
                     actionButtonText="Yeni Kurum"
+                    mobileNav={
+                        <MobileSidebar
+                            items={SUPER_ADMIN_NAV}
+                            basePath="/super-admin"
+                            title="Cervus Manager"
+                            subtitle="Süper Admin"
+                        />
+                    }
                 />
                 <div className="flex-1 overflow-y-auto p-8 scroll-smooth">
                     {children}
