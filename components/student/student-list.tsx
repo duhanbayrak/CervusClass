@@ -116,6 +116,7 @@ export function StudentList() {
                 <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead>Öğrenci No</TableHead>
                             <TableHead>Ad Soyad</TableHead>
                             <TableHead>Sınıf</TableHead>
                             <TableHead>Email</TableHead>
@@ -125,19 +126,20 @@ export function StudentList() {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">
+                                <TableCell colSpan={5} className="h-24 text-center">
                                     <Loader2 className="mx-auto h-6 w-6 animate-spin" />
                                 </TableCell>
                             </TableRow>
                         ) : students.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">
+                                <TableCell colSpan={5} className="h-24 text-center">
                                     Öğrenci bulunamadı.
                                 </TableCell>
                             </TableRow>
                         ) : (
                             students.map((student) => (
                                 <TableRow key={student.id}>
+                                    <TableCell>{student.student_number || '-'}</TableCell>
                                     <TableCell className="font-medium">{student.full_name}</TableCell>
                                     <TableCell>{student.class?.name || '-'}</TableCell>
                                     <TableCell>{student.email || '-'}</TableCell>

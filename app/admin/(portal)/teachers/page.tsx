@@ -35,6 +35,9 @@ export default async function TeachersPage() {
                 id,
                 full_name,
                 email,
+                phone,
+                title,
+                bio,
                 avatar_url,
                 created_at,
                 branches (name)
@@ -68,6 +71,8 @@ export default async function TeachersPage() {
         id: t.id,
         full_name: t.full_name,
         email: t.email,
+        phone: t.phone,
+        title: t.title,
         avatar_url: t.avatar_url,
         created_at: t.created_at || new Date().toISOString(),
         branch: t.branches?.name || null

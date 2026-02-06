@@ -14,7 +14,7 @@ export default function AdminLayout({
             <Sidebar
                 items={ADMIN_NAV}
                 basePath="/admin"
-                title="Dershane OS"
+                title="Cervus Class"
                 subtitle="Yönetici Paneli"
             />
             <main className="flex-1 flex flex-col h-full overflow-hidden relative">

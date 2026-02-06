@@ -9,18 +9,22 @@ interface DashboardHeaderProps {
     description: string;
     actionButtonText?: string;
     onActionClick?: () => void;
+    mobileNav?: React.ReactNode;
 }
 
-export default function DashboardHeader({ title, description, actionButtonText, onActionClick }: DashboardHeaderProps) {
+export default function DashboardHeader({ title, description, actionButtonText, onActionClick, mobileNav }: DashboardHeaderProps) {
     return (
         <header className="h-20 bg-white/80 dark:bg-[#151c2b]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-8 flex items-center justify-between z-10 shrink-0 sticky top-0">
-            <div className="flex flex-col">
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-                    {title}
-                </h2>
-                <p className="text-slate-500 dark:text-slate-400 text-sm">
-                    {description}
-                </p>
+            <div className="flex items-center gap-4">
+                {mobileNav}
+                <div className="flex flex-col">
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                        {title}
+                    </h2>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">
+                        {description}
+                    </p>
+                </div>
             </div>
 
             <div className="flex items-center gap-4">

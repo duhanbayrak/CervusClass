@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { WeeklyScheduler, ScheduleEvent } from '@/components/schedule/WeeklyScheduler';
+import { WeeklyScheduler, ScheduleEvent, StudySessionEvent } from '@/components/schedule/WeeklyScheduler';
 import { EditScheduleDialog } from '@/components/schedule/edit-schedule-dialog';
 
 interface Option {
@@ -32,9 +32,12 @@ export function AdminScheduleView({ events, teachers, courses, classes }: AdminS
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [selectedTeacherId, setSelectedTeacherId] = useState<string>(teachers[0]?.id || '');
 
-    const handleEventClick = (event: ScheduleEvent) => {
-        setSelectedEvent(event);
-        setIsEditDialogOpen(true);
+    const handleEventClick = (event: ScheduleEvent | StudySessionEvent) => {
+        // Only handle ScheduleEvents (classes) for now in Admin view
+        if ('class_id' in event) {
+            setSelectedEvent(event as ScheduleEvent);
+            setIsEditDialogOpen(true);
+        }
     };
 
     // Filter events based on selected teacher

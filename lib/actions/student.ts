@@ -23,7 +23,11 @@ export type StudentFormData = {
     email: string;
     password?: string;
     class_id: string;
-    phone?: string; // Optional: if added later
+    phone?: string;
+    student_number?: string;
+    parent_name?: string;
+    parent_phone?: string;
+    birth_date?: string;
 }
 
 export async function getStudents(search?: string, classId?: string, page: number = 1, limit: number = 10) {
@@ -158,7 +162,12 @@ export async function addStudent(formData: StudentFormData) {
             full_name: formData.full_name,
             class_id: formData.class_id,
             role_id: studentRoleId,
-            organization_id: adminProfile.organization_id
+            organization_id: adminProfile.organization_id,
+            phone: formData.phone || null,
+            student_number: formData.student_number || null,
+            parent_name: formData.parent_name || null,
+            parent_phone: formData.parent_phone || null,
+            birth_date: formData.birth_date || null
         })
         .eq('id', userData.user.id);
 
@@ -198,6 +207,11 @@ export async function updateStudent(id: string, formData: Partial<StudentFormDat
         .update({
             full_name: formData.full_name,
             class_id: formData.class_id,
+            phone: formData.phone || null,
+            student_number: formData.student_number || null,
+            parent_name: formData.parent_name || null,
+            parent_phone: formData.parent_phone || null,
+            birth_date: formData.birth_date || null
             // email is separate in Auth
         })
         .eq('id', id);

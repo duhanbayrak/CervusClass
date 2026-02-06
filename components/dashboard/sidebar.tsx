@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import NextImage from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { NavItem } from '@/lib/navigation';
@@ -15,18 +16,20 @@ interface SidebarProps {
     basePath: string; // e.g., '/student' to check for active state prefix
     title?: string;
     subtitle?: string;
+    className?: string;
+    onNavigate?: () => void;
 }
 
-export default function Sidebar({ items, basePath, title = "CervusClass", subtitle = "Portal" }: SidebarProps) {
+export default function Sidebar({ items, basePath, title = "CervusClass", subtitle = "Portal", className, onNavigate }: SidebarProps) {
     const pathname = usePathname();
     const { profile, role, signOut } = useUserRole();
 
     return (
-        <aside className="w-72 flex-shrink-0 bg-white dark:bg-[#151c2b] border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-300 h-screen sticky top-0">
+        <aside className={cn("hidden md:flex w-72 flex-shrink-0 bg-white dark:bg-[#151c2b] border-r border-slate-200 dark:border-slate-800 flex-col transition-all duration-300 h-screen sticky top-0", className)}>
             {/* Branding */}
             <div className="p-6 flex items-center gap-3">
                 <div className="bg-[#135bec]/10 p-2 rounded-lg text-[#135bec]">
-                    <School className="w-8 h-8" />
+                    <NextImage src="/deer-logo.svg" alt="Cervus Class Logo" width={32} height={32} className="w-8 h-8 object-contain" />
                 </div>
                 <div>
                     <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{title}</h1>
@@ -44,6 +47,7 @@ export default function Sidebar({ items, basePath, title = "CervusClass", subtit
                         <Link
                             key={item.href}
                             href={item.href}
+                            onClick={onNavigate}
                             className={cn(
                                 "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors group relative",
                                 isActive

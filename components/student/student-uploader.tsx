@@ -42,10 +42,10 @@ export function StudentUploader() {
     }
 
     const downloadTemplate = () => {
-        const headers = ['Ad Soyad', 'Email', 'Sınıf', 'Parola']
+        const headers = ['Ad Soyad', 'Email', 'Sınıf', 'Parola', 'Öğrenci No', 'Öğrenci Telefon', 'Veli Adı', 'Veli Telefon', 'Doğum Tarihi']
         const data = [
-            ['Ali Yılmaz', 'ali@ornek.com', '12-A', '123456'],
-            ['Ayşe Demir', 'ayse@ornek.com', '11-B', 'secret123']
+            ['Ali Yılmaz', 'ali@ornek.com', '12-A', '123456', '101', '5551234567', 'Ahmet Yılmaz', '5559876543', '2005-01-01'],
+            ['Ayşe Demir', 'ayse@ornek.com', '11-B', 'secret123', '202', '5552223344', 'Fatma Demir', '5558887766', '2006-05-15']
         ]
         const ws = XLSX.utils.aoa_to_sheet([headers, ...data])
         const wb = XLSX.utils.book_new()
@@ -92,7 +92,7 @@ export function StudentUploader() {
                         </div>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                        <p>Sütunlar: Ad Soyad, Email, Sınıf, Parola (Opsiyonel)</p>
+                        <p>Sütunlar: Ad Soyad, Email, Sınıf, Parola, Öğrenci No, Öğrenci Telefon, Veli Adı, Veli Telefon, Doğum Tarihi</p>
                         <p>Not: Email adresi sistemde kayıtlıysa öğrenci bilgileri güncellenir.</p>
                     </div>
                 </form>

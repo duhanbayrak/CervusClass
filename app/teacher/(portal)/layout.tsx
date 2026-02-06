@@ -1,6 +1,7 @@
 'use client';
 
 import Sidebar from '@/components/dashboard/sidebar';
+import MobileSidebar from '@/components/dashboard/mobile-sidebar';
 import DashboardHeader from '@/components/dashboard/header';
 import { TEACHER_NAV } from '@/lib/navigation';
 
@@ -14,7 +15,7 @@ export default function TeacherLayout({
             <Sidebar
                 items={TEACHER_NAV}
                 basePath="/teacher"
-                title="Dershane OS"
+                title="Cervus Class"
                 subtitle="Öğretmen Portalı"
             />
             <main className="flex-1 flex flex-col h-full overflow-hidden relative">
@@ -22,6 +23,14 @@ export default function TeacherLayout({
                     title="Eğitmen Paneli"
                     description="Sınıflarınızı ve programınızı yönetin."
                     actionButtonText="Yeni Ödev"
+                    mobileNav={
+                        <MobileSidebar
+                            items={TEACHER_NAV}
+                            basePath="/teacher"
+                            title="Cervus Class"
+                            subtitle="Öğretmen Portalı"
+                        />
+                    }
                 />
                 <div className="flex-1 overflow-y-auto p-8 scroll-smooth">
                     {children}

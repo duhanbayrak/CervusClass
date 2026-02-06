@@ -49,7 +49,12 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
         full_name: "",
         email: "",
         class_id: "",
-        password: ""
+        password: "",
+        student_number: "",
+        phone: "",
+        parent_name: "",
+        parent_phone: "",
+        birth_date: ""
     });
 
     useEffect(() => {
@@ -72,14 +77,24 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
                 full_name: student.full_name || "",
                 email: student.email || "",
                 class_id: student.class_id || "",
-                password: "" // Don't show password
+                password: "", // Don't show password
+                student_number: student.student_number || "",
+                phone: student.phone || "",
+                parent_name: student.parent_name || "",
+                parent_phone: student.parent_phone || "",
+                birth_date: student.birth_date ? new Date(student.birth_date).toISOString().split('T')[0] : ""
             });
         } else {
             setFormData({
                 full_name: "",
                 email: "",
                 class_id: "",
-                password: ""
+                password: "",
+                student_number: "",
+                phone: "",
+                parent_name: "",
+                parent_phone: "",
+                birth_date: ""
             });
         }
     }, [student, open]);
@@ -132,6 +147,69 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
                             required
                         />
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="student_number">Öğrenci No</Label>
+                            <Input
+                                id="student_number"
+                                value={formData.student_number || ''}
+                                onChange={(e) => setFormData({ ...formData, student_number: e.target.value })}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="phone">Öğrenci Telefon</Label>
+                            <Input
+                                id="phone"
+                                placeholder="555 555 55 55"
+                                maxLength={10}
+                                value={formData.phone || ''}
+                                onChange={(e) => {
+                                    let val = e.target.value.replace(/\D/g, '');
+                                    if (val.startsWith('0')) val = val.substring(1);
+                                    if (val.length > 10) val = val.substring(0, 10);
+                                    setFormData({ ...formData, phone: val });
+                                }}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="parent_name">Veli Adı</Label>
+                            <Input
+                                id="parent_name"
+                                value={formData.parent_name || ''}
+                                onChange={(e) => setFormData({ ...formData, parent_name: e.target.value })}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="parent_phone">Veli Telefon (Kritik)</Label>
+                            <Input
+                                id="parent_phone"
+                                placeholder="555 555 55 55"
+                                maxLength={10}
+                                value={formData.parent_phone || ''}
+                                onChange={(e) => {
+                                    let val = e.target.value.replace(/\D/g, '');
+                                    if (val.startsWith('0')) val = val.substring(1);
+                                    if (val.length > 10) val = val.substring(0, 10);
+                                    setFormData({ ...formData, parent_phone: val });
+                                }}
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="birth_date">Doğum Tarihi</Label>
+                        <Input
+                            id="birth_date"
+                            type="date"
+                            value={formData.birth_date || ''}
+                            onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
+                        />
+                    </div>
+
                     <div className="grid gap-2">
                         <Label htmlFor="email">Email</Label>
                         <Input

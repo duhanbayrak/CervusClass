@@ -22,6 +22,14 @@ export interface Profile {
     email?: string | null;
     class_id: string | null;
     created_at: string;
+    phone?: string | null;
+    student_number?: string | null;
+    parent_name?: string | null;
+    parent_phone?: string | null;
+    birth_date?: string | null;
+    bio?: string | null;
+    title?: string | null;
+    start_date?: string | null;
 }
 
 export interface Class {

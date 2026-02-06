@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
     // 2. Parse Body
     const body = await request.json()
-    const { email, password, fullName, role = 'teacher', branch } = body
+    const { email, password, fullName, role = 'teacher', branch, phone, title, bio } = body
 
     if (!email || !password || !fullName) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -80,7 +80,11 @@ export async function POST(request: Request) {
         email: email, // Ensure email is in profile
         full_name: fullName,
         role_id: roleData.id,
-        organization_id: requesterProfile?.organization_id // Inherit organization from admin
+        organization_id: requesterProfile?.organization_id, // Inherit organization from admin
+        phone: phone || null,
+        title: title || null,
+        bio: bio || null,
+        start_date: new Date().toISOString() // Set default start date to now
     };
 
     // Handle Branch for teachers (convert name to ID)
@@ -163,6 +167,99 @@ export async function DELETE(request: Request) {
 
     if (deleteError) {
         return NextResponse.json({ error: deleteError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+}
+
+export async function PUT(request: Request) {
+    // 1. Verify Admin (Copy logic)
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                getAll() { return cookieStore.getAll() }
+            }
+        }
+    )
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { data: requesterProfile } = await supabase
+        .from('profiles')
+        .select('roles(name)')
+        .eq('id', user.id)
+        .single();
+
+    const rolesData = requesterProfile?.roles as any;
+    const roleName = Array.isArray(rolesData) ? rolesData[0]?.name : rolesData?.name;
+
+    if (roleName !== 'admin' && roleName !== 'super_admin') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    // 2. Parse Body
+    const body = await request.json()
+    const { id, email, password, fullName, branch, phone, title, bio } = body
+
+    if (!id) {
+        return NextResponse.json({ error: 'Missing user ID' }, { status: 400 })
+    }
+
+    // 3. Update Auth User (if email/password changed)
+    const authUpdates: any = {}
+    if (email) authUpdates.email = email
+    if (password && password.length > 0) authUpdates.password = password
+    if (fullName) authUpdates.user_metadata = { full_name: fullName }
+
+    if (Object.keys(authUpdates).length > 0) {
+        const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, authUpdates)
+        if (authError) {
+            return NextResponse.json({ error: 'Auth update failed: ' + authError.message }, { status: 500 })
+        }
+    }
+
+    // 4. Update Profile
+    const profileUpdates: any = {}
+    if (fullName) profileUpdates.full_name = fullName
+    if (email) profileUpdates.email = email // Keep profile email in sync
+    if (phone !== undefined) profileUpdates.phone = phone
+    if (title !== undefined) profileUpdates.title = title
+    if (bio !== undefined) profileUpdates.bio = bio
+
+    // Handle Branch
+    if (branch) {
+        const { data: existingBranch } = await supabaseAdmin
+            .from('branches')
+            .select('id')
+            .eq('name', branch)
+            .single();
+
+        if (existingBranch) {
+            profileUpdates.branch_id = existingBranch.id;
+        } else {
+            // Create new branch
+            const { data: newBranch, error: branchError } = await supabaseAdmin
+                .from('branches')
+                .insert({ name: branch })
+                .select('id')
+                .single();
+
+            if (!branchError && newBranch) {
+                profileUpdates.branch_id = newBranch.id;
+            }
+        }
+    }
+
+    const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .update(profileUpdates)
+        .eq('id', id)
+
+    if (profileError) {
+        return NextResponse.json({ error: 'Profile update failed: ' + profileError.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })

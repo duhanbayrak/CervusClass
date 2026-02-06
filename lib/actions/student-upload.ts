@@ -23,6 +23,11 @@ type StudentRow = {
     'Email': string
     'Sınıf': string
     'Parola'?: string
+    'Öğrenci No'?: string
+    'Öğrenci Telefon'?: string
+    'Veli Adı'?: string
+    'Veli Telefon'?: string
+    'Doğum Tarihi'?: string
 }
 
 export async function uploadStudents(prevState: any, formData: FormData) {
@@ -108,6 +113,14 @@ export async function uploadStudents(prevState: any, formData: FormData) {
             const email = normalizedRow['Email']?.toString().trim();
             const className = normalizedRow['Sınıf']?.toString().trim();
             const password = normalizedRow['Parola']?.toString().trim() || '123456';
+            const studentNumber = normalizedRow['Öğrenci No']?.toString().trim();
+            const phone = normalizedRow['Öğrenci Telefon']?.toString().trim();
+            const parentName = normalizedRow['Veli Adı']?.toString().trim();
+            const parentPhone = normalizedRow['Veli Telefon']?.toString().trim();
+            // Basic date handling - assumes string or Excel numeric date if passed
+            // For robustness, users should format as Text "YYYY-MM-DD" or similar.
+            // Let's take string for now.
+            const birthDate = normalizedRow['Doğum Tarihi']?.toString().trim();
 
             if (!fullName || !email || !className) {
                 errors.push(`Satır ${rowIndex}: Eksik bilgi (Ad Soyad, Email veya Sınıf)`);
@@ -183,8 +196,12 @@ export async function uploadStudents(prevState: any, formData: FormData) {
                         full_name: fullName,
                         email: email,
                         class_id: classId,
-                        role_id: studentRoleId
-                        // created_at, avatar_url etc are handled or null
+                        role_id: studentRoleId,
+                        student_number: studentNumber || null,
+                        phone: phone || null,
+                        parent_name: parentName || null,
+                        parent_phone: parentPhone || null,
+                        birth_date: birthDate || null
                     });
 
                 if (profileError) {

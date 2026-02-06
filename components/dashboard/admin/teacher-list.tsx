@@ -46,9 +46,12 @@ interface Teacher {
     id: string;
     full_name: string | null;
     email: string | null;
+    phone: string | null;
+    title: string | null;
     avatar_url: string | null;
     branch: string | null;
     created_at: string;
+    bio?: string | null;
 }
 
 export default function TeacherList({ initialTeachers, initialBranches }: { initialTeachers: Teacher[], initialBranches: string[] }) {
@@ -56,6 +59,7 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
 
     // Form States
     const [formData, setFormData] = useState({
@@ -63,6 +67,9 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
         branch: '',
         email: '',
         password: '',
+        phone: '',
+        title: '',
+        bio: '',
     });
 
     const filteredTeachers = initialTeachers.filter(teacher =>
@@ -76,13 +83,18 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
         setIsLoading(true);
 
         try {
-            const response = await fetch('/api/admin/users', {
-                method: 'POST',
+            const url = editingTeacher ? '/api/admin/users' : '/api/admin/users';
+            const method = editingTeacher ? 'PUT' : 'POST';
+            const body = {
+                ...formData,
+                role: 'teacher',
+                ...(editingTeacher && { id: editingTeacher.id })
+            };
+
+            const response = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...formData,
-                    role: 'teacher'
-                })
+                body: JSON.stringify(body)
             });
 
             const data = await response.json();
@@ -91,9 +103,11 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
                 throw new Error(data.error || 'Failed to create teacher');
             }
 
-            toast.success('Öğretmen başarıyla oluşturuldu.');
+            toast.success(editingTeacher ? 'Öğretmen güncellendi.' : 'Öğretmen başarıyla oluşturuldu.');
             setIsAddDialogOpen(false);
-            setFormData({ fullName: '', branch: '', email: '', password: '' });
+            setEditingTeacher(null);
+            setFormData({ fullName: '', branch: '', email: '', password: '', phone: '', title: '', bio: '' });
+            router.refresh();
             router.refresh();
 
         } catch (error: any) {
@@ -124,6 +138,28 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
         }
     };
 
+    const handleEditClick = (teacher: Teacher) => {
+        setEditingTeacher(teacher);
+        setFormData({
+            fullName: teacher.full_name || '',
+            branch: teacher.branch || '',
+            email: teacher.email || '',
+            password: '',
+            phone: teacher.phone || '',
+            title: teacher.title || '',
+            bio: teacher.bio || '',
+        });
+        setIsAddDialogOpen(true);
+    };
+
+    const handleDialogOpenChange = (open: boolean) => {
+        setIsAddDialogOpen(open);
+        if (!open) {
+            setEditingTeacher(null);
+            setFormData({ fullName: '', branch: '', email: '', password: '', phone: '', title: '', bio: '' });
+        }
+    };
+
     return (
         <div className="space-y-6">
 
@@ -139,18 +175,18 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
                     />
                 </div>
 
-                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <Dialog open={isAddDialogOpen} onOpenChange={handleDialogOpenChange}>
                     <DialogTrigger asChild>
-                        <Button className="w-full sm:w-auto bg-[#135bec] hover:bg-blue-700">
+                        <Button className="w-full sm:w-auto bg-[#135bec] hover:bg-blue-700" onClick={() => setEditingTeacher(null)}>
                             <Plus className="mr-2 h-4 w-4" />
                             Yeni Öğretmen Ekle
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Yeni Öğretmen Oluştur</DialogTitle>
+                            <DialogTitle>{editingTeacher ? 'Öğretmeni Düzenle' : 'Yeni Öğretmen Oluştur'}</DialogTitle>
                             <DialogDescription>
-                                Sisteme giriş yapabilmesi için öğretmenin bilgilerini giriniz.
+                                {editingTeacher ? 'Öğretmen bilgilerini güncelleyin.' : 'Sisteme giriş yapabilmesi için öğretmenin bilgilerini giriniz.'}
                             </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleAddTeacher} className="space-y-4 pt-4">
@@ -197,19 +233,54 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="password">Geçici Şifre</Label>
+                                <Label htmlFor="phone">Telefon</Label>
                                 <Input
-                                    id="password"
-                                    type="text"
-                                    placeholder="Şifre belirleyin"
-                                    value={formData.password}
-                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    required
+                                    id="phone"
+                                    placeholder="555 555 55 55"
+                                    maxLength={10}
+                                    value={formData.phone}
+                                    onChange={(e) => {
+                                        let val = e.target.value.replace(/\D/g, '');
+                                        if (val.startsWith('0')) val = val.substring(1);
+                                        if (val.length > 10) val = val.substring(0, 10);
+                                        setFormData({ ...formData, phone: val });
+                                    }}
                                 />
                             </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="title">Unvan</Label>
+                                <Input
+                                    id="title"
+                                    placeholder="Örn: Uzman Matematik Öğretmeni"
+                                    value={formData.title}
+                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="bio">Biyografi</Label>
+                                <Input
+                                    id="bio"
+                                    placeholder="Kısa özgeçmiş..."
+                                    value={formData.bio}
+                                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                                />
+                            </div>
+                            {!editingTeacher && (
+                                <div className="grid gap-2">
+                                    <Label htmlFor="password">Geçici Şifre</Label>
+                                    <Input
+                                        id="password"
+                                        type="text"
+                                        placeholder="Şifre belirleyin"
+                                        value={formData.password}
+                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                            )}
                             <DialogFooter>
                                 <Button type="submit" disabled={isLoading}>
-                                    {isLoading ? 'Oluşturuluyor...' : 'Kaydet'}
+                                    {isLoading ? 'İşleniyor...' : (editingTeacher ? 'Güncelle' : 'Kaydet')}
                                 </Button>
                             </DialogFooter>
                         </form>
@@ -260,6 +331,9 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>İşlemler</DropdownMenuLabel>
+                                                <DropdownMenuItem onClick={() => handleEditClick(teacher)}>
+                                                    <BookOpen className="mr-2 h-4 w-4" /> Düzenle
+                                                </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => navigator.clipboard.writeText(teacher.email || '')}>
                                                     <Mail className="mr-2 h-4 w-4" /> E-posta Kopyala
                                                 </DropdownMenuItem>

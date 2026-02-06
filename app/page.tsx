@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { School, GraduationCap, Users, ShieldCheck, ArrowRight, LogOut, LayoutDashboard } from "lucide-react";
+import Image from "next/image";
+import { GraduationCap, Users, ShieldCheck, ArrowRight, LogOut, LayoutDashboard } from "lucide-react";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -58,8 +59,8 @@ export default async function Home() {
       {/* Brand / Hero */}
       <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
         <div className="flex items-center justify-center gap-3 mb-4">
-          <div className="bg-[#135bec] p-3 rounded-xl text-white shadow-lg shadow-blue-600/20">
-            <School className="w-8 h-8" />
+          <div className="bg-[#135bec]/10 p-2 rounded-xl text-[#135bec] shadow-lg shadow-blue-600/20">
+            <Image src="/deer-logo.svg" alt="Cervus Class Logo" width={64} height={64} className="w-12 h-12 object-contain" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">CervusClass</h1>
         </div>

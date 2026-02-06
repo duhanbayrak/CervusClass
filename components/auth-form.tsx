@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { Badge, Lock, School, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import Image from "next/image";
+import { Badge, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 interface AuthFormProps {
     role: 'student' | 'teacher' | 'admin' | 'super_admin';
@@ -98,8 +99,8 @@ export default function AuthForm({ role }: AuthFormProps) {
                 <div className="relative z-10 flex flex-col h-full justify-between p-16 text-white">
                     {/* Brand */}
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm">
-                            <School className="w-6 h-6 text-white" />
+                        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm p-1">
+                            <Image src="/deer-logo.svg" alt="Cervus Class" width={32} height={32} className="w-full h-full object-contain" />
                         </div>
                         <span className="text-xl font-bold tracking-tight">CervusClass</span>
                     </div>
@@ -128,7 +129,7 @@ export default function AuthForm({ role }: AuthFormProps) {
             <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-6 py-12 lg:px-20 xl:px-32 relative">
                 {/* Mobile Branding */}
                 <div className="absolute top-6 left-6 lg:hidden flex items-center gap-2 text-[#135bec]">
-                    <School className="w-8 h-8" />
+                    <Image src="/deer-logo.svg" alt="Cervus Class" width={32} height={32} className="w-8 h-8 object-contain" />
                     <span className="text-xl font-bold tracking-tight text-[#0d121b] dark:text-white">CervusClass</span>
                 </div>
 
