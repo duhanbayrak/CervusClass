@@ -11,9 +11,6 @@ interface StudentDetailViewProps {
     profile: any;
     examResults: any[];
     stats: {
-        attendanceRate: number;
-        completedHomeworks: number;
-        rejectedHomeworks: number;
         homework: {
             approved: number;
             rejected: number;

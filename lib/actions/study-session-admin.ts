@@ -74,10 +74,7 @@ export async function updateStudySessionStatus(sessionId: string, status: 'compl
     // We can add logic here: .eq('teacher_id', user.id) if specifically needed, 
     // but RLS is safer. Let's try direct update.
 
-    if (error) {
 
-        return { error: 'Güncelleme sırasında bir hata oluştu.' }
-    }
 
     revalidatePath('/admin/teachers/[id]', 'page');
     revalidatePath('/teacher/study-requests');
