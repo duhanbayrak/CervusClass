@@ -64,11 +64,11 @@ async function getData(query?: string, className?: string) {
         .order('name');
 
     if (error) {
-        console.error("Error fetching students:", JSON.stringify(error, null, 2));
+
         return { students: [], classes: [], error: error.message || 'Unknown error occurred' };
     }
 
-    console.log("Fetched students count:", students?.length);
+
 
     return {
         students: students || [],

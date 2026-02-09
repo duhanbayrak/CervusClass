@@ -8,14 +8,13 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createAvailability } from "@/lib/actions/study-session"
-import { Loader2, Plus } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { useState } from "react"
-import { toast } from "sonner"
+import { useToast } from "@/components/ui/use-toast"
 
 interface CreateAvailabilityDialogProps {
     date: Date | null
@@ -25,6 +24,7 @@ interface CreateAvailabilityDialogProps {
 }
 
 export function CreateAvailabilityDialog({ date, open, onOpenChange, initialStartTime = "09:00" }: CreateAvailabilityDialogProps) {
+    const { toast } = useToast()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [startTime, setStartTime] = useState(initialStartTime)
     const [endTime, setEndTime] = useState(() => {
@@ -32,16 +32,6 @@ export function CreateAvailabilityDialog({ date, open, onOpenChange, initialStar
         const [h, m] = initialStartTime.split(':').map(Number);
         return `${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     })
-
-    // Reset times when opening or when initialStartTime changes
-    // We can use a key or effect in parent, or effect here.
-    // Effect here is safer for re-use.
-    /* 
-       Actually, since we will mount/unmount or change props, 
-       we should probably just rely on key in parent or set state when open changes.
-       But simplistic approach: use useEffect to sync with props when dialog opens?
-       Better: Parent passes `key={selectedSlot.toString()}` to force remount/reset.
-    */
 
     if (!date) return null;
 
@@ -55,7 +45,6 @@ export function CreateAvailabilityDialog({ date, open, onOpenChange, initialStar
 
     const isoDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsSubmitting(true)
@@ -63,14 +52,31 @@ export function CreateAvailabilityDialog({ date, open, onOpenChange, initialStar
         try {
             const result = await createAvailability(isoDate, startTime, endTime)
 
-            if (result.error) {
-                toast.error(result.error)
-            } else {
-                toast.success("Müsaitlik slotu oluşturuldu")
+            if (result?.error) {
+                toast({
+                    variant: "destructive",
+                    title: "Hata",
+                    description: result.error
+                })
+            } else if (result?.success) {
+                toast({
+                    title: "Başarılı",
+                    description: "Müsaitlik slotu oluşturuldu"
+                })
                 onOpenChange(false)
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: "Hata",
+                    description: "Beklenmedik bir hata oluştu"
+                })
             }
         } catch (err) {
-            toast.error("Bir hata oluştu")
+            toast({
+                variant: "destructive",
+                title: "Hata",
+                description: "Bir hata oluştu"
+            })
         } finally {
             setIsSubmitting(false)
         }

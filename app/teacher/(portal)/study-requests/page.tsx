@@ -35,7 +35,7 @@ async function getData() {
     const requests = data || [];
 
     if (error) {
-        console.error("TeacherStudyRequestsPage: Supabase Error:", error);
+
     }
 
     const pending = requests.filter(r => r.status === 'pending');

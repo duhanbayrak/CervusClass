@@ -69,7 +69,7 @@ async function getSchedule(dayOfWeek: number) {
         .order('start_time');
 
     if (error) {
-        console.error('Schedule fetch error:', error);
+
         return [];
     }
 

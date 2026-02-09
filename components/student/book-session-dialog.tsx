@@ -70,18 +70,18 @@ export function BookSessionDialog() {
 
     const fetchTeachers = async () => {
         setLoadingTeachers(true)
-        console.log("BookSessionDialog: Fetching teachers...")
+
         try {
             const result = await getTeachers()
-            console.log("BookSessionDialog: Result:", result)
+
 
             if ('error' in result && result.error) {
-                console.error("BookSessionDialog: Error received:", result.error)
+
                 toast.error(result.error as string)
                 setTeachers([])
             } else {
                 const data = (result as any).data || []
-                console.log("BookSessionDialog: Teachers set:", data)
+
                 setTeachers(data)
 
                 if (data.length === 0) {
@@ -89,7 +89,7 @@ export function BookSessionDialog() {
                 }
             }
         } catch (e) {
-            console.error("BookSessionDialog: Exception:", e)
+
             toast.error("Beklenmedik bir hata oluştu")
         } finally {
             setLoadingTeachers(false)
@@ -100,7 +100,7 @@ export function BookSessionDialog() {
         setSelectedTeacherId(teacherId)
         setStep('select-slot')
         setLoadingSchedule(true)
-        console.log("BookSessionDialog: Fetching schedule for teacher", teacherId)
+
 
         try {
             const data = await getTeacherSchedule(teacherId)
@@ -117,7 +117,7 @@ export function BookSessionDialog() {
                 toast.info("Bu öğretmenin planlanmış, gelecek tarihli bir etütü bulunmuyor.")
             }
         } catch (e: any) {
-            console.error(e)
+
             toast.error("Program yüklenemedi: " + e.message)
             setStep('select-teacher') // Go back on error
         } finally {

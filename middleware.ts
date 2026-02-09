@@ -65,9 +65,7 @@ export async function middleware(request: NextRequest) {
         // Optimized: Fetch user role from JWT metadata
         const role = user.user_metadata?.role as ProfileRole || user.app_metadata?.role as ProfileRole;
 
-        console.log(`[Middleware Debug] Path: ${path}, UserID: ${user.id}, Role: ${role}`);
 
-        console.log(`[Middleware Debug] Path: ${path}, UserID: ${user.id}, Role: ${role}`);
 
 
         // Redirect away from login pages to Dashboard

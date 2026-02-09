@@ -79,7 +79,6 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
                 .order('full_name', { ascending: true })
                 .then(({ data, error }) => {
                     if (error) {
-                        console.error('Error fetching students:', error);
                         toast({
                             variant: "destructive",
                             title: "Hata",

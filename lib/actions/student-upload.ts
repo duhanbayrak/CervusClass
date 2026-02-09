@@ -226,7 +226,7 @@ export async function uploadStudents(prevState: any, formData: FormData) {
         return { message: `${successCount} öğrenci başarıyla yüklendi.`, success: true };
 
     } catch (error: any) {
-        console.error('Upload Error:', error);
+
         return { message: 'Beklenmeyen bir hata oluştu: ' + error.message, success: false };
     }
 }

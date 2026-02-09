@@ -79,7 +79,7 @@ export async function createHomework(prevState: CreateHomeworkState, formData: F
             ? JSON.parse(assigned_student_ids)
             : null;
 
-        const { error } = await supabase
+        const { data: homeworkData, error } = await supabase
             .from('homework')
             .insert({
                 description,
@@ -87,16 +87,58 @@ export async function createHomework(prevState: CreateHomeworkState, formData: F
                 teacher_id,
                 organization_id,
                 due_date,
-                completion_status: {}, // Initial empty status
-                assigned_student_ids: studentIdsArray // null for entire class, array for specific students
-            });
+                // completion_status: {}, // REMOVED: Using new table
+                assigned_student_ids: studentIdsArray // Keep for reference if needed, or rely on submissions
+            })
+            .select()
+            .single();
 
         if (error) {
-            console.error('Database Error:', error);
+
             return {
                 message: 'Veritabanı hatası: Ödev oluşturulamadı.',
             };
         }
+
+        // -------------------------------------------------------------
+        // NEW: Populate homework_submissions
+        // -------------------------------------------------------------
+        let targetStudentIds: string[] = [];
+
+        if (assignment_mode === 'selected_students' && studentIdsArray) {
+            targetStudentIds = studentIdsArray;
+        } else {
+            // Fetch all students in the class
+            const { data: students, error: studentError } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('class_id', class_id)
+                .eq('role_id', (await supabase.from('roles').select('id').eq('name', 'student').single()).data?.id);
+
+            if (!studentError && students) {
+                targetStudentIds = students.map(s => s.id);
+            }
+        }
+
+        if (targetStudentIds.length > 0) {
+            const submissions = targetStudentIds.map(studentId => ({
+                homework_id: homeworkData.id,
+                student_id: studentId,
+                organization_id,
+                status: 'pending' // Default status
+            }));
+
+            const { error: submissionError } = await supabase
+                .from('homework_submissions')
+                .insert(submissions);
+
+            if (submissionError) {
+
+                // Non-fatal? Or should we rollback? 
+                // For now log it. Next.js creates don't easily rollback unless transaction used (RPC).
+            }
+        }
+
 
     } catch (error) {
         return {

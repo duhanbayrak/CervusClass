@@ -24,7 +24,7 @@ export function TeacherScheduleClient({ events, studySessions, currentUserId }: 
             // Maybe open existing Edit Dialog?
             // For now, ignore or implement EditScheduleDialog logic here too if needed.
             // Assuming current requirement is focus on Study Session.
-            console.log("Clicked class event", event)
+
         }
     }
 

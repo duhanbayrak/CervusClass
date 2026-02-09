@@ -68,7 +68,7 @@ export async function saveAttendance(items: AttendanceItem[]) {
             .upsert(upsertData, { onConflict: 'student_id, schedule_id, date' });
 
         if (upsertError) {
-            console.error('Server Action Upsert Error:', upsertError);
+
             return { success: false, error: 'Veritabanı hatası: ' + upsertError.message };
         }
 
@@ -76,7 +76,7 @@ export async function saveAttendance(items: AttendanceItem[]) {
         return { success: true };
 
     } catch (error: any) {
-        console.error('Unexpected Error:', error);
+
         return { success: false, error: 'Beklenmedik bir hata oluştu.' };
     }
 }

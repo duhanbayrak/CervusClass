@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +22,7 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Search, MoreHorizontal, Mail, BookOpen } from 'lucide-react';
+import { Plus, Trash2, Search, MoreHorizontal, Mail, BookOpen, Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -60,6 +60,11 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     // Form States
     const [formData, setFormData] = useState({
@@ -159,6 +164,10 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
             setFormData({ fullName: '', branch: '', email: '', password: '', phone: '', title: '', bio: '' });
         }
     };
+
+    if (!mounted) {
+        return null;
+    }
 
     return (
         <div className="space-y-6">
@@ -331,6 +340,9 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>İşlemler</DropdownMenuLabel>
+                                                <DropdownMenuItem onClick={() => router.push(`/admin/teachers/${teacher.id}`)}>
+                                                    <Users className="mr-2 h-4 w-4" /> Profili Görüntüle
+                                                </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => handleEditClick(teacher)}>
                                                     <BookOpen className="mr-2 h-4 w-4" /> Düzenle
                                                 </DropdownMenuItem>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Menu } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import Sidebar from './sidebar';
@@ -13,6 +13,15 @@ interface MobileSidebarProps {
 
 export default function MobileSidebar({ items, basePath, title, subtitle }: MobileSidebarProps) {
     const [open, setOpen] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+    if (!isMounted) {
+        return null; // or a loading skeleton if preferred, but for sidebar button null is fine initially
+    }
 
     return (
         <Sheet open={open} onOpenChange={setOpen}>

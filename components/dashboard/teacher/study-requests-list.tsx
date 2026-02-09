@@ -52,7 +52,7 @@ export default function StudyRequestsList({ pendingRequests, pastRequests }: Stu
             router.refresh();
             // toast({ title: "Başarılı", description: `Talep ${newStatus === 'approved' ? 'onaylandı' : 'reddedildi'}.` });
         } catch (error) {
-            console.error(error);
+
             // toast({ title: "Hata", description: "İşlem sırasında bir hata oluştu.", variant: "destructive" });
         } finally {
             setIsUpdating(false);

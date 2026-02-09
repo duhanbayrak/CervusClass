@@ -60,7 +60,11 @@ export interface StudySession {
     teacher_id: string;
     student_id: string;
     scheduled_at: string; // ISO timestamp
-    status: StudySessionStatus;
+    status_id: string;
+    status_legacy?: string | null;
+    study_session_statuses?: { name: string } | null;
+    // status: StudySessionStatus; // Calculated from study_session_statuses.name in actions
+    status?: string;
     topic: string | null;
     created_at: string;
 }

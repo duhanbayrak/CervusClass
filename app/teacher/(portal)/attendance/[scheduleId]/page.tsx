@@ -40,7 +40,7 @@ async function getScheduleWithStudents(scheduleId: string) {
         .single();
 
     if (scheduleError || !schedule) {
-        console.error('Schedule error:', scheduleError);
+
         return { schedule: null, students: [], existingAttendance: [] };
     }
 
@@ -58,7 +58,7 @@ async function getScheduleWithStudents(scheduleId: string) {
         .order('full_name');
 
     if (studentsError) {
-        console.error('Students error:', studentsError);
+
     }
 
     // 3. Get existing attendance for today

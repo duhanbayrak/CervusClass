@@ -1,9 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2, Clock, AlertCircle, FileText } from 'lucide-react';
+import { CheckCircle2, FileText } from 'lucide-react';
+import { HomeworkCard } from '@/components/dashboard/student/homework-card';
 
 async function getHomework(userId: string) {
     const cookieStore = await cookies();
@@ -28,17 +27,59 @@ async function getHomework(userId: string) {
 
     if (!profile?.class_id) return [];
 
-    const { data: homework } = await supabase
+    // 1. Fetch ALL homeworks assigned to this student's class
+    // We also check for 'assigned_student_ids' logic if used, but for now assuming class-based or individual check
+    // The previous logic relied on 'homework_submissions' existence.
+    // New logic: 
+    // - Get homeworks for class_id
+    // - Get submissions for student_id
+    // - Merge them
+
+    const { data: homeworks } = await supabase
         .from('homework')
         .select(`
-            *,
-            teacher:profiles!teacher_id(full_name)
+            id,
+            description,
+            due_date,
+            teacher:teacher_id(full_name),
+            assigned_student_ids
         `)
         .eq('class_id', profile.class_id)
-        .or(`assigned_student_ids.is.null,assigned_student_ids.cs.["${userId}"]`)
-        .order('due_date', { ascending: true });
+        .order('due_date', { ascending: true }); // Show soonest due first
 
-    return homework || [];
+    if (!homeworks) return [];
+
+    // 2. Fetch submissions for this student
+    const { data: submissions } = await supabase
+        .from('homework_submissions')
+        .select('homework_id, status, submitted_at, teacher_feedback')
+        .eq('student_id', userId);
+
+    // Map submission status to homeworks
+    const submissionMap = new Map(submissions?.map(s => [s.homework_id, s]) || []);
+
+    const result = homeworks.map(hw => {
+        // Filter out if 'assigned_student_ids' exists and student is NOT in it (if that logic is active)
+        if (hw.assigned_student_ids && Array.isArray(hw.assigned_student_ids)) {
+            // If assigned_student_ids is not null/empty, check if user is in it. 
+            // If it IS null, it means "whole class". 
+            // (Assuming 'assigned_student_ids' stores IDs as strings)
+            // Note: Supabase JSON filtering is tricky in JS, easier to do here if dataset is small.
+            if (hw.assigned_student_ids.length > 0 && !hw.assigned_student_ids.includes(userId)) {
+                return null;
+            }
+        }
+
+        const sub = submissionMap.get(hw.id);
+        return {
+            ...hw,
+            submission_status: sub?.status || 'pending', // Default to pending if no record found (legacy/migration case)
+            submitted_at: sub?.submitted_at,
+            teacher_feedback: sub?.teacher_feedback
+        };
+    }).filter(Boolean); // Remove nulls
+
+    return result;
 }
 
 export default async function StudentHomeworkPage() {
@@ -60,11 +101,15 @@ export default async function StudentHomeworkPage() {
 
     const allHomework = await getHomework(user.id);
 
-    // Simple mock logic for "submitted" vs "pending" - Schema doesn't have submissions yet
-    // Assuming everything future is pending, everything past is overdue (or submitted if we had that data)
-    // For now, listing all.
-    const pendingHomework = allHomework.filter(hw => new Date(hw.due_date) >= new Date());
-    const pastHomework = allHomework.filter(hw => new Date(hw.due_date) < new Date());
+    const pendingHomework = allHomework.filter((hw: any) =>
+        hw.submission_status === 'pending' || !hw.submission_status
+    );
+    const pastHomework = allHomework.filter((hw: any) =>
+        hw.submission_status === 'submitted' || hw.submission_status === 'approved' || hw.submission_status === 'rejected'
+    );
+
+    // Capture time on server render to pass to client component for consistent hydration
+    const serverNow = new Date();
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -80,15 +125,15 @@ export default async function StudentHomeworkPage() {
 
             <Tabs defaultValue="pending" className="w-full">
                 <TabsList className="mb-4">
-                    <TabsTrigger value="pending">Bekleyen ({pendingHomework.length})</TabsTrigger>
-                    <TabsTrigger value="past">Geçmiş ({pastHomework.length})</TabsTrigger>
+                    <TabsTrigger value="pending">Yapılacaklar ({pendingHomework.length})</TabsTrigger>
+                    <TabsTrigger value="past">Tamamlanan/Geçmiş ({pastHomework.length})</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="pending" className="space-y-4">
                     {pendingHomework.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {pendingHomework.map((hw) => (
-                                <HomeworkCard key={hw.id} hw={hw} status="pending" />
+                            {pendingHomework.map((hw: any) => (
+                                <HomeworkCard key={hw.id} hw={hw} status="pending" referenceDate={serverNow} />
                             ))}
                         </div>
                     ) : (
@@ -104,8 +149,8 @@ export default async function StudentHomeworkPage() {
 
                 <TabsContent value="past" className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {pastHomework.map((hw) => (
-                            <HomeworkCard key={hw.id} hw={hw} status="past" />
+                        {pastHomework.map((hw: any) => (
+                            <HomeworkCard key={hw.id} hw={hw} status="past" referenceDate={serverNow} />
                         ))}
                         {pastHomework.length === 0 && (
                             <p className="text-slate-500 text-center col-span-3 py-8">Geçmiş ödev bulunamadı.</p>
@@ -117,37 +162,4 @@ export default async function StudentHomeworkPage() {
     );
 }
 
-function HomeworkCard({ hw, status }: { hw: any, status: 'pending' | 'past' }) {
-    const dueDate = new Date(hw.due_date);
-    const isUrgent = status === 'pending' && (dueDate.getTime() - new Date().getTime()) < (3 * 24 * 60 * 60 * 1000); // Less than 3 days
 
-    return (
-        <Card className={`border-slate-200 dark:border-slate-700 shadow-sm hover:border-blue-300 transition-colors flex flex-col ${status === 'past' ? 'opacity-75' : ''
-            }`}>
-            <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                    <Badge variant={isUrgent ? 'destructive' : 'secondary'} className="mb-2">
-                        {isUrgent ? 'Acele Et' : 'Ödev'}
-                    </Badge>
-                    <span className="text-xs text-slate-400 font-medium">
-                        {status === 'pending' ? 'Son Teslim:' : 'Bitiş:'} {dueDate.toLocaleDateString('tr-TR')}
-                    </span>
-                </div>
-                <CardTitle className="text-base line-clamp-2">{hw.description}</CardTitle>
-                <CardDescription className="text-xs">
-                    {hw.teacher?.full_name}
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col justify-end pt-0">
-                <p className="text-sm text-slate-600 dark:text-slate-300 mb-4 line-clamp-3">
-                    {/* Description is already in title but if we had a longer body here.. */}
-                    Detaylı açıklama için tıklayın.
-                </p>
-                <div className="flex items-center gap-2 text-xs text-slate-500 border-t border-slate-100 dark:border-slate-700 pt-3 mt-auto">
-                    <Clock className="w-3 h-3" />
-                    <span>23:59'a kadar</span>
-                </div>
-            </CardContent>
-        </Card>
-    );
-}

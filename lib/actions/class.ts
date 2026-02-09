@@ -34,7 +34,7 @@ export async function getClasses() {
         .order('name');
 
     if (error) {
-        console.error("Error fetching classes:", error);
+
         return { success: false, error: error.message };
     }
 
@@ -68,7 +68,7 @@ export async function addClass(formData: ClassFormData) {
         });
 
     if (error) {
-        console.error("Error adding class:", error);
+
         return { success: false, error: error.message };
     }
 

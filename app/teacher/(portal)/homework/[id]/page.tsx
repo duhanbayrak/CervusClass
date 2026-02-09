@@ -34,57 +34,73 @@ async function getData(id: string) {
         .from('homework')
         .select('*')
         .eq('id', id)
-        .eq('teacher_id', user.id) // Ensure ownership
+        .eq('teacher_id', user.id)
         .single();
 
-    if (!assignment) return { classes: [], user, assignment: null };
+    if (!assignment) return { classes: [], user: null, assignment: null };
 
-    // Get classes
+    // Get classes (for edit form)
     const { data: classes } = await supabase
         .from('classes')
         .select('id, name')
         .order('name');
 
+    // Pre-fetch students for the assignment's class to improve performance
+    const { data: initialStudents } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .eq('class_id', assignment.class_id)
+        .eq('role_id', '380914a0-783e-4300-8fb7-b55c81f575b7') // Student role
+        .order('full_name');
+
     return {
         classes: classes || [],
         user,
-        assignment
+        assignment,
+        initialStudents: initialStudents || []
     };
 }
 
 export default async function EditAssignmentPage({ params }: any) {
-    // Next.js 15+ params handling needs await or similar, but in 16 it's async component so args are promises
-    // Actually in usual app router 'params' is a prop. In latest Next.js params is a Promise.
-
-    // Safety check for params await if using latest canary versions, but standard is prop.
-    // Let's assume standard behavior or wait for id. 
-    // To be safe in newer NextJS:
-    // const { id } = await params;
-
-    // However, if we don't know exact version behavior, let's treat it as possibly promise.
     const resolvedParams = await Promise.resolve(params);
     const id = resolvedParams.id;
 
-    const { classes, user, assignment } = await getData(id);
+    const { classes, user, assignment, initialStudents } = await getData(id);
 
     if (!user) redirect('/login');
     if (!assignment) return <div>Ödev bulunamadı veya erişim yetkiniz yok.</div>;
 
     return (
-        <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-500">
-            <div className="flex items-center gap-2 mb-6">
-                <Link href="/teacher/homework">
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <ChevronLeft className="w-4 h-4" />
+        <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <Link href="/teacher/homework">
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                    </Link>
+                    <div>
+                        <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Ödev Düzenle</h2>
+                        <p className="text-slate-500 dark:text-slate-400">Mevcut ödev bilgilerini güncelleyin.</p>
+                    </div>
+                </div>
+
+                <Link href={`/teacher/homework/${id}/check`}>
+                    <Button className="bg-green-600 hover:bg-green-700 text-white">
+                        Ödevleri Kontrol Et
                     </Button>
                 </Link>
-                <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Ödevi Düzenle</h2>
-                    <p className="text-slate-500 dark:text-slate-400">Ödev detaylarını güncelleyin.</p>
-                </div>
             </div>
 
-            <UpdateAssignmentForm assignment={assignment} classes={classes} userId={user.id} />
+            <div className="max-w-2xl">
+                <h3 className="text-lg font-medium mb-4">Ödev Bilgileri</h3>
+                <UpdateAssignmentForm
+                    assignment={assignment}
+                    classes={classes}
+                    userId={user.id}
+                    initialStudents={initialStudents}
+                />
+            </div>
         </div>
     );
 }

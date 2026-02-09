@@ -95,7 +95,7 @@ export async function getStudents(search?: string, classId?: string, page: numbe
         .order('full_name', { ascending: true });
 
     if (error) {
-        console.error("Error fetching students:", error);
+
         return { success: false, error: error.message };
     }
 
@@ -180,7 +180,7 @@ export async function addStudent(formData: StudentFormData) {
     // For robustness, let's use upsert.
     if (profileError) {
         // If update failed (e.g. policy), but we are using supabaseAdmin!.
-        console.error("Profile update error", profileError);
+
         // Cleanup user?
         await supabaseAdmin.auth.admin.deleteUser(userData.user.id);
         return { success: false, error: "Failed to create student profile." };

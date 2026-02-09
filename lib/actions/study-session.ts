@@ -4,6 +4,11 @@ import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { revalidatePath } from 'next/cache'
 
+async function getStatusId(supabase: any, name: string) {
+    const { data } = await supabase.from('study_session_statuses').select('id').eq('name', name).single();
+    return data?.id;
+}
+
 export async function getTeachers() {
     try {
         const supabase = await createClient()
@@ -65,33 +70,37 @@ export async function getTeacherSchedule(teacherId: string) {
         const schedule: any[] = []
 
         // 2. Get Teacher's Available/Pending Sessions
-        // Debug: Log the query parameters
-        console.log(`getTeacherSchedule: Fetching for teacher ${teacherId}, org ${userProfile.organization_id}`)
-
-        const { data: rawSessions, error: sessionError } = await supabaseAdmin
+        const normalSessionsQuery = supabaseAdmin
             .from('study_sessions')
-            .select('*')
+            .select('*, study_session_statuses(name)')
             .eq('teacher_id', teacherId)
             .eq('organization_id', userProfile.organization_id)
-            .neq('status', 'cancelled')
-            .gt('scheduled_at', new Date().toISOString()) // Future only
+            .gt('scheduled_at', new Date().toISOString());
+
+        const { data: rawSessions, error: sessionError } = await normalSessionsQuery;
 
         if (sessionError) {
-            console.error("getTeacherSchedule Error:", sessionError)
             return { schedule: [], sessions: [], teacherName: '', error: sessionError.message }
         }
 
+        // Helper to get status name safely
+        const getStatus = (s: any) => s.study_session_statuses?.name;
+
         // Sanitize sessions: Hide private info for slots booked by others
-        const sessions = rawSessions?.map(session => {
+        const sessions = rawSessions?.filter(s => getStatus(s) !== 'cancelled').map(session => {
+            const status = getStatus(session);
             const isMySession = session.student_id === user.id
-            const isAvailable = session.status === 'available'
+            const isAvailable = status === 'available'
+
+            // Inject status string for frontend compatibility
+            const sessionWithStatus = { ...session, status };
 
             if (isAvailable || isMySession) {
-                return session
+                return sessionWithStatus
             } else {
                 // Mask details for others' bookings
                 return {
-                    ...session,
+                    ...sessionWithStatus,
                     topic: 'Dolu', // Mask topic
                     student_id: null // Mask student ID
                 }
@@ -107,12 +116,13 @@ export async function getTeacherSchedule(teacherId: string) {
             teacherName: profile?.full_name
         }
     } catch (e: any) {
-        console.error("getTeacherSchedule Exception:", e)
+
         return { schedule: [], sessions: [], teacherName: '', error: e.message }
     }
 }
 
 export async function createAvailability(date: string, startTime: string, endTime: string) {
+    console.log('>>> createAvailability CALLED', { date, startTime, endTime });
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -122,11 +132,13 @@ export async function createAvailability(date: string, startTime: string, endTim
     const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single()
     if (!profile) return { error: 'Profile not found' }
 
-    // 1. Calculate Timestamps considering Timezone (Assuming input is local time string, we construct date object)
-    // Note: The system seems to rely on ISO strings. 
-    // We treat the input strings as local time and construct the ISO for DB.
-    const startDateTime = new Date(`${date}T${startTime}:00`)
-    const endDateTime = new Date(`${date}T${endTime}:00`)
+    // 1. Calculate Timestamps considering Timezone (Assume Turkey Time +03:00)
+    const startDateTime = new Date(`${date}T${startTime}:00+03:00`)
+    const endDateTime = new Date(`${date}T${endTime}:00+03:00`)
+
+    if (startDateTime < new Date()) {
+        return { error: 'Geçmiş bir tarihe etüt ekleyemezsiniz.' }
+    }
 
     if (endDateTime <= startDateTime) {
         return { error: 'Bitiş saati başlangıç saatinden sonra olmalıdır.' }
@@ -151,30 +163,29 @@ export async function createAvailability(date: string, startTime: string, endTim
     }
 
     // Check overlap with classes
-    // Class times are HH:MM:SS strings.
     for (const cls of classes || []) {
-        const classStart = new Date(`${date}T${cls.start_time}`)
-        const classEnd = new Date(`${date}T${cls.end_time}`)
+        // Construct TRT dates for class times
+        const classStart = new Date(`${date}T${cls.start_time}+03:00`)
+        const classEnd = new Date(`${date}T${cls.end_time}+03:00`)
 
-        // Simple Overlap: (StartA < EndB) and (EndA > StartB)
         if (startDateTime < classEnd && endDateTime > classStart) {
             return { error: `Bu saatte dersiniz var: ${cls.courses?.name || 'Ders'}` }
         }
     }
 
     // 3. Check for conflicts with existing Study Sessions
-    // We fetch sessions for this day. 
-    // Since we don't store duration/end_time for sessions, we assume they are 1 hour (fixed).
-    const dayStart = new Date(`${date}T00:00:00`).toISOString()
-    const dayEnd = new Date(`${date}T23:59:59`).toISOString()
+    // Fetch full day in TRT
+    const dayStart = new Date(`${date}T00:00:00+03:00`).toISOString()
+    const dayEnd = new Date(`${date}T23:59:59+03:00`).toISOString()
 
+    // Needs to filter by status name joined
     const { data: existingSessions, error: sessionError } = await supabase
         .from('study_sessions')
-        .select('scheduled_at')
+        .select('scheduled_at, study_session_statuses!inner(name)')
         .eq('teacher_id', user.id)
         .gte('scheduled_at', dayStart)
         .lte('scheduled_at', dayEnd)
-        .neq('status', 'cancelled') // Ignore cancelled
+        .neq('study_session_statuses.name', 'cancelled')
 
     if (sessionError) {
         return { error: 'Mevcut etütler kontrol edilirken hata oluştu.' }
@@ -184,25 +195,38 @@ export async function createAvailability(date: string, startTime: string, endTim
         const sessionStart = new Date(session.scheduled_at)
         const sessionEnd = new Date(sessionStart.getTime() + 60 * 60 * 1000) // Assume 1 hour
 
+        console.log('CHECKING CONFLICT:', {
+            newStart: startDateTime.toISOString(),
+            newEnd: endDateTime.toISOString(),
+            existingStart: sessionStart.toISOString(),
+            existingEnd: sessionEnd.toISOString()
+        });
+
+        // Correct check: new start < existing end AND new end > existing start
         if (startDateTime < sessionEnd && endDateTime > sessionStart) {
-            return { error: 'Bu saat aralığında başka bir etüt veya müsaitlik var.' }
+            console.log('!!! CONFLICT FOUND !!!');
+            return { error: 'Bu saat aralığında zaten bir etüt veya müsaitlik var.' }
         }
     }
 
-    // 4. Insert if no conflicts
-    const { error } = await supabase.from('study_sessions').insert({
-        teacher_id: user.id,
-        organization_id: profile.organization_id,
-        student_id: null,
-        status: 'available',
-        scheduled_at: startDateTime.toISOString(),
-        topic: 'Müsaitlik'
-    })
+    try {
+        const availableId = await getStatusId(supabase, 'available');
+        // 4. Insert if no conflicts
+        const { error } = await supabase.from('study_sessions').insert({
+            teacher_id: user.id,
+            organization_id: profile.organization_id,
+            student_id: null,
+            status_id: availableId,
+            scheduled_at: startDateTime.toISOString(),
+            topic: ''
+        })
 
-    if (error) {
-        console.error('Error creating availability:', error)
-        return { error: error.message }
+        if (error) throw error;
+    } catch (e: any) {
+        return { error: e.message || 'Kayıt hatası' }
     }
+
+
 
     revalidatePath('/teacher/schedule')
     revalidatePath('/teacher/study-requests')
@@ -217,17 +241,26 @@ export async function requestSession(sessionId: string, topic: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized' }
 
-    const { error } = await supabase
-        .from('study_sessions')
-        .update({
-            student_id: user.id,
-            status: 'pending',
-            topic: topic
-        })
-        .eq('id', sessionId)
-        .eq('status', 'available') // Optimistic locking: ensure it's still available
+    try {
+        const pendingId = await getStatusId(supabase, 'pending');
+        const availableId = await getStatusId(supabase, 'available');
 
-    if (error) return { error: error.message }
+        const { error } = await supabase
+            .from('study_sessions')
+            .update({
+                student_id: user.id,
+                status_id: pendingId,
+                topic: topic
+            })
+            .eq('id', sessionId)
+            .eq('status_id', availableId) // Optimistic locking
+
+        if (error) throw error;
+    } catch (e: any) {
+        return { error: e.message }
+    }
+
+
 
     revalidatePath('/student/study-requests')
     revalidatePath('/teacher/study-requests')
@@ -240,12 +273,19 @@ export async function approveSession(sessionId: string) {
     const supabase = await createClient()
 
     // RLS ensures only the teacher owner can update
-    const { error } = await supabase
-        .from('study_sessions')
-        .update({ status: 'approved' })
-        .eq('id', sessionId)
+    try {
+        const approvedId = await getStatusId(supabase, 'approved');
+        const { error } = await supabase
+            .from('study_sessions')
+            .update({ status_id: approvedId })
+            .eq('id', sessionId)
 
-    if (error) return { error: error.message }
+        if (error) throw error;
+    } catch (e: any) {
+        return { error: e.message }
+    }
+
+
 
     revalidatePath('/teacher/schedule')
     return { success: true }
@@ -265,3 +305,41 @@ export async function cancelSession(sessionId: string) {
     revalidatePath('/teacher/schedule')
     return { success: true }
 }
+
+export async function getPendingPastSessions() {
+    try {
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+
+        if (!user) return { error: 'Oturum bulunamadı' }
+
+        const now = new Date().toISOString()
+
+        // Use Admin client to bypass RLS for this specific check, ensuring we only fetch for the logged-in teacher
+        const { data: sessions, error } = await supabaseAdmin
+            .from('study_sessions')
+            .select(`
+                *,
+                study_session_statuses!inner ( name ),
+                profiles:student_id (
+                    full_name,
+                    phone,
+                    title
+                )
+            `)
+            .eq('teacher_id', user.id)
+            .eq('study_session_statuses.name', 'approved')
+            .lt('scheduled_at', now)
+            .order('scheduled_at', { ascending: true })
+
+        if (error) {
+            return { error: 'Veri çekilemedi' }
+        }
+
+        return { data: sessions || [] }
+    } catch (e: any) {
+        return { error: e.message }
+    }
+}
+
+

@@ -52,8 +52,7 @@ export default async function NewAssignmentPage() {
     }
 
     if (!organizationId) {
-        // Handle case where org id is missing if critical, or maybe just render nothing/error
-        return <div>Organization ID not found for user.</div>;
+        return <div>Organization ID not found.</div>;
     }
 
     return (

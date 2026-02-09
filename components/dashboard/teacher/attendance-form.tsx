@@ -112,7 +112,7 @@ export default function AttendanceForm({
             router.push('/teacher/attendance');
 
         } catch (error: any) {
-            console.error('Save error:', error);
+
             toast({
                 variant: "destructive",
                 title: "Hata",

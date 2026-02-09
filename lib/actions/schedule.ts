@@ -56,7 +56,7 @@ export async function addScheduleItem(formData: ScheduleFormData) {
         .gt('end_time', formData.start_time);
 
     if (conflictError) {
-        console.error("Conflict check error:", conflictError);
+
         return { success: false, error: "Çakışma kontrolü yapılamadı." };
     }
 
@@ -78,7 +78,7 @@ export async function addScheduleItem(formData: ScheduleFormData) {
         });
 
     if (error) {
-        console.error("Error adding schedule item:", error);
+
         return { success: false, error: error.message };
     }
 
@@ -137,7 +137,7 @@ export async function updateScheduleItem(id: string, formData: ScheduleFormData)
         .eq('id', id);
 
     if (error) {
-        console.error("Error updating schedule item:", error);
+
         return { success: false, error: error.message };
     }
 

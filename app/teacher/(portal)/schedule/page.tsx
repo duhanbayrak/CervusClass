@@ -8,9 +8,6 @@ export default async function TeacherSchedulePage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return <div>Giriş yapınız.</div>
 
-    console.log("Teacher Schedule Debug - User ID:", user.id);
-    console.log("Teacher Schedule Debug - Metadata:", JSON.stringify(user.app_metadata, null, 2));
-
     // Parallel Fetching
     const [scheduleResponse, studySessionsResponse] = await Promise.all([
         supabase
@@ -27,14 +24,17 @@ export default async function TeacherSchedulePage() {
             .from('study_sessions')
             .select(`
                 *,
-                profiles:student_id ( full_name )
+                profiles:student_id ( full_name ),
+                study_session_statuses ( name )
             `)
             .eq('teacher_id', user.id)
-            .neq('status', 'cancelled') // Assuming we filter cancelled
     ]);
 
     const events = scheduleResponse.data;
-    const studySessions = studySessionsResponse.data;
+    const rawSessions: any[] = studySessionsResponse.data || [];
+    const studySessions = rawSessions
+        .map(s => ({ ...s, status: s.study_session_statuses?.name }))
+        .filter(s => s.status !== 'cancelled');
 
     return (
         <div className="space-y-6 h-full flex flex-col">

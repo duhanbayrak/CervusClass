@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     setLoading(false);
                 }
             } catch (error) {
-                console.error('Auth check error:', error);
+
                 setLoading(false);
             }
         };
@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // 2. Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log('Auth event:', event);
+
 
             if (session?.user) {
                 setUser(session.user);
@@ -79,12 +79,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .single();
 
             if (error) {
-                console.error('Error fetching profile:', error);
+
             } else {
                 setProfile(data as any); // Type assertion until types are fully updated
             }
         } catch (err) {
-            console.error('Profile fetch error:', err);
+
         } finally {
             setLoading(false);
         }
@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 new Promise(resolve => setTimeout(resolve, 2000))
             ]);
         } catch (error) {
-            console.error('Error signing out:', error);
+
         } finally {
             setUser(null);
             setProfile(null);

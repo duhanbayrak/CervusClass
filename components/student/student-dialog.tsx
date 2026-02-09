@@ -64,7 +64,7 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
             if (res.success && res.data) {
                 setClasses(res.data);
             } else {
-                console.error("Failed to fetch classes:", res.error);
+
                 // Optionally toast error?
             }
         };

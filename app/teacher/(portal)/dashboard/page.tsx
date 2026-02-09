@@ -5,6 +5,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Users, BookOpen, Clock, Calendar as CalendarIcon, ArrowRight, CheckCircle2, XCircle } from 'lucide-react';
 import Link from 'next/link';
+import { PendingSessionsCard } from '@/components/dashboard/teacher/pending-sessions-card';
+import { PendingHomeworkCard } from '@/components/dashboard/teacher/pending-homework-card';
 
 async function getTeacherData(userId: string) {
     const cookieStore = await cookies();
@@ -68,11 +70,28 @@ async function getTeacherData(userId: string) {
         .eq('teacher_id', userId)
         .gte('due_date', new Date().toISOString());
 
+    // 5. Get Pending Homework Approvals (Status: 'submitted')
+    const { data: pendingHomeworks, count: pendingApprovalCount } = await supabase
+        .from('homework_submissions')
+        .select(`
+            id,
+            status,
+            submitted_at,
+            student:profiles!student_id(full_name),
+            homework:homework_id(description, teacher_id)
+        `, { count: 'exact' })
+        .eq('status', 'submitted')
+        .eq('homework.teacher_id', userId)
+        .order('submitted_at', { ascending: true })
+        .limit(10); // Show top 10 pending
+
     return {
         profile,
         schedule: schedule || [],
         pendingRequests: pendingRequests || [],
-        homeworkCount: homeworkCount || 0
+        homeworkCount: homeworkCount || 0,
+        pendingApprovalCount: pendingApprovalCount || 0,
+        pendingHomeworks: pendingHomeworks || []
     };
 }
 
@@ -96,16 +115,21 @@ export default async function TeacherDashboardPage() {
     const data = await getTeacherData(user.id);
     if (!data) return <div>Yükleniyor...</div>;
 
-    const { profile, schedule, pendingRequests, homeworkCount } = data;
+    const { profile, schedule, pendingRequests, homeworkCount, pendingApprovalCount, pendingHomeworks } = data;
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
+
+            <div className="md:col-span-3">
+                <PendingHomeworkCard initialHomeworks={pendingHomeworks} />
+                <PendingSessionsCard />
+            </div>
 
             {/* LEFT COLUMN */}
             <div className="md:col-span-2 space-y-6">
 
                 {/* 1. Stats Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <Card className="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white border-none shadow-lg">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-indigo-100">Bugünkü Dersler</CardTitle>
@@ -133,6 +157,16 @@ export default async function TeacherDashboardPage() {
                         <CardContent>
                             <div className="text-3xl font-bold text-slate-900 dark:text-white">{homeworkCount}</div>
                             <p className="text-xs text-slate-500 mt-1">Teslim tarihi gelmemiş</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-orange-50 dark:bg-orange-900/10 border-orange-100 dark:border-orange-800 shadow-sm">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">Onay Bekleyenler</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-3xl font-bold text-orange-700 dark:text-orange-300">{pendingApprovalCount}</div>
+                            <p className="text-xs text-orange-600/80 dark:text-orange-400/80 mt-1">Ödev teslimi</p>
                         </CardContent>
                     </Card>
                 </div>

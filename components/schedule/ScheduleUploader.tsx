@@ -20,7 +20,7 @@ export function ScheduleUploader() {
 
         try {
             const result = await uploadSchedule(null, formData)
-            console.log('Upload Result:', result)
+
 
             if (result.success) {
                 toast.success(result.message)

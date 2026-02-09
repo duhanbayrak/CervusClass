@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trash2, Edit2, Calendar, Loader2 } from 'lucide-react';
+import { Trash2, Edit2, Calendar, Loader2, CheckCircle2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -20,16 +20,38 @@ interface Assignment {
     classes: {
         name: string;
     } | null;
+    // Enriched props
+    derivedStatus?: 'active' | 'completed' | 'expired';
+    totalAssigned?: number;
+    submissionCount?: number;
 }
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface HomeworkListTableProps {
-    assignments: Assignment[];
+    activeAssignments?: Assignment[];
+    pastAssignments?: Assignment[];
+    assignments?: Assignment[]; // Keep for backward compat or fallback
 }
 
-export default function HomeworkListTable({ assignments }: HomeworkListTableProps) {
+export default function HomeworkListTable({ activeAssignments = [], pastAssignments = [], assignments }: HomeworkListTableProps) {
     const router = useRouter();
     const { toast } = useToast();
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+    if (!isMounted) return null;
+
+    // Fallback if old props passed (though we updated parent)
+    const effectiveActive = assignments ? assignments : activeAssignments;
+    const effectivePast = pastAssignments;
+
+    // Only use tabs if we have split data. If only 'assignments' passed, use legacy view (or treat as active)
+    const showTabs = activeAssignments.length > 0 || pastAssignments.length > 0 || (!assignments);
 
     const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -45,7 +67,7 @@ export default function HomeworkListTable({ assignments }: HomeworkListTableProp
                 .eq('id', id);
 
             if (error) {
-                console.error("Supabase Error:", error);
+
                 toast({
                     variant: "destructive",
                     title: "Hata",
@@ -55,7 +77,7 @@ export default function HomeworkListTable({ assignments }: HomeworkListTableProp
             }
 
             if (count === 0) {
-                console.warn("No rows deleted. RLS might be blocking or ID mismatch.");
+
                 toast({
                     variant: "destructive",
                     title: "Hata",
@@ -72,7 +94,7 @@ export default function HomeworkListTable({ assignments }: HomeworkListTableProp
             }
 
         } catch (error: any) {
-            console.error("Catch Error:", error);
+
             toast({
                 variant: "destructive",
                 title: "Hata",
@@ -83,7 +105,7 @@ export default function HomeworkListTable({ assignments }: HomeworkListTableProp
         }
     };
 
-    return (
+    const renderTable = (list: Assignment[], emptyMessage: string) => (
         <Table>
             <TableHeader>
                 <TableRow>
@@ -95,8 +117,8 @@ export default function HomeworkListTable({ assignments }: HomeworkListTableProp
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {assignments.length > 0 ? (
-                    assignments.map((hw) => {
+                {list.length > 0 ? (
+                    list.map((hw) => {
                         const isPast = new Date(hw.due_date) < new Date();
                         return (
                             <TableRow key={hw.id}>
@@ -113,12 +135,39 @@ export default function HomeworkListTable({ assignments }: HomeworkListTableProp
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge variant={isPast ? 'secondary' : 'default'} className={isPast ? '' : 'bg-green-600 hover:bg-green-700'}>
-                                        {isPast ? 'Süresi Doldu' : 'Aktif'}
-                                    </Badge>
+                                    <div className="flex flex-col gap-1">
+                                        {hw.derivedStatus === 'completed' && (
+                                            <Badge className="bg-blue-600 hover:bg-blue-700 w-fit">
+                                                Tümü Tamamlandı
+                                            </Badge>
+                                        )}
+                                        {hw.derivedStatus === 'expired' && (
+                                            <Badge variant="secondary" className="w-fit">
+                                                Süresi Doldu
+                                            </Badge>
+                                        )}
+                                        {(!hw.derivedStatus || hw.derivedStatus === 'active') && (
+                                            <Badge className="bg-green-600 hover:bg-green-700 w-fit">
+                                                Aktif
+                                            </Badge>
+                                        )}
+
+                                        {(hw.totalAssigned !== undefined) && (
+                                            <span className="text-xs text-slate-500">
+                                                {hw.submissionCount}/{hw.totalAssigned} Tamamlandı
+                                            </span>
+                                        )}
+                                    </div>
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <div className="flex justify-end gap-2">
+                                        {/* Check/Review Button */}
+                                        <Link href={`/teacher/homework/${hw.id}/check`}>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-green-600">
+                                                <CheckCircle2 className="w-4 h-4" />
+                                            </Button>
+                                        </Link>
+
                                         {/* Edit Button */}
                                         <Link href={`/teacher/homework/${hw.id}`}>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-blue-600">
@@ -162,11 +211,30 @@ export default function HomeworkListTable({ assignments }: HomeworkListTableProp
                 ) : (
                     <TableRow>
                         <TableCell colSpan={5} className="text-center py-8 text-slate-400">
-                            Henüz ödev kaydı oluşturulmamış.
+                            {emptyMessage}
                         </TableCell>
                     </TableRow>
                 )}
             </TableBody>
         </Table>
+    );
+
+    if (!showTabs) {
+        return renderTable(effectiveActive, "Henüz ödev kaydı oluşturulmamış.");
+    }
+
+    return (
+        <Tabs defaultValue="active" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="active">Aktif Ödevler ({effectiveActive.length})</TabsTrigger>
+                <TabsTrigger value="past">Geçmiş Ödevler ({effectivePast.length})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="active">
+                {renderTable(effectiveActive, "Aktif ödev bulunmuyor.")}
+            </TabsContent>
+            <TabsContent value="past">
+                {renderTable(effectivePast, "Geçmiş ödev bulunmuyor.")}
+            </TabsContent>
+        </Tabs>
     );
 }

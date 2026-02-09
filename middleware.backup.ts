@@ -79,7 +79,7 @@ export async function middleware(request: NextRequest) {
         const rolesData = profile?.roles as any;
         const role = (Array.isArray(rolesData) ? rolesData[0]?.name : rolesData?.name) as ProfileRole;
 
-        console.log(`[Middleware Debug] Path: ${path}, UserID: ${user.id}, Role: ${role}`);
+
 
 
         // Redirect away from login pages to Dashboard

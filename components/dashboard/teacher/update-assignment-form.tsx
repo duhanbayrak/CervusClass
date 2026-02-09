@@ -39,9 +39,10 @@ interface UpdateAssignmentFormProps {
     };
     classes: ClassItem[];
     userId: string;
+    initialStudents?: Student[];
 }
 
-export default function UpdateAssignmentForm({ assignment, classes, userId }: UpdateAssignmentFormProps) {
+export default function UpdateAssignmentForm({ assignment, classes, userId, initialStudents = [] }: UpdateAssignmentFormProps) {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [success, setSuccess] = useState(false);
@@ -57,7 +58,8 @@ export default function UpdateAssignmentForm({ assignment, classes, userId }: Up
             ? 'selected_students'
             : 'entire_class'
     );
-    const [students, setStudents] = useState<Student[]>([]);
+    // Initialize students with pre-fetched data
+    const [students, setStudents] = useState<Student[]>(initialStudents);
     const [selectedStudents, setSelectedStudents] = useState<string[]>(
         assignment.assigned_student_ids || []
     );
@@ -74,6 +76,12 @@ export default function UpdateAssignmentForm({ assignment, classes, userId }: Up
         const fetchStudents = async () => {
             if (!classId) return;
 
+            // If classId matches the initial assignment class AND we have initial students, use them (don't re-fetch)
+            if (classId === assignment.class_id && initialStudents.length > 0) {
+                setStudents(initialStudents);
+                return;
+            }
+
             setLoadingStudents(true);
             try {
                 // Get students for this class from profiles
@@ -85,7 +93,7 @@ export default function UpdateAssignmentForm({ assignment, classes, userId }: Up
                     .order('full_name');
 
                 if (error) {
-                    console.error('Error fetching students:', error);
+
                     return;
                 }
 
@@ -99,14 +107,14 @@ export default function UpdateAssignmentForm({ assignment, classes, userId }: Up
                 }
 
             } catch (err) {
-                console.error('Fetch error:', err);
+
             } finally {
                 setLoadingStudents(false);
             }
         };
 
         fetchStudents();
-    }, [classId, supabase, assignment.class_id]);
+    }, [classId, supabase, assignment.class_id, initialStudents]);
 
     const handleStudentToggle = (studentId: string) => {
         setSelectedStudents(prev =>
@@ -146,9 +154,7 @@ export default function UpdateAssignmentForm({ assignment, classes, userId }: Up
                 .from('homework')
                 .update({
                     description: description,
-                    class_id: classId,
                     due_date: date.toISOString(),
-                    assigned_student_ids: assignedIds, // This corresponds to jsonb column
                 })
                 .eq('id', assignment.id)
                 .eq('teacher_id', userId);
@@ -162,7 +168,7 @@ export default function UpdateAssignmentForm({ assignment, classes, userId }: Up
             }, 1000);
 
         } catch (error: any) {
-            console.error("Error updating assignment:", error);
+
             alert("Ödev güncellenirken bir hata meydana geldi: " + error.message);
         } finally {
             setIsLoading(false);
@@ -192,38 +198,33 @@ export default function UpdateAssignmentForm({ assignment, classes, userId }: Up
                 <CardContent className="space-y-6">
 
                     <div className="space-y-2">
-                        <Label htmlFor="class">Sınıf Seçimi</Label>
-                        <Select value={classId} onValueChange={setClassId}>
-                            <SelectTrigger id="class" className="w-full">
-                                <SelectValue placeholder="Bir sınıf seçin" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {classes.map((cls) => (
-                                    <SelectItem key={cls.id} value={cls.id}>
-                                        {cls.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <Label>Sınıf</Label>
+                        <div className="p-3 border rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 cursor-not-allowed">
+                            {classes.find(c => c.id === assignment.class_id)?.name || 'Sınıf Bulunamadı'}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Ödev oluşturulduktan sonra sınıf değiştirilemez.</p>
                     </div>
 
-                    {/* Assignment Mode */}
+                    {/* Assignment Mode - Read Only */}
                     <div className="space-y-3">
                         <Label>Atama Kapsamı</Label>
-                        <RadioGroup
-                            value={assignmentMode}
-                            onValueChange={(val: 'entire_class' | 'selected_students') => setAssignmentMode(val)}
-                            className="flex flex-col sm:flex-row gap-4"
-                        >
-                            <div className="flex items-center space-x-2 border rounded-md p-3 flex-1 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer" onClick={() => setAssignmentMode('entire_class')}>
-                                <RadioGroupItem value="entire_class" id="entire_class" />
-                                <Label htmlFor="entire_class" className="cursor-pointer flex-1">Tüm Sınıf</Label>
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <div className={cn(
+                                "flex items-center space-x-2 border rounded-md p-3 flex-1 transition-colors cursor-not-allowed",
+                                assignmentMode === 'entire_class' ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600" : "opacity-50"
+                            )}>
+                                <div className={cn("h-4 w-4 rounded-full border border-primary", assignmentMode === 'entire_class' ? "bg-primary" : "border-slate-400")} />
+                                <Label className="cursor-not-allowed flex-1 text-slate-600 dark:text-slate-400">Tüm Sınıf</Label>
                             </div>
-                            <div className="flex items-center space-x-2 border rounded-md p-3 flex-1 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer" onClick={() => setAssignmentMode('selected_students')}>
-                                <RadioGroupItem value="selected_students" id="selected_students" />
-                                <Label htmlFor="selected_students" className="cursor-pointer flex-1">Belirli Öğrenciler</Label>
+                            <div className={cn(
+                                "flex items-center space-x-2 border rounded-md p-3 flex-1 transition-colors cursor-not-allowed",
+                                assignmentMode === 'selected_students' ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600" : "opacity-50"
+                            )}>
+                                <div className={cn("h-4 w-4 rounded-full border border-primary", assignmentMode === 'selected_students' ? "bg-primary" : "border-slate-400")} />
+                                <Label className="cursor-not-allowed flex-1 text-slate-600 dark:text-slate-400">Belirli Öğrenciler</Label>
                             </div>
-                        </RadioGroup>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Ödev oluşturulduktan sonra atama kapsamı değiştirilemez.</p>
                     </div>
 
                     {/* Student Selection List */}
@@ -235,7 +236,7 @@ export default function UpdateAssignmentForm({ assignment, classes, userId }: Up
                                     <Checkbox
                                         id="select-all"
                                         checked={students.length > 0 && selectedStudents.length === students.length}
-                                        onCheckedChange={handleSelectAll}
+                                        disabled
                                     />
                                     <Label htmlFor="select-all" className="text-sm font-normal cursor-pointer text-muted-foreground">Tümünü Seç</Label>
                                 </div>
@@ -255,7 +256,7 @@ export default function UpdateAssignmentForm({ assignment, classes, userId }: Up
                                                 <Checkbox
                                                     id={`student-${student.id}`}
                                                     checked={selectedStudents.includes(student.id)}
-                                                    onCheckedChange={() => handleStudentToggle(student.id)}
+                                                    disabled
                                                 />
                                                 <Label htmlFor={`student-${student.id}`} className="flex-1 cursor-pointer font-normal">
                                                     {student.full_name}

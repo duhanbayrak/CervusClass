@@ -26,19 +26,6 @@ export async function getAdminDashboardStats() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return null;
 
-        // DEBUG: Check user's profile and org_id
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('organization_id, role_id')
-            .eq('id', user.id)
-            .single();
-
-        console.log('DEBUG DASHBOARD:', {
-            userId: user.id,
-            profileOrg: profile?.organization_id,
-            profileRole: profile?.role_id
-        });
-
         // Run queries in parallel for performance
         const [students, teachers, classes] = await Promise.all([
             // Count Students
@@ -59,30 +46,17 @@ export async function getAdminDashboardStats() {
                 .select('*', { count: 'exact', head: true })
         ]);
 
-        // Return debug info if stats are zero
-        const isZero = (students.count || 0) + (teachers.count || 0) + (classes.count || 0) === 0;
-        if (isZero) {
-            return {
-                totalStudents: 0,
-                totalTeachers: 0,
-                totalClasses: 0,
-                debug: `User: ${user.id}, Org: ${profile?.organization_id}, Role: ${profile?.role_id}`
-            };
-        }
-
         return {
             totalStudents: students.count || 0,
             totalTeachers: teachers.count || 0,
             totalClasses: classes.count || 0,
         };
 
-    } catch (error: any) {
-        console.error('Dashboard Stats Error:', error);
+    } catch (error) {
         return {
             totalStudents: 0,
             totalTeachers: 0,
             totalClasses: 0,
-            debug: error.message
         };
     }
 }

@@ -9,8 +9,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { approveSession, cancelSession } from "@/lib/actions/study-session" // cancelSession can be used for Reject
-import { Loader2 } from "lucide-react"
+import { approveSession, cancelSession } from "@/lib/actions/study-session"
+import { updateStudySessionStatus } from "@/lib/actions/study-session-admin"
+import { Loader2, Check, X, Ban } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { StudySessionEvent } from "./WeeklyScheduler"
@@ -24,7 +25,7 @@ interface ManageSessionDialogProps {
 
 export function ManageSessionDialog({ session, open, onOpenChange, onClose }: ManageSessionDialogProps) {
     const [loading, setLoading] = useState(false)
-    console.log("ManageSessionDialog session prop:", session)
+
 
     if (!session) return null;
 
@@ -45,11 +46,6 @@ export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Ma
         if (!confirm("Bu talebi reddetmek/silmek istediğinize emin misiniz?")) return;
         setLoading(true)
         try {
-            // For now we just delete/cancel. Ideally we might want a 'rejected' status.
-            // We can implement rejectSession action later if needed, but cancelSession deletes it.
-            // If we delete it, it's gone. 'Rejected' status is better for history.
-            // But my action `cancelSession` deletes.
-            // Let's use `cancelSession` for now (Teacher cancels availability or request).
             const res = await cancelSession(session.id)
             if (res.error) toast.error(res.error)
             else {
@@ -60,8 +56,31 @@ export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Ma
         finally { setLoading(false) }
     }
 
+    const handleStatusUpdate = async (newStatus: 'completed' | 'no_show') => {
+
+        setLoading(true)
+        try {
+
+            const res = await updateStudySessionStatus(session.id, newStatus)
+
+            if (res?.error) toast.error(res.error)
+            else {
+                toast.success("Durum güncellendi")
+                onClose()
+            }
+        } catch (e) {
+
+            toast.error("Hata oluştu")
+        }
+        finally { setLoading(false) }
+    }
+
     const studentName = session.profiles?.full_name || "Öğrenci";
     const dateStr = session.scheduled_at ? new Date(session.scheduled_at).toLocaleString('tr-TR') : '';
+
+    const isPast = session.scheduled_at ? new Date(session.scheduled_at) < new Date() : false;
+    const isApprovable = session.status === 'pending';
+    const isActionable = session.status === 'approved' && isPast;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -91,24 +110,55 @@ export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Ma
                         <span className="capitalize font-medium text-slate-900 border px-2 py-1 rounded w-fit text-sm">
                             {session.status === 'available' ? 'Müsait (Talep Bekleniyor)' :
                                 session.status === 'pending' ? 'Onay Bekliyor' :
-                                    session.status === 'approved' ? 'Onaylandı' : session.status}
+                                    session.status === 'approved' ? 'Onaylandı' :
+                                        session.status === 'completed' ? 'Tamamlandı' :
+                                            session.status === 'no_show' ? 'Gelmedi' :
+                                                session.status}
                         </span>
                     </div>
                 </div>
 
-                <DialogFooter className="gap-2 sm:justify-between">
-                    <Button variant="destructive" onClick={handleReject} disabled={loading}>
-                        {session.status === 'available' ? 'Müsaitliği Sil' : 'Reddet/Sil'}
-                    </Button>
-
-                    {session.status === 'pending' && (
-                        <Button onClick={handleApprove} disabled={loading} className="bg-green-600 hover:bg-green-700">
+                <DialogFooter className="gap-2 flex-col sm:flex-row sm:justify-between">
+                    {/* Left Side: Reject/Delete (Always available except completed/noshow maybe?) */}
+                    {session.status !== 'completed' && session.status !== 'no_show' && (
+                        <Button variant="destructive" onClick={handleReject} disabled={loading} size="sm">
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Onayla
+                            Reddet/Sil
                         </Button>
                     )}
+
+                    <div className="flex gap-2 justify-end w-full sm:w-auto">
+                        {isApprovable && (
+                            <Button onClick={handleApprove} disabled={loading} className="bg-green-600 hover:bg-green-700">
+                                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Onayla
+                            </Button>
+                        )}
+
+                        {isActionable && (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => handleStatusUpdate('no_show')}
+                                    disabled={loading}
+                                    className="text-red-600 hover:bg-red-50 border-red-200"
+                                >
+                                    <Ban className="mr-2 h-4 w-4" /> Gelmedi
+                                </Button>
+                                <Button
+                                    onClick={() => handleStatusUpdate('completed')}
+                                    disabled={loading}
+                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                >
+                                    <Check className="mr-2 h-4 w-4" /> Tamamlandı
+                                </Button>
+                            </>
+                        )}
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
     )
 }
+
+
