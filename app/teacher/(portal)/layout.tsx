@@ -5,11 +5,15 @@ import MobileSidebar from '@/components/dashboard/mobile-sidebar';
 import DashboardHeader from '@/components/dashboard/header';
 import { TEACHER_NAV } from '@/lib/navigation';
 
+import { useRouter } from 'next/navigation';
+
 export default function TeacherLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const router = useRouter();
+
     return (
         <div className="flex h-screen w-full bg-[#f6f6f8] dark:bg-[#101622] overflow-hidden font-sans">
             <Sidebar
@@ -23,6 +27,7 @@ export default function TeacherLayout({
                     title="Eğitmen Paneli"
                     description="Sınıflarınızı ve programınızı yönetin."
                     actionButtonText="Yeni Ödev"
+                    onActionClick={() => router.push('/teacher/homework/new')}
                     mobileNav={
                         <MobileSidebar
                             items={TEACHER_NAV}

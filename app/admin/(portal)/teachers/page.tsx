@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+import { Loader2 } from 'lucide-react';
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import TeacherList from '@/components/dashboard/admin/teacher-list'
@@ -26,7 +28,20 @@ export default async function TeachersPage() {
     const teacherRoleId = roleData?.id;
 
     // 2. Fetch profiles with that role_id
-    let teachers: any[] = [];
+    interface TeacherProfile {
+        id: string;
+        full_name: string | null;
+        email: string | null;
+        phone: string | null;
+        title: string | null;
+        bio: string | null;
+        avatar_url: string | null;
+        created_at: string;
+        branches: { name: string } | null;
+        role_id: string;
+    }
+
+    let teachers: TeacherProfile[] = [];
 
     if (teacherRoleId) {
         const { data, error } = await supabase
@@ -46,7 +61,8 @@ export default async function TeachersPage() {
             .order('created_at', { ascending: false });
 
         if (data) {
-            teachers = data;
+            // Supabase returns object, we need to assert or shape it slightly if needed, but here it matches closely
+            teachers = data as unknown as TeacherProfile[];
             if (data.length > 0) {
                 console.log('Teachers Fetch Sample:', JSON.stringify(data[0], null, 2));
             }
@@ -87,7 +103,9 @@ export default async function TeachersPage() {
                 </p>
             </div>
 
-            <TeacherList initialTeachers={formattedTeachers} initialBranches={branches} />
+            <Suspense fallback={<div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-slate-500" /></div>}>
+                <TeacherList initialTeachers={formattedTeachers} initialBranches={branches} />
+            </Suspense>
         </div>
     )
 }

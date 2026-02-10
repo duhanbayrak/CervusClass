@@ -4,12 +4,18 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
+import { Class } from "@/types/database";
+
 export type ClassFormData = {
     name: string;
     grade_level: number;
 }
 
-export async function getClasses() {
+export type GetClassesResponse =
+    | { success: true; data: Class[] }
+    | { success: false; error: string };
+
+export async function getClasses(): Promise<GetClassesResponse> {
     const cookieStore = await cookies();
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,7 +35,7 @@ export async function getClasses() {
 
     const { data, error } = await supabase
         .from('classes')
-        .select('id, name, grade_level')
+        .select('*')
         .eq('organization_id', profile.organization_id)
         .order('name');
 

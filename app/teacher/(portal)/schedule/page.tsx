@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase-server'
 import { TeacherScheduleClient } from '@/components/schedule/teacher-schedule-client'
 import { Card, CardContent } from '@/components/ui/card'
+import { ScheduleEvent, StudySessionEvent } from '@/components/schedule/WeeklyScheduler'
 
 export default async function TeacherSchedulePage() {
     const supabase = await createClient()
@@ -30,11 +31,20 @@ export default async function TeacherSchedulePage() {
             .eq('teacher_id', user.id)
     ]);
 
-    const events = scheduleResponse.data;
-    const rawSessions: any[] = studySessionsResponse.data || [];
-    const studySessions = rawSessions
-        .map(s => ({ ...s, status: s.study_session_statuses?.name }))
-        .filter(s => s.status !== 'cancelled');
+    // Start of type definition
+    type RawSession = Omit<StudySessionEvent, 'status'> & {
+        study_session_statuses: { name: string } | null
+    };
+
+    const events = (scheduleResponse.data || []) as unknown as ScheduleEvent[];
+    const rawSessions = (studySessionsResponse.data || []) as unknown as RawSession[];
+
+    const studySessions: StudySessionEvent[] = rawSessions
+        .filter(s => s.study_session_statuses?.name !== 'cancelled')
+        .map(s => ({
+            ...s,
+            status: s.study_session_statuses?.name as StudySessionEvent['status']
+        }));
 
     return (
         <div className="space-y-6 h-full flex flex-col">
@@ -44,8 +54,8 @@ export default async function TeacherSchedulePage() {
                 <Card className="h-full flex flex-col">
                     <CardContent className="h-full p-2 flex flex-col">
                         <TeacherScheduleClient
-                            events={(events as any) || []}
-                            studySessions={(studySessions as any) || []}
+                            events={events}
+                            studySessions={studySessions}
                             currentUserId={user.id}
                         />
                     </CardContent>

@@ -1,15 +1,19 @@
 'use client';
 
+import { useState } from 'react';
 import Sidebar from '@/components/dashboard/sidebar';
 import MobileSidebar from '@/components/dashboard/mobile-sidebar';
 import DashboardHeader from '@/components/dashboard/header';
 import { ADMIN_NAV } from '@/lib/navigation';
+import UserSelectionDialog from '@/components/dashboard/admin/user-selection-dialog';
 
 export default function AdminLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const [isUserSelectionOpen, setIsUserSelectionOpen] = useState(false);
+
     return (
         <div className="flex h-screen w-full bg-[#f6f6f8] dark:bg-[#101622] overflow-hidden font-sans">
             <Sidebar
@@ -23,6 +27,7 @@ export default function AdminLayout({
                     title="Yönetim"
                     description="Kurumunuza genel bakış."
                     actionButtonText="Kullanıcı Ekle"
+                    onActionClick={() => setIsUserSelectionOpen(true)}
                     mobileNav={
                         <MobileSidebar
                             items={ADMIN_NAV}
@@ -35,6 +40,10 @@ export default function AdminLayout({
                 <div className="flex-1 overflow-y-auto p-2 md:p-8 scroll-smooth">
                     {children}
                 </div>
+                <UserSelectionDialog
+                    open={isUserSelectionOpen}
+                    onOpenChange={setIsUserSelectionOpen}
+                />
             </main>
         </div>
     );

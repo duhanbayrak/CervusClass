@@ -43,7 +43,7 @@ export function ClassList() {
         setLoading(true);
         const res = await getClasses();
         if (res.success && res.data) {
-            let data = res.data as unknown as Class[];
+            let data = res.data;
             if (search) {
                 const lowerSearch = search.toLowerCase();
                 data = data.filter(c => c.name.toLowerCase().includes(lowerSearch));

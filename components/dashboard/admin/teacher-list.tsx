@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -56,6 +56,7 @@ interface Teacher {
 
 export default function TeacherList({ initialTeachers, initialBranches }: { initialTeachers: Teacher[], initialBranches: string[] }) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -64,7 +65,10 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
 
     useEffect(() => {
         setMounted(true);
-    }, []);
+        if (searchParams.get('action') === 'create') {
+            setIsAddDialogOpen(true);
+        }
+    }, [searchParams]);
 
     // Form States
     const [formData, setFormData] = useState({
@@ -113,10 +117,20 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
             setEditingTeacher(null);
             setFormData({ fullName: '', branch: '', email: '', password: '', phone: '', title: '', bio: '' });
             router.refresh();
-            router.refresh();
 
-        } catch (error: any) {
-            toast.error(error.message);
+            // Cleanup query param if exists
+            if (searchParams.get('action') === 'create') {
+                const params = new URLSearchParams(searchParams.toString());
+                params.delete('action');
+                router.replace(`?${params.toString()}`);
+            }
+
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                toast.error(error.message);
+            } else {
+                toast.error('Bilinmeyen bir hata oluştu');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -138,8 +152,12 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
 
             toast.success('Öğretmen silindi.');
             router.refresh();
-        } catch (error: any) {
-            toast.error(error.message);
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                toast.error(error.message);
+            } else {
+                toast.error('Bilinmeyen bir hata oluştu');
+            }
         }
     };
 
@@ -162,6 +180,13 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
         if (!open) {
             setEditingTeacher(null);
             setFormData({ fullName: '', branch: '', email: '', password: '', phone: '', title: '', bio: '' });
+
+            // Remove action param if it exists
+            if (searchParams.get('action') === 'create') {
+                const params = new URLSearchParams(searchParams.toString());
+                params.delete('action');
+                router.replace(`?${params.toString()}`);
+            }
         }
     };
 

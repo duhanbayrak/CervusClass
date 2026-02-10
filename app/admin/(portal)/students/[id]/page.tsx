@@ -4,9 +4,9 @@ import { notFound } from 'next/navigation';
 import { StudentDetailView } from '@/components/student/student-detail-view';
 import { getStudentProfileData } from '@/lib/data/student-profile';
 
-export default async function StudentDetailPage({ params }: { params: any }) {
-    const resolvedParams = await Promise.resolve(params);
-    const id = resolvedParams.id;
+export default async function StudentDetailPage(props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
+    const { id } = params;
     const cookieStore = await cookies();
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,

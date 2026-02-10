@@ -183,7 +183,7 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
                             />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="parent_phone">Veli Telefon (Kritik)</Label>
+                            <Label htmlFor="parent_phone">Veli Telefon</Label>
                             <Input
                                 id="parent_phone"
                                 placeholder="555 555 55 55"
