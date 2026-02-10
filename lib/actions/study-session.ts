@@ -3,8 +3,9 @@
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { revalidatePath } from 'next/cache'
+import { type SupabaseClient } from '@supabase/supabase-js'
 
-async function getStatusId(supabase: any, name: string) {
+async function getStatusId(supabase: SupabaseClient, name: string) {
     const { data } = await supabase.from('study_session_statuses').select('id').eq('name', name).single();
     return data?.id;
 }
@@ -50,8 +51,8 @@ export async function getTeachers() {
         }
 
         return { data: teachers }
-    } catch (err: any) {
-        return { error: `Beklenmedik Server Hatası: ${err.message}` }
+    } catch (err: unknown) {
+        return { error: `Beklenmedik Server Hatası: ${handleError(err)}` }
     }
 }
 
@@ -115,9 +116,8 @@ export async function getTeacherSchedule(teacherId: string) {
             sessions: sessions || [],
             teacherName: profile?.full_name
         }
-    } catch (e: any) {
-
-        return { schedule: [], sessions: [], teacherName: '', error: e.message }
+    } catch (e: unknown) {
+        return { schedule: [], sessions: [], teacherName: '', error: handleError(e) }
     }
 }
 
@@ -144,69 +144,10 @@ export async function createAvailability(date: string, startTime: string, endTim
         return { error: 'Bitiş saati başlangıç saatinden sonra olmalıdır.' }
     }
 
-    // 2. Check for conflicts with Weekly Schedule (Classes)
-    // We need to map the specific date to a day of week (1-7).
-    // JS getDay(): 0=Sun, 1=Mon ... 6=Sat.
-    // DB schedule uses: 1=Mon ... 7=Sun (ISO/Postgres convention usually? or existing app convention?)
-    // Let's check `WeeklyScheduler.tsx`: 
-    // const dayNumber = date.getDay() || 7; // 1 (Mon) - 7 (Sun)
-    const dayOfWeek = startDateTime.getDay() || 7;
-
-    const { data: classes, error: scheduleError } = await supabase
-        .from('schedule')
-        .select('start_time, end_time, courses(name)')
-        .eq('teacher_id', user.id)
-        .eq('day_of_week', dayOfWeek)
-
-    if (scheduleError) {
-        return { error: 'Ders programı kontrol edilirken hata oluştu.' }
-    }
-
-    // Check overlap with classes
-    for (const cls of classes || []) {
-        // Construct TRT dates for class times
-        const classStart = new Date(`${date}T${cls.start_time}+03:00`)
-        const classEnd = new Date(`${date}T${cls.end_time}+03:00`)
-
-        if (startDateTime < classEnd && endDateTime > classStart) {
-            return { error: `Bu saatte dersiniz var: ${cls.courses?.name || 'Ders'}` }
-        }
-    }
-
-    // 3. Check for conflicts with existing Study Sessions
-    // Fetch full day in TRT
-    const dayStart = new Date(`${date}T00:00:00+03:00`).toISOString()
-    const dayEnd = new Date(`${date}T23:59:59+03:00`).toISOString()
-
-    // Needs to filter by status name joined
-    const { data: existingSessions, error: sessionError } = await supabase
-        .from('study_sessions')
-        .select('scheduled_at, study_session_statuses!inner(name)')
-        .eq('teacher_id', user.id)
-        .gte('scheduled_at', dayStart)
-        .lte('scheduled_at', dayEnd)
-        .neq('study_session_statuses.name', 'cancelled')
-
-    if (sessionError) {
-        return { error: 'Mevcut etütler kontrol edilirken hata oluştu.' }
-    }
-
-    for (const session of existingSessions || []) {
-        const sessionStart = new Date(session.scheduled_at)
-        const sessionEnd = new Date(sessionStart.getTime() + 60 * 60 * 1000) // Assume 1 hour
-
-        console.log('CHECKING CONFLICT:', {
-            newStart: startDateTime.toISOString(),
-            newEnd: endDateTime.toISOString(),
-            existingStart: sessionStart.toISOString(),
-            existingEnd: sessionEnd.toISOString()
-        });
-
-        // Correct check: new start < existing end AND new end > existing start
-        if (startDateTime < sessionEnd && endDateTime > sessionStart) {
-            console.log('!!! CONFLICT FOUND !!!');
-            return { error: 'Bu saat aralığında zaten bir etüt veya müsaitlik var.' }
-        }
+    // 2. & 3. Check for conflicts (Classes & Existing Sessions) via helper
+    const conflictResult = await checkAvailabilityConflicts(supabase, user.id, date, startDateTime, endDateTime);
+    if (conflictResult.error) {
+        return { error: conflictResult.error };
     }
 
     try {
@@ -222,8 +163,8 @@ export async function createAvailability(date: string, startTime: string, endTim
         })
 
         if (error) throw error;
-    } catch (e: any) {
-        return { error: e.message || 'Kayıt hatası' }
+    } catch (e: unknown) {
+        return { error: handleError(e) || 'Kayıt hatası' }
     }
 
 
@@ -256,8 +197,8 @@ export async function requestSession(sessionId: string, topic: string) {
             .eq('status_id', availableId) // Optimistic locking
 
         if (error) throw error;
-    } catch (e: any) {
-        return { error: e.message }
+    } catch (e: unknown) {
+        return { error: handleError(e) }
     }
 
 
@@ -281,12 +222,38 @@ export async function approveSession(sessionId: string) {
             .eq('id', sessionId)
 
         if (error) throw error;
-    } catch (e: any) {
-        return { error: e.message }
+    } catch (e: unknown) {
+        return { error: handleError(e) }
     }
 
 
 
+    revalidatePath('/teacher/schedule')
+    return { success: true }
+}
+
+export async function rejectSession(sessionId: string, reason?: string) {
+    const supabase = await createClient()
+
+    try {
+        const rejectedId = await getStatusId(supabase, 'rejected');
+
+        const { error } = await supabase
+            .from('study_sessions')
+            .update({
+                status_id: rejectedId,
+                rejection_reason: reason
+            })
+            .eq('id', sessionId)
+
+        if (error) throw error;
+    } catch (e: unknown) {
+        console.error('Reject Error:', e);
+        return { error: handleError(e) }
+    }
+
+    revalidatePath('/teacher/study-requests')
+    revalidatePath('/teacher/dashboard')
     revalidatePath('/teacher/schedule')
     return { success: true }
 }
@@ -337,9 +304,74 @@ export async function getPendingPastSessions() {
         }
 
         return { data: sessions || [] }
-    } catch (e: any) {
-        return { error: e.message }
+    } catch (e: unknown) {
+        return { error: handleError(e) }
     }
 }
 
 
+
+async function checkAvailabilityConflicts(
+    supabase: SupabaseClient,
+    userId: string,
+    dateString: string,
+    startDateTime: Date,
+    endDateTime: Date
+) {
+    // 2. Check for conflicts with Weekly Schedule (Classes)
+    const dayOfWeek = startDateTime.getDay() || 7;
+
+    const { data: classes, error: scheduleError } = await supabase
+        .from('schedule')
+        .select('start_time, end_time, courses(name)')
+        .eq('teacher_id', userId)
+        .eq('day_of_week', dayOfWeek)
+
+    if (scheduleError) {
+        return { error: 'Ders programı kontrol edilirken hata oluştu.' }
+    }
+
+    // Check overlap with classes
+    for (const cls of classes || []) {
+        // Construct TRT dates for class times
+        const classStart = new Date(`${dateString}T${cls.start_time}+03:00`)
+        const classEnd = new Date(`${dateString}T${cls.end_time}+03:00`)
+
+        if (startDateTime < classEnd && endDateTime > classStart) {
+            const courseName = (cls as any).courses?.name || 'Ders';
+            return { error: `Bu saatte dersiniz var: ${courseName}` }
+        }
+    }
+
+    // 3. Check for conflicts with existing Study Sessions
+    const dayStart = new Date(`${dateString}T00:00:00+03:00`).toISOString()
+    const dayEnd = new Date(`${dateString}T23:59:59+03:00`).toISOString()
+
+    const { data: existingSessions, error: sessionError } = await supabase
+        .from('study_sessions')
+        .select('scheduled_at, study_session_statuses!inner(name)')
+        .eq('teacher_id', userId)
+        .gte('scheduled_at', dayStart)
+        .lte('scheduled_at', dayEnd)
+        .neq('study_session_statuses.name', 'cancelled')
+
+    if (sessionError) {
+        return { error: 'Mevcut etütler kontrol edilirken hata oluştu.' }
+    }
+
+    for (const session of existingSessions || []) {
+        const sessionStart = new Date(session.scheduled_at)
+        const sessionEnd = new Date(sessionStart.getTime() + 60 * 60 * 1000) // Assume 1 hour
+
+        // Correct check: new start < existing end AND new end > existing start
+        if (startDateTime < sessionEnd && endDateTime > sessionStart) {
+            return { error: 'Bu saat aralığında zaten bir etüt veya müsaitlik var.' }
+        }
+    }
+
+    return { success: true };
+}
+
+function handleError(e: unknown): string {
+    return e instanceof Error ? e.message : 'Bilinmeyen hata';
+}

@@ -7,6 +7,7 @@ import { Users, BookOpen, Clock, Calendar as CalendarIcon, ArrowRight, CheckCirc
 import Link from 'next/link';
 import { PendingSessionsCard } from '@/components/dashboard/teacher/pending-sessions-card';
 import { PendingHomeworkCard } from '@/components/dashboard/teacher/pending-homework-card';
+import { PendingStudyRequestsList } from '@/components/dashboard/teacher/pending-study-requests-list';
 
 async function getTeacherData(userId: string) {
     const cookieStore = await cookies();
@@ -52,10 +53,11 @@ async function getTeacherData(userId: string) {
         .from('study_sessions')
         .select(`
             *,
-            student:profiles!student_id(full_name, classes(name))
+            student:profiles!student_id(full_name, classes(name)),
+            status:study_session_statuses!inner(name)
         `)
         .eq('teacher_id', userId)
-        .eq('status', 'pending')
+        .eq('status.name', 'pending')
         .order('created_at', { ascending: false })
         .limit(5);
 
@@ -232,35 +234,7 @@ export default async function TeacherDashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {pendingRequests.length > 0 ? (
-                                pendingRequests.map((req) => (
-                                    <div key={req.id} className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <h5 className="font-bold text-slate-900 dark:text-white">{req.student?.full_name}</h5>
-                                                <p className="text-xs text-slate-500">{req.student?.classes?.name} Sınıfı</p>
-                                            </div>
-                                            <Badge variant="secondary" className="bg-orange-50 text-orange-600 hover:bg-orange-100 border-orange-100">
-                                                {new Date(req.scheduled_at).toLocaleDateString('tr-TR', { weekday: 'short' })}
-                                            </Badge>
-                                        </div>
-                                        <div className="bg-slate-50 dark:bg-slate-800 p-2 rounded text-xs text-slate-600 dark:text-slate-300 mb-4 italic">
-                                            "{req.topic}"
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <Link href={`/teacher/study-requests`} className="flex-1">
-                                                <div className="flex items-center justify-center w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors">
-                                                    İncele
-                                                </div>
-                                            </Link>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-8 text-slate-400 text-sm">
-                                    Bekleyen talep yok.
-                                </div>
-                            )}
+                            <PendingStudyRequestsList requests={pendingRequests} />
 
                             {pendingRequests.length > 0 && (
                                 <Link href="/teacher/study-requests" className="flex items-center justify-center text-sm text-indigo-600 font-medium hover:underline mt-4">

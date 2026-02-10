@@ -1,4 +1,6 @@
 
+'use client';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from '@/components/ui/badge';
@@ -65,7 +67,7 @@ export function StudentDetailView({ profile, examResults, stats, role }: Student
                             <Avatar className="h-24 w-24 border-4 border-white dark:border-slate-900 absolute -top-12 left-6">
                                 <AvatarImage src={profile.avatar_url || undefined} alt={profile.full_name} />
                                 <AvatarFallback className="text-xl bg-slate-100 dark:bg-slate-800">
-                                    {profile.full_name?.slice(0, 2).toUpperCase()}
+                                    {(profile.full_name || '?').slice(0, 2).toUpperCase()}
                                 </AvatarFallback>
                             </Avatar>
 
