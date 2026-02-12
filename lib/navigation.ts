@@ -27,6 +27,7 @@ export const STUDENT_NAV: NavItem[] = [
     { title: 'Ders Programım', href: '/student/schedule', icon: Calendar },
     { title: 'Etüt Talepleri', href: '/student/study-requests', icon: Library },
     { title: 'Notlarım', href: '/student/grades', icon: Award },
+    { title: 'Sınavlar', href: '/student/exams', icon: FileText },
     { title: 'Ödevler', href: '/student/homework', icon: ClipboardList, badge: 3 },
 ];
 
@@ -44,6 +45,7 @@ export const ADMIN_NAV: NavItem[] = [
     { title: 'Ders Programı', href: '/admin/schedule', icon: Calendar },
     { title: 'Öğretmenler', href: '/admin/teachers', icon: GraduationCap },
     { title: 'Öğrenciler', href: '/admin/students', icon: Users },
+    { title: 'Sınavlar', href: '/admin/exams/upload', icon: FileText },
     { title: 'Sınıflar', href: '/admin/classes', icon: School },
     { title: 'Raporlar', href: '/admin/reports', icon: BarChart },
 ];
