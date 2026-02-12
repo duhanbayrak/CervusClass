@@ -76,7 +76,7 @@ async function getClassExamResults(examName: string, classId: string) {
     }
 
     // Get class info
-    const className = results[0].profiles?.classes?.name
+    const className = (results[0].profiles as any)?.classes?.name
 
     // Parse and rank students
     const students: StudentExamData[] = results.map((result: any, index: number) => {
@@ -247,9 +247,9 @@ export default async function ClassExamDetailPage({
                                 <TableRow key={student.studentId} className="hover:bg-muted/50">
                                     <TableCell className="text-center">
                                         <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${student.rank === 1 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                                student.rank === 2 ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400' :
-                                                    student.rank === 3 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                                                        'bg-muted text-muted-foreground'
+                                            student.rank === 2 ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400' :
+                                                student.rank === 3 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                                                    'bg-muted text-muted-foreground'
                                             }`}>
                                             {student.rank}
                                         </div>

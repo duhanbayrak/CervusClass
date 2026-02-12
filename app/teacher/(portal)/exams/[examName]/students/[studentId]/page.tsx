@@ -65,7 +65,7 @@ async function getStudentExamDetails(examName: string, studentId: string) {
     }
 
     // Get class average and ranking
-    const classId = result.profiles?.classes?.id
+    const classId = (result.profiles as any)?.classes?.id
     const { data: classResults } = await supabase
         .from('exam_results')
         .select('total_net, student_id')
@@ -125,10 +125,10 @@ async function getStudentExamDetails(examName: string, studentId: string) {
 
     return {
         student: {
-            fullName: result.profiles?.full_name || 'N/A',
-            studentNumber: result.profiles?.student_number || 'N/A',
-            className: result.profiles?.classes?.name || 'N/A',
-            classId: result.profiles?.classes?.id
+            fullName: (result.profiles as any)?.full_name || 'N/A',
+            studentNumber: (result.profiles as any)?.student_number || 'N/A',
+            className: (result.profiles as any)?.classes?.name || 'N/A',
+            classId: (result.profiles as any)?.classes?.id
         },
         exam: {
             name: result.exam_name,
