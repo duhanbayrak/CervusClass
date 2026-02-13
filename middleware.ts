@@ -33,7 +33,7 @@ export async function middleware(request: NextRequest) {
         }
     )
 
-    // 2. Check Auth Status
+    // 2. Check Auth Status — middleware'de getUser() token yenileme için zorunlu
     const { data: { user } } = await supabase.auth.getUser()
 
     const path = request.nextUrl.pathname;

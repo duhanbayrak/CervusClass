@@ -1,8 +1,7 @@
 'use server'
 
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { getAuthContext } from "@/lib/auth-context";
 
 export type ScheduleFormData = {
     day_of_week: number;
@@ -14,39 +13,17 @@ export type ScheduleFormData = {
     room_name?: string;
 }
 
+// Ders programına yeni öğe ekle
 export async function addScheduleItem(formData: ScheduleFormData) {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll();
-                },
-                setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) =>
-                        cookieStore.set(name, value, options)
-                    );
-                },
-            },
-        }
-    );
+    const { supabase, user, organizationId, error } = await getAuthContext();
+    if (error || !user || !organizationId) return { success: false, error: error || "Unauthorized" };
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return { success: false, error: "Unauthorized" };
-    }
-
-    // Verify admin role (optional but good practice)
-    // ... skipping for brevity as page is protected, but could add query check
-
-    // Validation
+    // Doğrulama
     if (!formData.course_id || !formData.teacher_id || !formData.class_id || !formData.start_time || !formData.end_time) {
         return { success: false, error: "Lütfen tüm zorunlu alanları doldurunuz." };
     }
 
-    // Conflict Check
+    // Çakışma kontrolü
     const { data: conflicts, error: conflictError } = await supabase
         .from('schedule')
         .select('id')
@@ -55,16 +32,14 @@ export async function addScheduleItem(formData: ScheduleFormData) {
         .lt('start_time', formData.end_time)
         .gt('end_time', formData.start_time);
 
-    if (conflictError) {
-
-        return { success: false, error: "Çakışma kontrolü yapılamadı." };
-    }
+    if (conflictError) return { success: false, error: "Çakışma kontrolü yapılamadı." };
 
     if (conflicts && conflicts.length > 0) {
         return { success: false, error: "Seçilen öğretmenin bu saat aralığında başka bir dersi var." };
     }
 
-    const { error } = await supabase
+    // Ekle
+    const { error: dbError } = await supabase
         .from('schedule')
         .insert({
             day_of_week: formData.day_of_week,
@@ -74,13 +49,10 @@ export async function addScheduleItem(formData: ScheduleFormData) {
             teacher_id: formData.teacher_id,
             class_id: formData.class_id,
             room_name: formData.room_name,
-            organization_id: (await supabase.from('profiles').select('organization_id').eq('id', user.id).single()).data?.organization_id
+            organization_id: organizationId
         });
 
-    if (error) {
-
-        return { success: false, error: error.message };
-    }
+    if (dbError) return { success: false, error: dbError.message };
 
     revalidatePath('/admin/schedule');
     revalidatePath('/teacher/schedule');
@@ -89,41 +61,25 @@ export async function addScheduleItem(formData: ScheduleFormData) {
     return { success: true };
 }
 
+// Ders programından öğe sil
 export async function deleteScheduleItem(id: string) {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() }
-            }
-        }
-    );
+    const { supabase, error } = await getAuthContext();
+    if (error) return { success: false, error };
 
-    const { error } = await supabase.from('schedule').delete().eq('id', id);
+    const { error: dbError } = await supabase.from('schedule').delete().eq('id', id);
 
-    if (error) return { success: false, error: error.message };
+    if (dbError) return { success: false, error: dbError.message };
 
     revalidatePath('/admin/schedule');
     return { success: true };
 }
 
+// Ders programı öğesini güncelle
 export async function updateScheduleItem(id: string, formData: ScheduleFormData) {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() }
-            }
-        }
-    );
+    const { supabase, error } = await getAuthContext();
+    if (error) return { success: false, error };
 
-    // Check permission... (Skipping for brevity)
-
-    const { error } = await supabase
+    const { error: dbError } = await supabase
         .from('schedule')
         .update({
             day_of_week: formData.day_of_week,
@@ -136,10 +92,7 @@ export async function updateScheduleItem(id: string, formData: ScheduleFormData)
         })
         .eq('id', id);
 
-    if (error) {
-
-        return { success: false, error: error.message };
-    }
+    if (dbError) return { success: false, error: dbError.message };
 
     revalidatePath('/admin/schedule');
     revalidatePath('/teacher/schedule');
@@ -148,30 +101,17 @@ export async function updateScheduleItem(id: string, formData: ScheduleFormData)
     return { success: true };
 }
 
+// Tüm ders programını sil
 export async function deleteAllSchedule() {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() }
-            }
-        }
-    );
+    const { supabase, organizationId, error } = await getAuthContext();
+    if (error || !organizationId) return { success: false, error: error || "Unauthorized" };
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: "Unauthorized" };
-
-    const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single();
-    if (!profile) return { success: false, error: "Profile not found" };
-
-    const { error } = await supabase
+    const { error: dbError } = await supabase
         .from('schedule')
         .delete()
-        .eq('organization_id', profile.organization_id);
+        .eq('organization_id', organizationId);
 
-    if (error) return { success: false, error: error.message };
+    if (dbError) return { success: false, error: dbError.message };
 
     revalidatePath('/admin/schedule');
     revalidatePath('/teacher/schedule');

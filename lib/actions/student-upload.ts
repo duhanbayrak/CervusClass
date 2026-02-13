@@ -1,10 +1,9 @@
 'use server'
 
-import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import * as XLSX from 'xlsx';
+import { getAuthContext } from '@/lib/auth-context';
 
 // Admin client for user management (Service Role)
 const supabaseAdmin = createClient(
@@ -30,38 +29,28 @@ type StudentRow = {
     'Doğum Tarihi'?: string
 }
 
-export async function uploadStudents(prevState: any, formData: FormData) {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() }
-            }
-        }
-    );
-
+export async function uploadStudents(prevState: { message: string; success: boolean } | null, formData: FormData) {
     try {
-        // 1. Auth Check (Admin only)
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-            return { message: 'Oturum açmanız gerekiyor.', success: false };
+        // 1. Auth Check
+        const { supabase, user, organizationId, error } = await getAuthContext();
+        if (error || !user || !organizationId) {
+            return { message: error || 'Oturum açmanız gerekiyor.', success: false };
         }
 
-        const { data: profile } = await supabase
+        // Rol kontrolü — sadece admin yükleyebilir
+        const { data: profileWithRole } = await supabase
             .from('profiles')
-            .select('organization_id, roles(name)')
+            .select('roles(name)')
             .eq('id', user.id)
             .single();
 
-        const roles = profile?.roles as any;
-        const roleName = Array.isArray(roles) ? roles[0]?.name : roles?.name;
-        if (!profile || (roleName !== 'admin' && roleName !== 'super_admin')) {
+        const roles = profileWithRole?.roles as Record<string, string> | null;
+        const roleName = roles?.name;
+        if (!roleName || (roleName !== 'admin' && roleName !== 'super_admin')) {
             return { message: 'Sadece yöneticiler öğrenci yükleyebilir.', success: false };
         }
 
-        const organization_id = profile.organization_id;
+        const organization_id = organizationId;
 
         // 2. Parse File
         const file = formData.get('file') as File;
@@ -225,8 +214,8 @@ export async function uploadStudents(prevState: any, formData: FormData) {
 
         return { message: `${successCount} öğrenci başarıyla yüklendi.`, success: true };
 
-    } catch (error: any) {
-
-        return { message: 'Beklenmeyen bir hata oluştu: ' + error.message, success: false };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Bilinmeyen hata';
+        return { message: 'Beklenmeyen bir hata oluştu: ' + message, success: false };
     }
 }

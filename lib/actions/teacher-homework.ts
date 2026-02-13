@@ -1,29 +1,14 @@
 'use server'
 
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { getAuthContext } from '@/lib/auth-context';
 
+// Ödev değerlendir
 export async function assessHomework(submissionId: string, status: 'approved' | 'rejected' | 'pending', feedback?: string) {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                }
-            }
-        }
-    );
+    const { supabase, user, error } = await getAuthContext();
+    if (error || !user) return { error: error || 'Unauthorized' };
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: 'Unauthorized' };
-
-    // Verify teacher role (optional, RLS handles it but good for early exit)
-
-    const { error } = await supabase
+    const { error: dbError } = await supabase
         .from('homework_submissions')
         .update({
             status: status,
@@ -31,10 +16,7 @@ export async function assessHomework(submissionId: string, status: 'approved' | 
         })
         .eq('id', submissionId);
 
-    if (error) {
-
-        return { error: 'İşlem sırasında hata oluştu.' };
-    }
+    if (dbError) return { error: 'İşlem sırasında hata oluştu.' };
 
     revalidatePath('/teacher/homework');
     return { success: true };

@@ -1,10 +1,8 @@
 'use server'
 
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-
-import { Class } from "@/types/database";
+import { Class, ClassWithCount } from "@/types/database";
+import { getAuthContext } from "@/lib/auth-context";
 
 export type ClassFormData = {
     name: string;
@@ -12,89 +10,50 @@ export type ClassFormData = {
 }
 
 export type GetClassesResponse =
-    | { success: true; data: Class[] }
+    | { success: true; data: ClassWithCount[] }
     | { success: false; error: string };
 
+// Tüm sınıfları getir (öğrenci sayısı ile birlikte)
 export async function getClasses(): Promise<GetClassesResponse> {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() }
-            }
-        }
-    );
+    const { supabase, organizationId, error } = await getAuthContext();
+    if (error || !organizationId) return { success: false, error: error || "Unauthorized" };
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: "Unauthorized" };
-
-    const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single();
-    if (!profile) return { success: false, error: "Profile not found" };
-
-    const { data, error } = await supabase
+    const { data, error: dbError } = await supabase
         .from('classes')
-        .select('*')
-        .eq('organization_id', profile.organization_id)
+        .select('*, profiles(count)')
+        .eq('organization_id', organizationId)
         .order('name');
 
-    if (error) {
-
-        return { success: false, error: error.message };
-    }
+    if (dbError) return { success: false, error: dbError.message };
 
     return { success: true, data };
 }
 
+// Yeni sınıf ekle
 export async function addClass(formData: ClassFormData) {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() }
-            }
-        }
-    );
+    const { supabase, organizationId, error } = await getAuthContext();
+    if (error || !organizationId) return { success: false, error: error || "Unauthorized" };
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: "Unauthorized" };
-
-    const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single();
-    if (!profile) return { success: false, error: "Profile not found" };
-
-    const { error } = await supabase
+    const { error: dbError } = await supabase
         .from('classes')
         .insert({
             name: formData.name,
             grade_level: formData.grade_level,
-            organization_id: profile.organization_id
+            organization_id: organizationId
         });
 
-    if (error) {
-
-        return { success: false, error: error.message };
-    }
+    if (dbError) return { success: false, error: dbError.message };
 
     revalidatePath('/admin/classes');
     return { success: true };
 }
 
+// Sınıf güncelle
 export async function updateClass(id: string, formData: ClassFormData) {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() }
-            }
-        }
-    );
+    const { supabase, error } = await getAuthContext();
+    if (error) return { success: false, error };
 
-    const { error } = await supabase
+    const { error: dbError } = await supabase
         .from('classes')
         .update({
             name: formData.name,
@@ -102,32 +61,40 @@ export async function updateClass(id: string, formData: ClassFormData) {
         })
         .eq('id', id);
 
-    if (error) return { success: false, error: error.message };
+    if (dbError) return { success: false, error: dbError.message };
 
     revalidatePath('/admin/classes');
     return { success: true };
 }
 
+// Sınıf sil
 export async function deleteClass(id: string) {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() }
-            }
-        }
-    );
+    const { supabase, error } = await getAuthContext();
+    if (error) return { success: false, error };
 
-    // Optional: Check if class has students or schedule items before deleting
-    // Suppressing checks for now, assuming cascade or user awareness, but good practice to check logic.
-    // Constraints usually handle this if set up in DB.
+    const { error: dbError } = await supabase.from('classes').delete().eq('id', id);
 
-    const { error } = await supabase.from('classes').delete().eq('id', id);
-
-    if (error) return { success: false, error: error.message };
+    if (dbError) return { success: false, error: dbError.message };
 
     revalidatePath('/admin/classes');
     return { success: true };
+}
+
+// Tek sınıf bilgisi getir (detay sayfası için)
+export async function getClassById(id: string) {
+    const { supabase, organizationId, error } = await getAuthContext();
+    if (error || !organizationId) return { success: false as const, error: error || "Unauthorized" };
+
+    // Sınıfı getir — sadece kendi organizasyonundaki
+    const { data, error: dbError } = await supabase
+        .from('classes')
+        .select('*, profiles(count)')
+        .eq('id', id)
+        .eq('organization_id', organizationId)
+        .single();
+
+    if (dbError) return { success: false as const, error: dbError.message };
+    if (!data) return { success: false as const, error: "Sınıf bulunamadı." };
+
+    return { success: true as const, data: data as ClassWithCount };
 }
