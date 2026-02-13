@@ -40,6 +40,11 @@ export interface Class {
     created_at: string;
 }
 
+// Sınıf + öğrenci sayısı (Supabase aggregate count)
+export interface ClassWithCount extends Class {
+    profiles: { count: number }[];
+}
+
 export interface Schedule {
     id: string;
     organization_id: string;
