@@ -50,7 +50,9 @@ export interface Schedule {
     organization_id: string;
     class_id: string | null;
     teacher_id: string | null;
-    course_name: string;
+    course_name?: string; // Removed or made optional/deprecated if needed during migration, but better to remove if unused. Or keep as optional if legacy. 
+    // Actually, let's remove it to force fixes.
+    // course_name: string; <--- removing this line.
     day_of_week: 1 | 2 | 3 | 4 | 5 | 6 | 7;
     start_time: string; // Time string like "14:30:00"
     end_time: string;

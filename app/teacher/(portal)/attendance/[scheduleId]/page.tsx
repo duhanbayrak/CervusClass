@@ -33,6 +33,9 @@ async function getScheduleWithStudents(scheduleId: string) {
             classes (
                 id,
                 name
+            ),
+            courses (
+                name
             )
         `)
         .eq('id', scheduleId)
@@ -40,7 +43,6 @@ async function getScheduleWithStudents(scheduleId: string) {
         .single();
 
     if (scheduleError || !schedule) {
-
         return { schedule: null, students: [], existingAttendance: [] };
     }
 
@@ -58,7 +60,6 @@ async function getScheduleWithStudents(scheduleId: string) {
         .order('full_name');
 
     if (studentsError) {
-
     }
 
     // 3. Get existing attendance for today
@@ -114,7 +115,7 @@ export default async function TakeAttendancePage({ params }: { params: any }) {
                 </Link>
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                        {schedule.course_name} - Yoklama
+                        {schedule.courses?.name || 'Ders'} - Yoklama
                     </h2>
                     <p className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
                         <Badge variant="outline" className="font-normal">

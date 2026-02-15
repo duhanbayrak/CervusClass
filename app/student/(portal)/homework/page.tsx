@@ -44,7 +44,7 @@ async function getHomework(userId: string) {
             teacher:teacher_id(full_name),
             assigned_student_ids
         `)
-        .eq('class_id', profile.class_id)
+        .eq('class_id', profile.class_id!)
         .order('due_date', { ascending: true }); // Show soonest due first
 
     if (!homeworks) return [];

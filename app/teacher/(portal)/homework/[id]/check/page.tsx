@@ -25,7 +25,8 @@ async function getData(id: string) {
         .from('homework')
         .select(`
             *,
-            classes(name)
+            classes(name),
+            courses(name)
         `)
         .eq('id', id)
         .eq('teacher_id', user.id)
@@ -72,7 +73,7 @@ export default async function CheckAssignmentPage({ params }: { params: any }) {
             description: assignment.description,
             due_date: assignment.due_date,
             class_name: assignment.classes?.name || 'Sınıf',
-            course_name: '---' // Course relation might need to be added to query if available
+            course_name: assignment.courses?.name || 'Ders'
         },
         submissions: submissions as any[]
     };

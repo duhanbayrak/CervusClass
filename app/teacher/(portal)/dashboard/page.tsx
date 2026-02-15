@@ -36,7 +36,7 @@ export default async function TeacherDashboardPage() {
         // 2. Bugünün programı
         supabase
             .from('schedule')
-            .select(`*, classes(name)`)
+            .select(`*, classes(name), courses(name)`)
             .eq('teacher_id', user.id)
             .eq('day_of_week', todayDow)
             .order('start_time', { ascending: true }),
@@ -185,7 +185,7 @@ export default async function TeacherDashboardPage() {
                                                     <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 block mb-1">
                                                         {item.start_time.slice(0, 5)} - {item.end_time.slice(0, 5)}
                                                     </span>
-                                                    <h4 className="font-bold text-slate-900 dark:text-white text-base">{item.course_name}</h4>
+                                                    <h4 className="font-bold text-slate-900 dark:text-white text-base">{(item as any).courses?.name || 'Ders'}</h4>
                                                     <p className="text-sm text-slate-500">Sınıf: {item.classes?.name}</p>
                                                 </div>
                                                 <Badge variant="outline" className="w-fit">Derslik A-101</Badge>
@@ -217,7 +217,7 @@ export default async function TeacherDashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            <PendingStudyRequestsList requests={pendingRequests} />
+                            <PendingStudyRequestsList requests={pendingRequests.map((r: any) => ({ ...r, topic: r.topic || '' }))} />
 
                             {pendingRequests.length > 0 && (
                                 <Link href="/teacher/study-requests" className="flex items-center justify-center text-sm text-indigo-600 font-medium hover:underline mt-4">

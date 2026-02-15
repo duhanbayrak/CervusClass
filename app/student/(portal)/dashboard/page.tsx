@@ -29,22 +29,26 @@ export default async function StudentDashboardPage() {
 
     const [scheduleResult, homeworkResult, examsResult, etutsResult] = await Promise.all([
         // Bugünün programı
-        supabase
-            .from('schedule')
-            .select(`*, teacher:profiles!teacher_id(full_name)`)
-            .eq('class_id', profile.class_id)
-            .eq('day_of_week', todayDow)
-            .order('start_time', { ascending: true }),
+        profile.class_id
+            ? supabase
+                .from('schedule')
+                .select(`*, teacher:profiles!teacher_id(full_name), courses(name)`)
+                .eq('class_id', profile.class_id)
+                .eq('day_of_week', todayDow)
+                .order('start_time', { ascending: true })
+            : Promise.resolve({ data: [] }),
 
         // Yaklaşan ödevler
-        supabase
-            .from('homework')
-            .select(`*, teacher:profiles!teacher_id(full_name)`)
-            .eq('class_id', profile.class_id)
-            .gte('due_date', new Date().toISOString())
-            .or(`assigned_student_ids.is.null,assigned_student_ids.cs.["${user.id}"]`)
-            .order('due_date', { ascending: true })
-            .limit(5),
+        profile.class_id
+            ? supabase
+                .from('homework')
+                .select(`*, teacher:profiles!teacher_id(full_name), courses(name)`)
+                .eq('class_id', profile.class_id)
+                .eq('due_date', new Date().toISOString())
+                .or(`assigned_student_ids.is.null,assigned_student_ids.cs.["${user.id}"]`)
+                .order('due_date', { ascending: true })
+                .limit(5)
+            : Promise.resolve({ data: [] }),
 
         // Son sınav sonuçları
         supabase
@@ -57,16 +61,19 @@ export default async function StudentDashboardPage() {
         // Etüt talepleri
         supabase
             .from('study_sessions')
-            .select(`*, teacher:profiles!teacher_id(full_name)`)
+            .select(`*, teacher:profiles!teacher_id(full_name), study_session_statuses(name)`)
             .eq('student_id', user.id)
-            .neq('status', 'completed')
             .order('scheduled_at', { ascending: true })
     ]);
 
     const schedule = scheduleResult.data || [];
     const homework = homeworkResult.data || [];
     const exams = examsResult.data || [];
-    const etuts = etutsResult.data || [];
+    // Client-side filtering for status since we need to check relation or legacy field
+    const etuts = (etutsResult.data || []).filter((e: any) => {
+        const status = e.study_session_statuses?.name || e.status_legacy || 'pending';
+        return status !== 'completed' && status !== 'cancelled';
+    });
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -112,7 +119,12 @@ export default async function StudentDashboardPage() {
                             <CardTitle className="text-sm font-medium text-slate-500 dark:text-slate-400">Etüt Talepleri</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold text-slate-900 dark:text-white">{etuts.filter(e => e.status === 'pending').length}</div>
+                            <div className="text-3xl font-bold text-slate-900 dark:text-white">
+                                {etuts.filter((e: any) => {
+                                    const status = e.study_session_statuses?.name || e.status_legacy || 'pending';
+                                    return status === 'pending';
+                                }).length}
+                            </div>
                             <p className="text-xs text-slate-500 mt-1">Onay bekleyen</p>
                         </CardContent>
                     </Card>
@@ -143,7 +155,7 @@ export default async function StudentDashboardPage() {
                                                 <span>{item.end_time.substring(0, 5)}</span>
                                             </div>
                                             <div className="flex-1">
-                                                <h4 className="font-bold text-slate-900 dark:text-white">{item.course_name}</h4>
+                                                <h4 className="font-bold text-slate-900 dark:text-white">{(item as any).courses?.name || 'Ders'}</h4>
                                                 <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1">
                                                     <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                                                     {item.teacher?.full_name || 'Eğitmen'}
@@ -185,7 +197,7 @@ export default async function StudentDashboardPage() {
                                         </div>
                                         <div>
                                             <h4 className="font-bold text-slate-900 dark:text-white">{exam.exam_name}</h4>
-                                            <p className="text-xs text-slate-500">{new Date(exam.exam_date).toLocaleDateString('tr-TR')}</p>
+                                            <p className="text-xs text-slate-500">{exam.exam_date ? new Date(exam.exam_date).toLocaleDateString('tr-TR') : '-'}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
@@ -220,7 +232,7 @@ export default async function StudentDashboardPage() {
                                     <div key={hw.id} className="p-3 rounded-lg border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/50 dark:bg-indigo-900/10">
                                         <div className="flex justify-between items-start mb-2">
                                             <Badge variant="secondary" className="bg-white text-indigo-600 hover:bg-white border-indigo-200 shadow-sm text-[10px]">
-                                                {new Date(hw.due_date).toLocaleDateString('tr-TR')}
+                                                {hw.due_date ? new Date(hw.due_date).toLocaleDateString('tr-TR') : '-'}
                                             </Badge>
                                             <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Fizik</span>
                                         </div>
@@ -256,26 +268,29 @@ export default async function StudentDashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-3">
-                            {etuts.map((etut) => (
-                                <div key={etut.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
-                                    <div className={`w-2 h-full min-h-[40px] rounded-full ${etut.status === 'pending' ? 'bg-yellow-400' :
-                                        etut.status === 'approved' ? 'bg-green-500' :
-                                            etut.status === 'rejected' ? 'bg-red-500' : 'bg-slate-300'
-                                        }`}></div>
-                                    <div className="flex-1">
-                                        <h5 className="text-sm font-bold text-slate-800 dark:text-slate-200">{etut.topic}</h5>
-                                        <p className="text-xs text-slate-500">
-                                            {etut.teacher?.full_name} • {new Date(etut.scheduled_at).toLocaleDateString('tr-TR')}
-                                        </p>
+                            {etuts.map((etut: any) => {
+                                const status = etut.study_session_statuses?.name || etut.status_legacy || 'pending';
+                                return (
+                                    <div key={etut.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+                                        <div className={`w-2 h-full min-h-[40px] rounded-full ${status === 'pending' ? 'bg-yellow-400' :
+                                            status === 'approved' ? 'bg-green-500' :
+                                                status === 'rejected' ? 'bg-red-500' : 'bg-slate-300'
+                                            }`}></div>
+                                        <div className="flex-1">
+                                            <h5 className="text-sm font-bold text-slate-800 dark:text-slate-200">{etut.topic}</h5>
+                                            <p className="text-xs text-slate-500">
+                                                {etut.teacher?.full_name} • {new Date(etut.scheduled_at).toLocaleDateString('tr-TR')}
+                                            </p>
+                                        </div>
+                                        <Badge variant="outline" className={`capitalize text-[10px] ${status === 'pending' ? 'text-yellow-600 border-yellow-200 bg-yellow-50' :
+                                            status === 'approved' ? 'text-green-600 border-green-200 bg-green-50' :
+                                                'text-slate-500'
+                                            }`}>
+                                            {status === 'pending' ? 'Bekliyor' : status === 'approved' ? 'Onaylandı' : 'Reddedildi'}
+                                        </Badge>
                                     </div>
-                                    <Badge variant="outline" className={`capitalize text-[10px] ${etut.status === 'pending' ? 'text-yellow-600 border-yellow-200 bg-yellow-50' :
-                                        etut.status === 'approved' ? 'text-green-600 border-green-200 bg-green-50' :
-                                            'text-slate-500'
-                                        }`}>
-                                        {etut.status === 'pending' ? 'Bekliyor' : etut.status === 'approved' ? 'Onaylandı' : 'Reddedildi'}
-                                    </Badge>
-                                </div>
-                            ))}
+                                )
+                            })}
                             {etuts.length === 0 && (
                                 <p className="text-xs text-slate-400 text-center py-4">Aktif etüt talebi yok.</p>
                             )}
