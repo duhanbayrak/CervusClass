@@ -19,9 +19,11 @@ interface ExamResults {
 
 interface ExamHistoryProps {
     exams: ExamResults[]
+    role?: 'student' | 'teacher'
+    studentId?: string
 }
 
-export function ExamHistory({ exams }: ExamHistoryProps) {
+export function ExamHistory({ exams, role = 'student', studentId }: ExamHistoryProps) {
     if (exams.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed rounded-xl bg-muted/30">
@@ -30,7 +32,7 @@ export function ExamHistory({ exams }: ExamHistoryProps) {
                 </div>
                 <h3 className="font-semibold text-lg">Henüz Sınav Kaydı Yok</h3>
                 <p className="text-sm text-muted-foreground max-w-sm mt-1">
-                    Girdiğiniz deneme sınavları sisteme yüklendiğinde burada görünecektir.
+                    {role === 'teacher' ? 'Öğrencinin henüz bir sınav kaydı bulunmamaktadır.' : 'Girdiğiniz deneme sınavları sisteme yüklendiğinde burada görünecektir.'}
                 </p>
             </div>
         )
@@ -41,7 +43,10 @@ export function ExamHistory({ exams }: ExamHistoryProps) {
             {exams.map((exam) => (
                 <Link
                     key={exam.id}
-                    href={`/student/exams/${exam.id}`}
+                    href={role === 'teacher'
+                        ? `/teacher/exams/${encodeURIComponent(exam.exam_name)}/students/${studentId}`
+                        : `/student/exams/${exam.id}`
+                    }
                     className="block group"
                 >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border bg-card hover:bg-accent/50 transition-all cursor-pointer shadow-sm hover:shadow-md gap-4">

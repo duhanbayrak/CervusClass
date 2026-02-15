@@ -21,7 +21,8 @@ export async function getStudentProfileData(supabase: SupabaseClient, id: string
         .from('exam_results')
         .select('*')
         .eq('student_id', id)
-        .order('exam_date', { ascending: false });
+        .order('exam_date', { ascending: false })
+        .order('created_at', { ascending: false });
 
     // 3. Get Homework Statistics
     // Uses 'head: true' and 'count: exact' for efficient counting

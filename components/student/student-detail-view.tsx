@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import {
-    Mail, Phone, ChevronLeft, TrendingUp, Check, X, Clock,
+    Mail, Phone, Calendar, ChevronLeft, TrendingUp, Check, X, Clock, LineChart,
     User, Users, Hash, Cake, Pencil
 } from 'lucide-react';
 import { cn, formatPhone } from '@/lib/utils';
@@ -274,7 +274,11 @@ export function StudentDetailView({ profile, examResults, stats, role }: Student
                         </TabsList>
 
                         <TabsContent value="academic" className="space-y-4">
-                            <StudentAcademicTab examResults={examResults} />
+                            <StudentAcademicTab
+                                examResults={examResults}
+                                role={role}
+                                studentId={profile.id}
+                            />
                         </TabsContent>
 
                         <TabsContent value="attendance">

@@ -229,7 +229,7 @@ export default async function TeacherExamsPage() {
                                     {exam.classes.map((classData) => (
                                         <Link
                                             key={classData.classId}
-                                            href={`/teacher/exams/${exam.examName}/${classData.classId}`}
+                                            href={`/teacher/exams/${encodeURIComponent(exam.examName)}/${classData.classId}`}
                                             className="block group"
                                         >
                                             <div className="p-5 rounded-lg border bg-background hover:bg-accent/50 transition-all cursor-pointer hover:shadow-md">
