@@ -23,7 +23,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import Link from 'next/link'
-import { getTeacherExamDetailData } from '@/actions/exam-stats'
+import { getTeacherExamDetailData } from '@/lib/actions/exam-stats'
 import { TeacherExamCharts } from '@/components/teacher/exams/teacher-exam-charts'
 
 

@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 import { ExamHistory } from '@/components/student/exams/exam-history'
 import { ExamOverviewChart } from '@/components/student/exams/exam-overview-chart'
 import { SubjectOverviewCharts } from '@/components/student/exams/subject-overview-charts'
-import { getExamOverviewData } from '@/actions/exam-stats'
+import { getExamOverviewData } from '@/lib/actions/exam-stats'
 
 export default async function StudentExamsPage() {
     const overviewData = await getExamOverviewData()

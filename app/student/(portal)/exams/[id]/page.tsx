@@ -22,7 +22,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import Link from 'next/link'
-import { getExamDetailData } from '@/actions/exam-stats'
+import { getExamDetailData } from '@/lib/actions/exam-stats'
 import { ExamDetailCharts } from '@/components/student/exams/exam-detail-charts'
 
 async function getExamDetails(examId: string, userId: string) {
