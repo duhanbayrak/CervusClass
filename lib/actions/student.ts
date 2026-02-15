@@ -74,8 +74,14 @@ export async function getStudents(search?: string, classId?: string, page: numbe
 
 // Yeni öğrenci ekle
 export async function addStudent(formData: StudentFormData) {
-    const { supabase, organizationId, error } = await getAuthContext();
-    if (error || !organizationId) return { success: false, error: error || "Unauthorized" };
+    const { supabase, organizationId, user, error } = await getAuthContext();
+    if (error || !organizationId || !user) return { success: false, error: error || "Unauthorized" };
+
+    // Yetki Kontrolü
+    const userRole = user.app_metadata?.role || user.user_metadata?.role;
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
+        return { success: false, error: "Bu işlem için yetkiniz bulunmamaktadır." };
+    }
 
     // Öğrenci rolünü bul
     const { data: role } = await supabase
@@ -122,10 +128,15 @@ export async function addStudent(formData: StudentFormData) {
     return { success: true, data: authData.user };
 }
 
-// Öğrenci güncelle
 export async function updateStudent(id: string, formData: Partial<StudentFormData>) {
-    const { supabase, error } = await getAuthContext();
-    if (error) return { success: false, error };
+    const { supabase, user, error } = await getAuthContext();
+    if (error || !user) return { success: false, error: error || "Unauthorized" };
+
+    // Yetki Kontrolü
+    const userRole = user.app_metadata?.role || user.user_metadata?.role;
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
+        return { success: false, error: "Bu işlem için yetkiniz bulunmamaktadır." };
+    }
 
     // Profil güncelle — supabaseAdmin ile RLS bypass
     const updatePayload: Record<string, string | null> = {};
@@ -169,10 +180,15 @@ export async function updateStudent(id: string, formData: Partial<StudentFormDat
     return { success: true };
 }
 
-// Öğrenci sil
 export async function deleteStudent(id: string) {
-    const { supabase, error } = await getAuthContext();
-    if (error) return { success: false, error };
+    const { supabase, user, error } = await getAuthContext();
+    if (error || !user) return { success: false, error: error || "Unauthorized" };
+
+    // Yetki Kontrolü
+    const userRole = user.app_metadata?.role || user.user_metadata?.role;
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
+        return { success: false, error: "Bu işlem için yetkiniz bulunmamaktadır." };
+    }
 
     const { error: dbError } = await supabaseAdmin
         .from('profiles')

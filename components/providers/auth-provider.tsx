@@ -2,9 +2,11 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { createClient } from "@/lib/supabase";
 import { Profile, ProfileRole } from '@/types/database';
 import { useRouter } from 'next/navigation';
+
+const supabase = createClient();
 
 interface AuthContextType {
     user: User | null;
