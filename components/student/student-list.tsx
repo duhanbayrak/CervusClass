@@ -90,7 +90,9 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
         const selectedClass = classFilter === 'all' ? undefined : classFilter;
         const res = await getStudents(search, selectedClass, page, PAGE_SIZE);
         if (res.success && res.data) {
-            setStudents(res.data as unknown as Student[]);
+            // Assuming res.data is compatible, or we should validate. 
+            // For now, removing double cast.
+            setStudents(res.data as Student[]);
             setTotalCount(res.count ?? 0);
         } else {
             toast({

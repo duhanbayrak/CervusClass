@@ -6,6 +6,7 @@ import { PendingSessionsCard } from '@/components/dashboard/teacher/pending-sess
 import { PendingHomeworkCard } from '@/components/dashboard/teacher/pending-homework-card';
 import { PendingStudyRequestsList } from '@/components/dashboard/teacher/pending-study-requests-list';
 import { getAuthContext } from '@/lib/auth-context';
+import { Schedule, StudySession, Homework, HomeworkSubmission } from '@/types/database';
 
 export default async function TeacherDashboardPage() {
     // Merkezi auth context — tek bir client + getUser + organizationId
@@ -97,12 +98,12 @@ export default async function TeacherDashboardPage() {
     const profile = profileResult.data;
     if (!profile) return <div>Yükleniyor...</div>;
 
-    const schedule = scheduleResult.data || [];
-    const pendingRequests = pendingRequestsResult.data || [];
+    const schedule = (scheduleResult.data || []) as unknown as Schedule[];
+    const pendingRequests = (pendingRequestsResult.data || []) as unknown as StudySession[];
     const homeworkCount = homeworkCountResult.count || 0;
     const pendingApprovalCount = pendingHomeworksResult.count || 0;
-    const pendingHomeworks = pendingHomeworksResult.data || [];
-    const pendingSessionActions = (pendingSessionActionsResult.data || []) as any[];
+    const pendingHomeworks = (pendingHomeworksResult.data || []) as unknown as HomeworkSubmission[];
+    const pendingSessionActions = (pendingSessionActionsResult.data || []) as unknown as StudySession[];
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
@@ -185,7 +186,7 @@ export default async function TeacherDashboardPage() {
                                                     <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 block mb-1">
                                                         {item.start_time.slice(0, 5)} - {item.end_time.slice(0, 5)}
                                                     </span>
-                                                    <h4 className="font-bold text-slate-900 dark:text-white text-base">{(item as any).courses?.name || 'Ders'}</h4>
+                                                    <h4 className="font-bold text-slate-900 dark:text-white text-base">{item.courses?.name || 'Ders'}</h4>
                                                     <p className="text-sm text-slate-500">Sınıf: {item.classes?.name}</p>
                                                 </div>
                                                 <Badge variant="outline" className="w-fit">Derslik A-101</Badge>
@@ -217,7 +218,7 @@ export default async function TeacherDashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            <PendingStudyRequestsList requests={pendingRequests.map((r: any) => ({ ...r, topic: r.topic || '' }))} />
+                            <PendingStudyRequestsList requests={pendingRequests.map(r => ({ ...r, topic: r.topic || '' }))} />
 
                             {pendingRequests.length > 0 && (
                                 <Link href="/teacher/study-requests" className="flex items-center justify-center text-sm text-indigo-600 font-medium hover:underline mt-4">

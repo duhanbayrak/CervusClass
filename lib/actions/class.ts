@@ -56,8 +56,14 @@ export async function getClasses(): Promise<GetClassesResponse> {
 
 // Yeni sınıf ekle
 export async function addClass(formData: ClassFormData) {
-    const { supabase, organizationId, error } = await getAuthContext();
-    if (error || !organizationId) return { success: false, error: error || "Unauthorized" };
+    const { supabase, organizationId, user, error } = await getAuthContext();
+    if (error || !organizationId || !user) return { success: false, error: error || "Unauthorized" };
+
+    // Yetki Kontrolü
+    const userRole = user.app_metadata?.role || user.user_metadata?.role;
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
+        return { success: false, error: "Bu işlem için yetkiniz bulunmamaktadır." };
+    }
 
     const { error: dbError } = await supabase
         .from('classes')
@@ -70,15 +76,21 @@ export async function addClass(formData: ClassFormData) {
     if (dbError) return { success: false, error: dbError.message };
 
     revalidatePath('/admin/classes');
+
     // @ts-ignore
     revalidateTag('classes');
     return { success: true };
 }
 
-// Sınıf güncelle
 export async function updateClass(id: string, formData: ClassFormData) {
-    const { supabase, error } = await getAuthContext();
-    if (error) return { success: false, error };
+    const { supabase, user, error } = await getAuthContext();
+    if (error || !user) return { success: false, error: error || "Unauthorized" };
+
+    // Yetki Kontrolü
+    const userRole = user.app_metadata?.role || user.user_metadata?.role;
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
+        return { success: false, error: "Bu işlem için yetkiniz bulunmamaktadır." };
+    }
 
     const { error: dbError } = await supabase
         .from('classes')
@@ -91,21 +103,28 @@ export async function updateClass(id: string, formData: ClassFormData) {
     if (dbError) return { success: false, error: dbError.message };
 
     revalidatePath('/admin/classes');
+
     // @ts-ignore
     revalidateTag('classes');
     return { success: true };
 }
 
-// Sınıf sil
 export async function deleteClass(id: string) {
-    const { supabase, error } = await getAuthContext();
-    if (error) return { success: false, error };
+    const { supabase, user, error } = await getAuthContext();
+    if (error || !user) return { success: false, error: error || "Unauthorized" };
+
+    // Yetki Kontrolü
+    const userRole = user.app_metadata?.role || user.user_metadata?.role;
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
+        return { success: false, error: "Bu işlem için yetkiniz bulunmamaktadır." };
+    }
 
     const { error: dbError } = await supabase.from('classes').delete().eq('id', id);
 
     if (dbError) return { success: false, error: dbError.message };
 
     revalidatePath('/admin/classes');
+
     // @ts-ignore
     revalidateTag('classes');
     return { success: true };

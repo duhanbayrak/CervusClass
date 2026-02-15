@@ -5,6 +5,8 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import SignOutButton from "@/components/auth/sign-out-button";
+import { getUserRole } from "@/lib/auth-helpers";
+import { Profile } from "@/types/database";
 
 export default async function Home() {
   const cookieStore = await cookies();
@@ -37,8 +39,7 @@ export default async function Home() {
       .single();
 
     // Safely extract role name whether it's an object or array
-    const rolesData = profile?.roles as any;
-    userRole = Array.isArray(rolesData) ? rolesData[0]?.name : rolesData?.name;
+    userRole = getUserRole(profile as unknown as Profile);
     userProfile = profile;
   }
 

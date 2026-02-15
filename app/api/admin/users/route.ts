@@ -2,6 +2,8 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getUserRole } from '@/lib/auth-helpers'
+import { Profile } from '@/types/database'
 
 export async function POST(request: Request) {
     // 1. Verify Request: Check if caller is Admin
@@ -28,9 +30,7 @@ export async function POST(request: Request) {
         .eq('id', user.id)
         .single();
 
-    // Safety check for role structure
-    const rolesData = requesterProfile?.roles as any;
-    const roleName = Array.isArray(rolesData) ? rolesData[0]?.name : rolesData?.name;
+    const roleName = getUserRole(requesterProfile as unknown as Profile);
 
     if (roleName !== 'admin' && roleName !== 'super_admin') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     const { email, password, fullName, role = 'teacher', branch, phone, title, bio } = body
 
     if (!email || !password || !fullName) {
-        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+        return NextResponse.json({ error: 'Eksik alanlar var' }, { status: 400 })
     }
 
     // 3. Create User in Auth
@@ -56,11 +56,12 @@ export async function POST(request: Request) {
     })
 
     if (createError) {
-        return NextResponse.json({ error: createError.message }, { status: 500 })
+        console.error("Create User Error:", createError);
+        return NextResponse.json({ error: 'Kullanıcı oluşturulurken bir hata oluştu.' }, { status: 500 })
     }
 
     if (!newUser.user) {
-        return NextResponse.json({ error: 'User creation failed' }, { status: 500 })
+        return NextResponse.json({ error: 'Kullanıcı oluşturulamadı.' }, { status: 500 })
     }
 
     // Prepare profile data
@@ -72,10 +73,10 @@ export async function POST(request: Request) {
         .single()
 
     if (!roleData) {
-        return NextResponse.json({ error: 'Role not found' }, { status: 400 })
+        return NextResponse.json({ error: 'Rol bulunamadı.' }, { status: 400 })
     }
 
-    const profileData: any = {
+    const profileData: Partial<Profile> = {
         id: newUser.user.id,
         email: email, // Ensure email is in profile
         full_name: fullName,
@@ -117,10 +118,11 @@ export async function POST(request: Request) {
     // Use upsert to handle cases where trigger might or might not have run
     const { error: updateError } = await supabaseAdmin
         .from('profiles')
-        .upsert(profileData)
+        .upsert(profileData as any) // Type assertion needed because supabase-js types might differ slightly or require full object
 
     if (updateError) {
-        return NextResponse.json({ error: 'Profile creation failed: ' + updateError.message }, { status: 500 })
+        console.error("Profile Update Error:", updateError);
+        return NextResponse.json({ error: 'Profil oluşturulamadı.' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, user: newUser.user })
@@ -147,8 +149,7 @@ export async function DELETE(request: Request) {
         .eq('id', user.id)
         .single();
 
-    const rolesData = requesterProfile?.roles as any;
-    const roleName = Array.isArray(rolesData) ? rolesData[0]?.name : rolesData?.name;
+    const roleName = getUserRole(requesterProfile as unknown as Profile);
 
     if (roleName !== 'admin' && roleName !== 'super_admin') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -166,7 +167,8 @@ export async function DELETE(request: Request) {
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
 
     if (deleteError) {
-        return NextResponse.json({ error: deleteError.message }, { status: 500 })
+        console.error("Delete User Error:", deleteError);
+        return NextResponse.json({ error: 'Kullanıcı silinemedi.' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
@@ -193,8 +195,7 @@ export async function PUT(request: Request) {
         .eq('id', user.id)
         .single();
 
-    const rolesData = requesterProfile?.roles as any;
-    const roleName = Array.isArray(rolesData) ? rolesData[0]?.name : rolesData?.name;
+    const roleName = getUserRole(requesterProfile as unknown as Profile);
 
     if (roleName !== 'admin' && roleName !== 'super_admin') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -209,7 +210,7 @@ export async function PUT(request: Request) {
     }
 
     // 3. Update Auth User (if email/password changed)
-    const authUpdates: any = {}
+    const authUpdates: { email?: string, password?: string, user_metadata?: { full_name: string } } = {}
     if (email) authUpdates.email = email
     if (password && password.length > 0) authUpdates.password = password
     if (fullName) authUpdates.user_metadata = { full_name: fullName }
@@ -217,12 +218,13 @@ export async function PUT(request: Request) {
     if (Object.keys(authUpdates).length > 0) {
         const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, authUpdates)
         if (authError) {
-            return NextResponse.json({ error: 'Auth update failed: ' + authError.message }, { status: 500 })
+            console.error("Auth Update Error:", authError);
+            return NextResponse.json({ error: 'Kullanıcı bilgileri güncellenemedi.' }, { status: 500 })
         }
     }
 
     // 4. Update Profile
-    const profileUpdates: any = {}
+    const profileUpdates: Partial<Profile> = {}
     if (fullName) profileUpdates.full_name = fullName
     if (email) profileUpdates.email = email // Keep profile email in sync
     if (phone !== undefined) profileUpdates.phone = phone
@@ -255,11 +257,12 @@ export async function PUT(request: Request) {
 
     const { error: profileError } = await supabaseAdmin
         .from('profiles')
-        .update(profileUpdates)
+        .update(profileUpdates as any)
         .eq('id', id)
 
     if (profileError) {
-        return NextResponse.json({ error: 'Profile update failed: ' + profileError.message }, { status: 500 })
+        console.error("Profile Update Error:", profileError);
+        return NextResponse.json({ error: 'Profil güncellenemedi.' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })

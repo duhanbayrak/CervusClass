@@ -110,6 +110,12 @@ export async function createAvailability(date: string, startTime: string, endTim
     const { supabase, user, organizationId, error } = await getAuthContext();
     if (error || !user || !organizationId) return { error: error || 'Unauthorized' };
 
+    // Yetki Kontrolü
+    const userRole = user.app_metadata?.role || user.user_metadata?.role;
+    if (userRole !== 'teacher' && userRole !== 'admin' && userRole !== 'super_admin') {
+        return { error: 'Bu işlem için yetkiniz bulunmamaktadır.' };
+    }
+
     // Zaman damgaları hesapla (Türkiye saati +03:00)
     const startDateTime = new Date(`${date}T${startTime}:00+03:00`);
     const endDateTime = new Date(`${date}T${endTime}:00+03:00`);
@@ -156,6 +162,12 @@ export async function requestSession(sessionId: string, topic: string) {
     const { supabase, user, error } = await getAuthContext();
     if (error || !user) return { error: error || 'Unauthorized' };
 
+    // Yetki Kontrolü - Sadece öğrenciler talep edebilir
+    const userRole = user.app_metadata?.role || user.user_metadata?.role;
+    if (userRole !== 'student') {
+        return { error: 'Sadece öğrenciler etüt talebinde bulunabilir.' };
+    }
+
     try {
         const pendingId = await getStatusId(supabase, 'pending');
         const availableId = await getStatusId(supabase, 'available');
@@ -184,10 +196,25 @@ export async function requestSession(sessionId: string, topic: string) {
 
 // Etüt onayla
 export async function approveSession(sessionId: string) {
-    const { supabase, error } = await getAuthContext();
-    if (error) return { error };
+    const { supabase, user, error } = await getAuthContext();
+    if (error || !user) return { error: error || "Unauthorized" };
 
     try {
+        // Oturumu ve öğretmenini kontrol et
+        const { data: session, error: sessionError } = await supabase
+            .from('study_sessions')
+            .select('teacher_id')
+            .eq('id', sessionId)
+            .single();
+
+        if (sessionError || !session) return { error: "Oturum bulunamadı." };
+
+        const userRole = user.app_metadata?.role || user.user_metadata?.role;
+        const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+
+        if (!isAdmin && session.teacher_id !== user.id) {
+            return { error: "Bu işlemi sadece ilgili öğretmen veya yönetici yapabilir." };
+        }
         const approvedId = await getStatusId(supabase, 'approved');
         const { error: dbError } = await supabase
             .from('study_sessions')
@@ -205,10 +232,25 @@ export async function approveSession(sessionId: string) {
 
 // Etüt reddet
 export async function rejectSession(sessionId: string, reason?: string) {
-    const { supabase, error } = await getAuthContext();
-    if (error) return { error };
+    const { supabase, user, error } = await getAuthContext();
+    if (error || !user) return { error: error || "Unauthorized" };
 
     try {
+        // Oturumu ve öğretmenini kontrol et
+        const { data: session, error: sessionError } = await supabase
+            .from('study_sessions')
+            .select('teacher_id')
+            .eq('id', sessionId)
+            .single();
+
+        if (sessionError || !session) return { error: "Oturum bulunamadı." };
+
+        const userRole = user.app_metadata?.role || user.user_metadata?.role;
+        const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+
+        if (!isAdmin && session.teacher_id !== user.id) {
+            return { error: "Bu işlemi sadece ilgili öğretmen veya yönetici yapabilir." };
+        }
         const rejectedId = await getStatusId(supabase, 'rejected');
 
         const { error: dbError } = await supabase
@@ -232,18 +274,38 @@ export async function rejectSession(sessionId: string, reason?: string) {
 
 // Etüt iptal
 export async function cancelSession(sessionId: string) {
-    const { supabase, error } = await getAuthContext();
-    if (error) return { error };
+    const { supabase, user, error } = await getAuthContext();
+    if (error || !user) return { error: error || "Unauthorized" };
 
-    const { error: dbError } = await supabase
-        .from('study_sessions')
-        .delete()
-        .eq('id', sessionId);
+    try {
+        // Oturumu ve öğretmenini kontrol et
+        const { data: session, error: sessionError } = await supabase
+            .from('study_sessions')
+            .select('teacher_id')
+            .eq('id', sessionId)
+            .single();
 
-    if (dbError) return { error: dbError.message };
+        if (sessionError || !session) return { error: "Oturum bulunamadı." };
 
-    revalidatePath('/teacher/schedule');
-    return { success: true };
+        const userRole = user.app_metadata?.role || user.user_metadata?.role;
+        const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+
+        if (!isAdmin && session.teacher_id !== user.id) {
+            return { error: "Bu işlemi sadece ilgili öğretmen veya yönetici yapabilir." };
+        }
+
+        const { error: dbError } = await supabase
+            .from('study_sessions')
+            .delete()
+            .eq('id', sessionId);
+
+        if (dbError) return { error: dbError.message };
+
+        revalidatePath('/teacher/schedule');
+        return { success: true };
+    } catch (e: unknown) {
+        return { error: handleError(e) };
+    }
 }
 
 // Geçmiş onaylı etüt oturumları (tamamlanmadı/gelmedi kontrol için)

@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { BookOpen, Calendar as CalendarIcon, Clock, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { getAuthContext } from '@/lib/auth-context';
+import { Schedule, Homework, ExamResult, StudySession } from '@/types/database';
 
 export default async function StudentDashboardPage() {
     // Merkezi auth context — tek supabase client
@@ -61,19 +62,18 @@ export default async function StudentDashboardPage() {
         // Etüt talepleri
         supabase
             .from('study_sessions')
-            .select(`*, teacher:profiles!teacher_id(full_name), study_session_statuses(name)`)
+            .select(`*, teacher:profiles!teacher_id(full_name), study_session_statuses!inner(name)`)
             .eq('student_id', user.id)
+            .neq('study_session_statuses.name', 'completed')
+            .neq('study_session_statuses.name', 'cancelled')
             .order('scheduled_at', { ascending: true })
     ]);
 
-    const schedule = scheduleResult.data || [];
-    const homework = homeworkResult.data || [];
-    const exams = examsResult.data || [];
-    // Client-side filtering for status since we need to check relation or legacy field
-    const etuts = (etutsResult.data || []).filter((e: any) => {
-        const status = e.study_session_statuses?.name || e.status_legacy || 'pending';
-        return status !== 'completed' && status !== 'cancelled';
-    });
+    const schedule = (scheduleResult.data || []) as unknown as Schedule[];
+    const homework = (homeworkResult.data || []) as unknown as Homework[];
+    const exams = (examsResult.data || []) as unknown as ExamResult[];
+
+    const etuts = (etutsResult.data || []) as unknown as StudySession[];
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -120,8 +120,8 @@ export default async function StudentDashboardPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="text-3xl font-bold text-slate-900 dark:text-white">
-                                {etuts.filter((e: any) => {
-                                    const status = e.study_session_statuses?.name || e.status_legacy || 'pending';
+                                {etuts.filter((e) => {
+                                    const status = e.study_session_statuses?.name || 'pending';
                                     return status === 'pending';
                                 }).length}
                             </div>
@@ -155,7 +155,7 @@ export default async function StudentDashboardPage() {
                                                 <span>{item.end_time.substring(0, 5)}</span>
                                             </div>
                                             <div className="flex-1">
-                                                <h4 className="font-bold text-slate-900 dark:text-white">{(item as any).courses?.name || 'Ders'}</h4>
+                                                <h4 className="font-bold text-slate-900 dark:text-white">{item.courses?.name || 'Ders'}</h4>
                                                 <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1">
                                                     <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                                                     {item.teacher?.full_name || 'Eğitmen'}
@@ -269,7 +269,7 @@ export default async function StudentDashboardPage() {
                     <CardContent>
                         <div className="space-y-3">
                             {etuts.map((etut: any) => {
-                                const status = etut.study_session_statuses?.name || etut.status_legacy || 'pending';
+                                const status = etut.study_session_statuses?.name || 'pending';
                                 return (
                                     <div key={etut.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
                                         <div className={`w-2 h-full min-h-[40px] rounded-full ${status === 'pending' ? 'bg-yellow-400' :

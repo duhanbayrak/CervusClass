@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { uploadExamResult } from '@/actions/exam-results'
+import { uploadExamResult } from '@/lib/actions/exam-results'
 import { toast } from 'sonner'
 import { Loader2, Upload, FileSpreadsheet } from 'lucide-react'
 

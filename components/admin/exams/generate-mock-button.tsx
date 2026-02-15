@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { FileDown, Loader2 } from 'lucide-react'
-import { generateMockExamExcel } from '@/actions/generate-mock-exam'
+import { generateMockExamExcel } from '@/lib/actions/generate-mock-exam'
 import { toast } from 'sonner'
 
 export function GenerateMockButton() {

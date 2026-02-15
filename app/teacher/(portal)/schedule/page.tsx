@@ -1,6 +1,6 @@
 import { TeacherScheduleClient } from '@/components/schedule/teacher-schedule-client'
 import { Card, CardContent } from '@/components/ui/card'
-import { ScheduleEvent, StudySessionEvent } from '@/components/schedule/WeeklyScheduler'
+import { ScheduleEvent, StudySessionEvent } from '@/types/schedule'
 import { getAuthContext } from '@/lib/auth-context'
 
 export default async function TeacherSchedulePage() {
