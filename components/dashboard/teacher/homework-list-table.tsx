@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createBrowserClient } from '@supabase/ssr';
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,8 @@ interface Assignment {
 }
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+import { deleteHomework } from '@/lib/actions/homework';
 
 interface HomeworkListTableProps {
     activeAssignments?: Assignment[];
@@ -53,35 +55,16 @@ export default function HomeworkListTable({ activeAssignments = [], pastAssignme
     // Only use tabs if we have split data. If only 'assignments' passed, use legacy view (or treat as active)
     const showTabs = activeAssignments.length > 0 || pastAssignments.length > 0 || (!assignments);
 
-    const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
     const handleDelete = async (id: string) => {
         setIsDeleting(id);
         try {
-            const { error, count } = await supabase
-                .from('homework')
-                .delete({ count: 'exact' }) // Get count of deleted rows
-                .eq('id', id);
+            const res = await deleteHomework(id);
 
-            if (error) {
-
+            if (!res.success) {
                 toast({
                     variant: "destructive",
                     title: "Hata",
-                    description: "Silme hatası: " + error.message,
-                });
-                return;
-            }
-
-            if (count === 0) {
-
-                toast({
-                    variant: "destructive",
-                    title: "Hata",
-                    description: "Ödev silinemedi! Yetkiniz olmayabilir veya ödev zaten silinmiş."
+                    description: "Silme hatası: " + res.error,
                 });
             } else {
                 toast({
@@ -94,7 +77,6 @@ export default function HomeworkListTable({ activeAssignments = [], pastAssignme
             }
 
         } catch (error: any) {
-
             toast({
                 variant: "destructive",
                 title: "Hata",

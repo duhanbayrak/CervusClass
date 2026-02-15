@@ -1,27 +1,12 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import StudyRequestsList from '@/components/dashboard/teacher/study-requests-list';
+import { getAuthContext } from '@/lib/auth-context';
 
-
-
+// Etüt taleplerini çekmek için yardımcı fonksiyon
 async function getData() {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                }
-            }
-        }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const { supabase, user } = await getAuthContext();
     if (!user) return { pending: [], history: [] };
 
-    // Fetch all requests for this teacher
+    // Öğretmen için tüm talepleri çek
     const { data, error } = await supabase
         .from('study_sessions')
         .select(`
@@ -35,12 +20,10 @@ async function getData() {
         .order('created_at', { ascending: false });
 
     if (error) {
-        console.error('Error fetching requests:', error);
         return { pending: [], history: [] };
     }
 
-    // Type the response manually since we are not using auto-generated Query types yet for complex joins
-    // or we could cast to a defined type.
+    // Response'u tiplendir
     interface StudyRequestRaw {
         id: string;
         topic: string | null;
@@ -57,7 +40,7 @@ async function getData() {
 
     const requests = rawData.map((r) => ({
         ...r,
-        topic: r.topic || '', // Fix: topic cannot be null for the component
+        topic: r.topic || '',
         status: (r.status?.name || 'unknown') as "pending" | "approved" | "rejected" | "completed",
         student: r.student ? {
             full_name: r.student.full_name || 'İsimsiz',

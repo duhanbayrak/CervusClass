@@ -1,10 +1,11 @@
 'use server'
 
-import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import * as XLSX from 'xlsx';
+import { getAuthContext } from '@/lib/auth-context';
+import { getUserRole } from '@/lib/auth-helpers';
+import { Profile } from '@/types/database';
 
 // Admin client for user management (Service Role)
 const supabaseAdmin = createClient(
@@ -30,38 +31,35 @@ type StudentRow = {
     'Doğum Tarihi'?: string
 }
 
-export async function uploadStudents(prevState: any, formData: FormData) {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() }
-            }
-        }
-    );
-
+export async function uploadStudents(prevState: { message: string; success: boolean } | null, formData: FormData) {
     try {
-        // 1. Auth Check (Admin only)
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-            return { message: 'Oturum açmanız gerekiyor.', success: false };
+        // 1. Auth Check
+        const { supabase, user, organizationId, error } = await getAuthContext();
+        if (error || !user || !organizationId) {
+            return { message: error || 'Oturum açmanız gerekiyor.', success: false };
         }
 
-        const { data: profile } = await supabase
+
+
+        // ...
+
+        // Rol kontrolü — sadece admin yükleyebilir
+        const { data: profileWithRole } = await supabase
             .from('profiles')
             .select('organization_id, roles(name)')
             .eq('id', user.id)
             .single();
 
-        const roles = profile?.roles as any;
-        const roleName = Array.isArray(roles) ? roles[0]?.name : roles?.name;
-        if (!profile || (roleName !== 'admin' && roleName !== 'super_admin')) {
+        const roleName = getUserRole(profileWithRole as unknown as Profile);
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            return { message: 'Server configuration error', success: false };
+        }
+
+        if (!profileWithRole || (roleName !== 'admin' && roleName !== 'super_admin')) {
             return { message: 'Sadece yöneticiler öğrenci yükleyebilir.', success: false };
         }
 
-        const organization_id = profile.organization_id;
+        const organization_id = organizationId;
 
         // 2. Parse File
         const file = formData.get('file') as File;
@@ -104,23 +102,38 @@ export async function uploadStudents(prevState: any, formData: FormData) {
             const rowIndex = i + 2; // +2 for Header and 0-index
 
             // Normalize keys
-            const normalizedRow: any = {};
+            const normalizedRow: Record<string, unknown> = {};
             Object.keys(row).forEach(key => {
-                normalizedRow[key.trim()] = (row as any)[key];
+                normalizedRow[key.trim()] = (row as Record<string, unknown>)[key];
             });
 
-            const fullName = normalizedRow['Ad Soyad']?.toString().trim();
-            const email = normalizedRow['Email']?.toString().trim();
-            const className = normalizedRow['Sınıf']?.toString().trim();
-            const password = normalizedRow['Parola']?.toString().trim() || '123456';
-            const studentNumber = normalizedRow['Öğrenci No']?.toString().trim();
-            const phone = normalizedRow['Öğrenci Telefon']?.toString().trim();
-            const parentName = normalizedRow['Veli Adı']?.toString().trim();
-            const parentPhone = normalizedRow['Veli Telefon']?.toString().trim();
-            // Basic date handling - assumes string or Excel numeric date if passed
-            // For robustness, users should format as Text "YYYY-MM-DD" or similar.
-            // Let's take string for now.
-            const birthDate = normalizedRow['Doğum Tarihi']?.toString().trim();
+            const fullNameVal = normalizedRow['Ad Soyad'];
+            const fullName = (typeof fullNameVal === 'string' || typeof fullNameVal === 'number') ? String(fullNameVal).trim() : undefined;
+
+            const emailVal = normalizedRow['Email'];
+            const email = (typeof emailVal === 'string') ? String(emailVal).trim() : undefined;
+
+            const classNameVal = normalizedRow['Sınıf'];
+            const className = (typeof classNameVal === 'string' || typeof classNameVal === 'number') ? String(classNameVal).trim() : undefined;
+
+            const passwordVal = normalizedRow['Parola'];
+            const password = (typeof passwordVal === 'string' || typeof passwordVal === 'number') ? String(passwordVal).trim() : '123456';
+
+            const studentNumberVal = normalizedRow['Öğrenci No'];
+            const studentNumber = (typeof studentNumberVal === 'string' || typeof studentNumberVal === 'number') ? String(studentNumberVal).trim() : undefined;
+
+            const phoneVal = normalizedRow['Öğrenci Telefon'];
+            const phone = (typeof phoneVal === 'string' || typeof phoneVal === 'number') ? String(phoneVal).trim() : undefined;
+
+            const parentNameVal = normalizedRow['Veli Adı'];
+            const parentName = (typeof parentNameVal === 'string' || typeof parentNameVal === 'number') ? String(parentNameVal).trim() : undefined;
+
+            const parentPhoneVal = normalizedRow['Veli Telefon'];
+            const parentPhone = (typeof parentPhoneVal === 'string' || typeof parentPhoneVal === 'number') ? String(parentPhoneVal).trim() : undefined;
+
+            // Basic date handling
+            const birthDateVal = normalizedRow['Doğum Tarihi'];
+            const birthDate = (typeof birthDateVal === 'string') ? String(birthDateVal).trim() : undefined;
 
             if (!fullName || !email || !className) {
                 errors.push(`Satır ${rowIndex}: Eksik bilgi (Ad Soyad, Email veya Sınıf)`);
@@ -225,8 +238,8 @@ export async function uploadStudents(prevState: any, formData: FormData) {
 
         return { message: `${successCount} öğrenci başarıyla yüklendi.`, success: true };
 
-    } catch (error: any) {
-
-        return { message: 'Beklenmeyen bir hata oluştu: ' + error.message, success: false };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Bilinmeyen hata';
+        return { message: 'Beklenmeyen bir hata oluştu: ' + message, success: false };
     }
 }

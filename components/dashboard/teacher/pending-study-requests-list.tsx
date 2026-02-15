@@ -20,19 +20,10 @@ import { Textarea } from "@/components/ui/textarea"; // Assuming this exists, ot
 import { Badge } from "@/components/ui/badge";
 import { approveSession, rejectSession } from "@/lib/actions/study-session";
 
-interface StudyRequest {
-    id: string;
-    topic: string;
-    scheduled_at: string;
-    status: string;
-    student: {
-        full_name: string | null;
-        classes: { name: string } | null;
-    } | null;
-}
+import { StudySession } from "@/types/database";
 
 interface PendingStudyRequestsListProps {
-    requests: StudyRequest[];
+    requests: StudySession[];
 }
 
 export function PendingStudyRequestsList({ requests }: PendingStudyRequestsListProps) {

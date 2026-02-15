@@ -21,6 +21,9 @@ export interface Profile {
     avatar_url: string | null;
     email?: string | null;
     class_id: string | null;
+    classes?: {
+        name: string;
+    } | null;
     created_at: string;
     phone?: string | null;
     student_number?: string | null;
@@ -30,6 +33,7 @@ export interface Profile {
     bio?: string | null;
     title?: string | null;
     start_date?: string | null;
+    branch_id?: string | null;
 }
 
 export interface Class {
@@ -40,12 +44,29 @@ export interface Class {
     created_at: string;
 }
 
+// Sınıf + öğrenci sayısı (Supabase aggregate count)
+export interface ClassWithCount extends Class {
+    profiles: { count: number }[];
+}
+
+export interface Course {
+    id: string;
+    name: string;
+    organization_id: string;
+    branch_id?: string | null;
+    code?: string | null;
+    created_at?: string | null;
+}
+
 export interface Schedule {
     id: string;
     organization_id: string;
     class_id: string | null;
+    classes?: { name: string } | null;
     teacher_id: string | null;
-    course_name: string;
+    teacher?: { full_name: string | null } | null;
+    course_id?: string | null;
+    courses?: { name: string } | null;
     day_of_week: 1 | 2 | 3 | 4 | 5 | 6 | 7;
     start_time: string; // Time string like "14:30:00"
     end_time: string;
@@ -58,7 +79,12 @@ export interface StudySession {
     id: string;
     organization_id: string;
     teacher_id: string;
+    teacher?: { full_name: string | null } | null;
     student_id: string;
+    student?: {
+        full_name: string | null;
+        classes?: { name: string } | null;
+    } | null;
     scheduled_at: string; // ISO timestamp
     status_id: string;
     status_legacy?: string | null;
@@ -73,6 +99,7 @@ export interface ExamResult {
     id: string;
     organization_id: string;
     student_id: string;
+    student?: { full_name: string | null } | null;
     exam_name: string;
     exam_date: string | null; // Date string like "2023-10-25"
     scores: Record<string, number>; // JSONB: {"mat": 20, "fiz": 5}
@@ -97,10 +124,26 @@ export interface Homework {
     id: string;
     organization_id: string;
     teacher_id: string;
+    teacher?: { full_name: string | null } | null;
     class_id: string;
+    classes?: { name: string } | null;
+    course_id?: string;
+    courses?: { name: string } | null;
     description: string;
     due_date: string | null;
     completion_status: Record<string, boolean>; // JSONB: { student_id: true }
     assigned_student_ids: string[] | null; // null = entire class, array = specific students
     created_at: string;
+}
+
+export interface HomeworkSubmission {
+    id: string;
+    homework_id: string;
+    homework?: Homework | null;
+    student_id: string;
+    student?: { full_name: string | null } | null;
+    status: 'submitted' | 'approved' | 'rejected';
+    submitted_at: string;
+    file_url?: string | null;
+    teacher_feedback?: string | null;
 }

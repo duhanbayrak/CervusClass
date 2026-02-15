@@ -19,7 +19,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import { createHomework } from '@/app/teacher/(portal)/homework/actions';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase';
 
 interface ClassItem {
     id: string;
@@ -72,6 +72,7 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
     useEffect(() => {
         if (selectedClassId) {
             setLoadingStudents(true);
+            const supabase = createClient();
             supabase
                 .from('profiles')
                 .select('id, full_name, avatar_url')

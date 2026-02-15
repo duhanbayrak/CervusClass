@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { WeeklyScheduler, ScheduleEvent, StudySessionEvent } from '@/components/schedule/WeeklyScheduler';
+import { WeeklyScheduler } from '@/components/schedule/WeeklyScheduler';
+import { ScheduleEvent, StudySessionEvent } from '@/types/schedule';
 import { EditScheduleDialog } from '@/components/schedule/edit-schedule-dialog';
 
 interface Option {

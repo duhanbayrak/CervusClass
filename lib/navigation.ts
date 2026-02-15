@@ -28,7 +28,7 @@ export const STUDENT_NAV: NavItem[] = [
     { title: 'Etüt Talepleri', href: '/student/study-requests', icon: Library },
     { title: 'Notlarım', href: '/student/grades', icon: Award },
     { title: 'Sınavlar', href: '/student/exams', icon: FileText },
-    { title: 'Ödevler', href: '/student/homework', icon: ClipboardList, badge: 3 },
+    { title: 'Ödevler', href: '/student/homework', icon: ClipboardList },
 ];
 
 export const TEACHER_NAV: NavItem[] = [
