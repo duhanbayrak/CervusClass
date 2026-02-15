@@ -1,7 +1,17 @@
 import { ClassList } from "@/components/class/class-list";
 import { GraduationCap } from "lucide-react";
+import { getAuthContext } from "@/lib/auth-context";
+import { getClasses } from "@/lib/actions/class";
 
-export default function ClassManagementPage() {
+export default async function ClassManagementPage() {
+    // Merkezi auth context
+    const { user } = await getAuthContext();
+    if (!user) return null;
+
+    // Sınıfları çek
+    const res = await getClasses();
+    const classes = res.success ? res.data : [];
+
     return (
         <div className="flex flex-col gap-6 p-8">
             <div className="flex items-center gap-3">
@@ -18,7 +28,7 @@ export default function ClassManagementPage() {
                 </div>
             </div>
 
-            <ClassList />
+            <ClassList initialData={classes || []} />
         </div>
     );
 }

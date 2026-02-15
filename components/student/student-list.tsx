@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
     Table,
     TableBody,
@@ -16,6 +16,13 @@ import {
     DropdownMenuLabel,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,6 +39,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getStudents, deleteStudent } from "@/lib/actions/student";
+import { getClasses } from "@/lib/actions/class";
 import { StudentDialog } from "./student-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -41,25 +49,46 @@ import { Student } from "@/types/student";
 // Sayfa başına gösterilecek öğrenci sayısı
 const PAGE_SIZE = 20;
 
-export function StudentList() {
+// İlk veri server component'ten prop olarak gelir — CSR waterfall yok
+interface StudentListProps {
+    initialData?: Student[];
+    initialCount?: number;
+}
+
+export function StudentList({ initialData = [], initialCount = 0 }: StudentListProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { toast } = useToast();
-    const [students, setStudents] = useState<Student[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [students, setStudents] = useState<Student[]>(initialData);
+    const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState("");
+    const [classFilter, setClassFilter] = useState<string>("all");
+    const [classList, setClassList] = useState<{ id: string; name: string }[]>([]);
+    const isFirstRender = useRef(true);
 
     // Sayfalama state'leri
     const [currentPage, setCurrentPage] = useState(1);
-    const [totalCount, setTotalCount] = useState(0);
+    const [totalCount, setTotalCount] = useState(initialCount);
     const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
     const [editStudent, setEditStudent] = useState<Student | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+    // Sınıf listesini yükle (sayfa ilk açıldığında)
+    useEffect(() => {
+        const loadClasses = async () => {
+            const res = await getClasses();
+            if (res.success) {
+                setClassList(res.data.map(c => ({ id: c.id, name: c.name })));
+            }
+        };
+        loadClasses();
+    }, []);
+
     const loadStudents = async (page: number = currentPage) => {
         setLoading(true);
-        const res = await getStudents(search, undefined, page, PAGE_SIZE);
+        const selectedClass = classFilter === 'all' ? undefined : classFilter;
+        const res = await getStudents(search, selectedClass, page, PAGE_SIZE);
         if (res.success && res.data) {
             setStudents(res.data as unknown as Student[]);
             setTotalCount(res.count ?? 0);
@@ -73,17 +102,22 @@ export function StudentList() {
         setLoading(false);
     };
 
-    // Arama değiştiğinde ilk sayfaya dön ve yeniden yükle
+    // Arama veya sınıf filtresi değiştiğinde ilk sayfaya dön ve yeniden yükle
     useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
         const timer = setTimeout(() => {
             setCurrentPage(1);
             loadStudents(1);
         }, 300);
         return () => clearTimeout(timer);
-    }, [search]);
+    }, [search, classFilter]);
 
-    // Sayfa değiştiğinde yeniden yükle
+    // Sayfa değiştiğinde yeniden yükle (ilk render hariç)
     useEffect(() => {
+        if (currentPage === 1 && students === initialData) return;
         loadStudents(currentPage);
     }, [currentPage]);
 
@@ -156,19 +190,38 @@ export function StudentList() {
 
     return (
         <div className="space-y-5">
-            {/* Üst Bar: Arama + Yeni Öğrenci */}
-            <div className="flex items-center justify-between gap-4">
-                <div className="relative max-w-sm flex-1">
-                    <Input
-                        placeholder="İsim ile ara..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus-visible:ring-slate-400"
-                    />
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                    </svg>
+            {/* Üst Bar: Arama + Sınıf Filtresi + Yeni Öğrenci */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1 w-full sm:w-auto">
+                    {/* Arama */}
+                    <div className="relative flex-1 max-w-sm">
+                        <Input
+                            placeholder="İsim, öğrenci no veya email ile ara..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus-visible:ring-slate-400"
+                        />
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                        </svg>
+                    </div>
+
+                    {/* Sınıf Filtresi */}
+                    <Select value={classFilter} onValueChange={setClassFilter}>
+                        <SelectTrigger className="w-[160px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                            <SelectValue placeholder="Sınıf seçin" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Tüm Sınıflar</SelectItem>
+                            {classList.map((cls) => (
+                                <SelectItem key={cls.id} value={cls.id}>
+                                    {cls.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
+
                 <Button
                     onClick={handleCreate}
                     className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 shadow-sm gap-2"

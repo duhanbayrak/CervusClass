@@ -1,40 +1,46 @@
-import { createClient } from '@/lib/supabase-server'
 import { ScheduleUploader } from '@/components/schedule/ScheduleUploader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ManualSchedulerDialog } from '@/components/schedule/manual-scheduler-dialog'
 import { AdminScheduleView } from '@/components/schedule/admin-schedule-view'
 import { ScheduleActions } from '@/components/schedule/schedule-actions'
+import { getAuthContext } from '@/lib/auth-context'
 
 export default async function AdminSchedulePage() {
-    const supabase = await createClient()
-
-    const { data: { user } } = await supabase.auth.getUser()
+    // Merkezi auth context — tek client + user + organizationId
+    const { supabase, user, organizationId } = await getAuthContext()
     if (!user) return <div>Giriş yapınız.</div>
+    if (!organizationId) return <div>Kurum bilgisi bulunamadı.</div>
 
-    const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single()
+    // Paralel veri çekme
+    const [eventsResult, teacherRoleResult, coursesResult, classesResult] = await Promise.all([
+        // Program etkinlikleri
+        supabase
+            .from('schedule')
+            .select(`
+                *,
+                courses ( name, code ),
+                classes ( name ),
+                profiles ( full_name )
+            `)
+            .eq('organization_id', organizationId),
 
-    if (!profile) return <div>Profil bulunamadı.</div>
+        // Öğretmen rol ID'si
+        supabase.from('roles').select('id').eq('name', 'teacher').single(),
 
-    // Fetch Schedule Events
-    const { data: events } = await supabase
-        .from('schedule')
-        .select(`
-      *,
-      courses ( name, code ),
-      classes ( name ),
-      profiles ( full_name )
-    `)
-        .eq('organization_id', profile.organization_id)
+        // Dersler
+        supabase.from('courses').select('id, name, branch_id').eq('organization_id', organizationId).order('name'),
 
-    // Fetch Data for Manual Entry Form
-    // 2. Teachers
-    // Need branch_id for robust filtering
-    const { data: teacherRole } = await supabase.from('roles').select('id').eq('name', 'teacher').single();
+        // Sınıflar
+        supabase.from('classes').select('id, name').eq('organization_id', organizationId).order('name')
+    ]);
+
+    // Öğretmen listesi (rol ID bağımlı — sıralı sorgu)
     let teachers: any[] = [];
-    if (teacherRole) {
-        const { data } = await supabase.from('profiles').select('id, full_name, branch_id, branches(name)').eq('role_id', teacherRole.id).order('full_name');
+    if (teacherRoleResult.data) {
+        const { data } = await supabase.from('profiles').select('id, full_name, branch_id, branches(name)').eq('role_id', teacherRoleResult.data.id).order('full_name');
         teachers = data || [];
     }
+
     const teacherOptions = teachers.map(t => ({
         id: t.id,
         label: t.full_name || 'İsimsiz',
@@ -42,19 +48,13 @@ export default async function AdminSchedulePage() {
         branchId: t.branch_id || undefined
     }));
 
-    // 3. Courses
-    // Need branch_id here too
-    const { data: courses } = await supabase.from('courses').select('id, name, branch_id').eq('organization_id', profile.organization_id).order('name');
-    const courseOptions = courses?.map(c => ({
+    const courseOptions = coursesResult.data?.map(c => ({
         id: c.id,
         label: c.name,
         branchId: c.branch_id || undefined
     })) || [];
 
-    // 3. Classes
-    const { data: classes } = await supabase.from('classes').select('id, name').eq('organization_id', profile.organization_id).order('name');
-    const classOptions = classes?.map(c => ({ id: c.id, label: c.name })) || [];
-
+    const classOptions = classesResult.data?.map(c => ({ id: c.id, label: c.name })) || [];
 
     return (
         <div className="space-y-6">
@@ -78,13 +78,11 @@ export default async function AdminSchedulePage() {
                                     </div>
                                 </div>
                             </div>
-                            {/* Mobile specific simple add button could go here if needed, but ManualSchedulerDialog handles trigger */}
                             <ManualSchedulerDialog
                                 teachers={teacherOptions}
                                 courses={courseOptions}
                                 classes={classOptions}
                             />
-                            {/* Actions visible on desktop or put in a dropdown/drawer on mobile later. For now, keep as is. */}
                             <div className="pt-4 border-t hidden md:block">
                                 <ScheduleActions />
                             </div>
@@ -99,7 +97,7 @@ export default async function AdminSchedulePage() {
                         </CardHeader>
                         <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
                             <AdminScheduleView
-                                events={(events as any) || []}
+                                events={(eventsResult.data as any) || []}
                                 teachers={teacherOptions}
                                 courses={courseOptions}
                                 classes={classOptions}

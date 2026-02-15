@@ -34,11 +34,16 @@ import { ClassDialog } from "./class-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { ClassWithCount } from "@/types/database";
 
-export function ClassList() {
+// İlk veri server component'ten prop olarak gelir — CSR waterfall yok
+interface ClassListProps {
+    initialData?: ClassWithCount[];
+}
+
+export function ClassList({ initialData = [] }: ClassListProps) {
     const router = useRouter();
     const { toast } = useToast();
-    const [classes, setClasses] = useState<ClassWithCount[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [classes, setClasses] = useState<ClassWithCount[]>(initialData);
+    const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState("");
 
     const [editClass, setEditClass] = useState<ClassWithCount | null>(null);
@@ -64,7 +69,15 @@ export function ClassList() {
         setLoading(false);
     };
 
+    // Arama değiştiğinde sunucudan yeniden çek
     useEffect(() => {
+        if (search === "") {
+            // İlk render'da initialData zaten var, arama temizlenince tekrar çek
+            if (initialData.length > 0 && classes !== initialData) {
+                loadClasses();
+            }
+            return;
+        }
         const timer = setTimeout(() => {
             loadClasses();
         }, 300);

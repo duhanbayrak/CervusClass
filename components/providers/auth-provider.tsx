@@ -16,6 +16,34 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * JWT metadata'dan profil oluşturur (anında, DB sorgusu beklemeden)
+ */
+function profileFromJwt(authUser: User): Profile {
+    const meta = authUser.user_metadata || {};
+    const appMeta = authUser.app_metadata || {};
+    return {
+        id: authUser.id,
+        full_name: meta.full_name || authUser.email?.split('@')[0] || 'Kullanıcı',
+        email: authUser.email || '',
+        organization_id: appMeta.organization_id || null,
+        role_id: null,
+        roles: appMeta.role ? { name: appMeta.role } : null,
+        avatar_url: meta.avatar_url || null,
+        class_id: appMeta.class_id || null,
+        branch_id: appMeta.branch_id || null,
+        created_at: '',
+        phone: null,
+        student_number: null,
+        parent_name: null,
+        parent_phone: null,
+        birth_date: null,
+        bio: null,
+        title: null,
+        start_date: null,
+    } as Profile;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
@@ -23,92 +51,88 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter();
 
     useEffect(() => {
-        // 1. Check active session
-        const checkUser = async () => {
+        let mounted = true;
+
+        // Güvenlik timeout
+        const safetyTimeout = setTimeout(() => {
+            if (mounted) setLoading(false);
+        }, 5000);
+
+        // DB'den profili çeker — doğrudan PostgREST fetch ile (client library bypass)
+        const fetchDbProfile = async (userId: string, accessToken: string) => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/profiles?select=*,roles(name)&id=eq.${userId}`;
+                const res = await fetch(url, {
+                    headers: {
+                        'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Accept': 'application/json',
+                    },
+                });
 
-                if (session?.user) {
-                    setUser(session.user);
-                    await fetchProfile(session.user.id);
-                } else {
-                    setLoading(false);
-                }
-            } catch (error) {
+                if (!res.ok) return null;
 
-                setLoading(false);
+                const rows = await res.json();
+                if (!rows || rows.length === 0) return null;
+                return rows[0] as Profile;
+            } catch {
+                return null;
             }
         };
 
-        checkUser();
-
-        // 2. Listen for auth changes
+        // Auth state değişikliklerini dinle (tek kaynak)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (!mounted) return;
 
-
-            if (session?.user) {
-                setUser(session.user);
-                if (!profile) { // Only fetch if not already loaded to avoid loops
-                    await fetchProfile(session.user.id);
-                } else {
-                    setLoading(false); // Just in case
-                }
-            } else {
+            if (event === 'SIGNED_OUT') {
                 setUser(null);
                 setProfile(null);
+                setLoading(false);
+                return;
+            }
+
+            if (session?.user) {
+                const authUser = session.user;
+                setUser(authUser);
+
+                // 1. ANINDA: JWT metadata'dan profil göster
+                setProfile(profileFromJwt(authUser));
+                setLoading(false);
+
+                // 2. ARKA PLAN: DB'den tam profil çekmeye çalış (direct fetch)
+                const dbProfile = await fetchDbProfile(authUser.id, session.access_token);
+                if (mounted && dbProfile) {
+                    setProfile(dbProfile);
+                }
+            } else {
                 setLoading(false);
             }
         });
 
         return () => {
+            mounted = false;
+            clearTimeout(safetyTimeout);
             subscription.unsubscribe();
         };
     }, []);
 
-    const fetchProfile = async (userId: string) => {
-        try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select(`
-                    *,
-                    roles (
-                        name
-                    )
-                `)
-                .eq('id', userId)
-                .single();
-
-            if (error) {
-
-            } else {
-                setProfile(data as any); // Type assertion until types are fully updated
-            }
-        } catch (err) {
-
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const signOut = async () => {
         try {
-            // Force sign out with a small timeout fallback to prevent hanging
             await Promise.race([
                 supabase.auth.signOut(),
                 new Promise(resolve => setTimeout(resolve, 2000))
             ]);
-        } catch (error) {
-
+        } catch {
+            // Çıkış hatası
         } finally {
             setUser(null);
             setProfile(null);
-            // Force full page reload to clear all application state and cache
             window.location.href = '/';
         }
     };
 
-    // Safely extract role
-    const rolesData = profile?.roles as any;
+    // Rol bilgisini profil verisinden çıkar
+    const rolesData = profile?.roles as { name: string } | { name: string }[] | null;
     const roleName = Array.isArray(rolesData) ? rolesData[0]?.name : rolesData?.name;
 
     const value = {

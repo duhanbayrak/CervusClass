@@ -1,140 +1,82 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BookOpen, Calendar as CalendarIcon, Clock, TrendingUp, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { BookOpen, Calendar as CalendarIcon, Clock, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { redirect } from 'next/navigation';
-
-async function getStudentData(userId: string) {
-    const cookieStore = await cookies();
-
-    // Server-side auth client
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                },
-                setAll(cookiesToSet) {
-                    // Middleware handles writing cookies
-                }
-            }
-        }
-    );
-
-    // 1. Get Profile & Organization
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('*, classes(name)')
-        .eq('id', userId)
-        .single();
-
-    if (!profile) return null;
-
-    // 2. Parallel Data Fetching
-    const today = new Date();
-    // JS getDay() 0=Sunday. Postgres often uses 1=Monday...7=Sunday or 0=Sunday. 
-    // Assuming our schema uses 1=Monday, 7=Sunday.
-    let todayDow = today.getDay();
-    if (todayDow === 0) todayDow = 7;
-
-    const [scheduleResult, homeworkResult, examsResult, etutsResult] = await Promise.all([
-        // Get Today's Schedule
-        supabase
-            .from('schedule')
-            .select(`
-                *,
-                teacher:profiles!teacher_id(full_name)
-            `)
-            .eq('class_id', profile.class_id)
-            .eq('day_of_week', todayDow)
-            .order('start_time', { ascending: true }),
-
-        // Get Upcoming Assignments (only those assigned to this student or entire class)
-        supabase
-            .from('homework')
-            .select(`
-                *,
-                teacher:profiles!teacher_id(full_name)
-            `)
-            .eq('class_id', profile.class_id)
-            .gte('due_date', new Date().toISOString())
-            .or(`assigned_student_ids.is.null,assigned_student_ids.cs.["${userId}"]`)
-            .order('due_date', { ascending: true })
-            .limit(5),
-
-        // Get Recent Exam Results
-        supabase
-            .from('exam_results')
-            .select('*')
-            .eq('student_id', userId)
-            .order('exam_date', { ascending: false })
-            .limit(3),
-
-        // Get Study Session Requests
-        supabase
-            .from('study_sessions')
-            .select(`
-                *,
-                teacher:profiles!teacher_id(full_name)
-            `)
-            .eq('student_id', userId)
-            .neq('status', 'completed')
-            .order('scheduled_at', { ascending: true })
-    ]);
-
-    return {
-        profile,
-        schedule: scheduleResult.data || [],
-        homework: homeworkResult.data || [],
-        exams: examsResult.data || [],
-        etuts: etutsResult.data || []
-    };
-}
+import { getAuthContext } from '@/lib/auth-context';
 
 export default async function StudentDashboardPage() {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                }
-            }
-        }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
+    // Merkezi auth context — tek supabase client
+    const { supabase, user } = await getAuthContext();
 
     if (!user) {
         redirect('/student/login');
     }
 
-    const data = await getStudentData(user.id);
+    // 1. Profil bilgisini al
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('*, classes(name)')
+        .eq('id', user.id)
+        .single();
 
-    if (!data) return <div>Öğrenci verileri yükleniyor...</div>;
+    if (!profile) return <div>Öğrenci verileri yükleniyor...</div>;
 
-    const { profile, schedule, homework, exams, etuts } = data;
+    // 2. Paralel veri çekme — tüm sorgular aynı anda çalışır
+    const today = new Date();
+    let todayDow = today.getDay();
+    if (todayDow === 0) todayDow = 7;
 
-    // Helper for date formatting in Turkish
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' });
-    };
+    const [scheduleResult, homeworkResult, examsResult, etutsResult] = await Promise.all([
+        // Bugünün programı
+        supabase
+            .from('schedule')
+            .select(`*, teacher:profiles!teacher_id(full_name)`)
+            .eq('class_id', profile.class_id)
+            .eq('day_of_week', todayDow)
+            .order('start_time', { ascending: true }),
+
+        // Yaklaşan ödevler
+        supabase
+            .from('homework')
+            .select(`*, teacher:profiles!teacher_id(full_name)`)
+            .eq('class_id', profile.class_id)
+            .gte('due_date', new Date().toISOString())
+            .or(`assigned_student_ids.is.null,assigned_student_ids.cs.["${user.id}"]`)
+            .order('due_date', { ascending: true })
+            .limit(5),
+
+        // Son sınav sonuçları
+        supabase
+            .from('exam_results')
+            .select('*')
+            .eq('student_id', user.id)
+            .order('exam_date', { ascending: false })
+            .limit(3),
+
+        // Etüt talepleri
+        supabase
+            .from('study_sessions')
+            .select(`*, teacher:profiles!teacher_id(full_name)`)
+            .eq('student_id', user.id)
+            .neq('status', 'completed')
+            .order('scheduled_at', { ascending: true })
+    ]);
+
+    const schedule = scheduleResult.data || [];
+    const homework = homeworkResult.data || [];
+    const exams = examsResult.data || [];
+    const etuts = etutsResult.data || [];
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-            {/* LEFT COLUMN */}
+            {/* SOL SÜTUN */}
             <div className="md:col-span-2 space-y-6">
 
-                {/* 1. Statistics / Overview Cards */}
+                {/* 1. İstatistik Kartları */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {/* Average Net Card */}
+                    {/* Ortalama Net */}
                     <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-none shadow-lg relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-4 opacity-10">
                             <TrendingUp size={100} />
@@ -153,7 +95,7 @@ export default async function StudentDashboardPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Pending Homework Card */}
+                    {/* Bekleyen Ödevler */}
                     <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-slate-500 dark:text-slate-400">Bekleyen Ödevler</CardTitle>
@@ -164,7 +106,7 @@ export default async function StudentDashboardPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Study Requests Card */}
+                    {/* Etüt Talepleri */}
                     <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-slate-500 dark:text-slate-400">Etüt Talepleri</CardTitle>
@@ -176,7 +118,7 @@ export default async function StudentDashboardPage() {
                     </Card>
                 </div>
 
-                {/* 2. Today's Schedule */}
+                {/* 2. Bugünün Programı */}
                 <Card className="border-slate-200 dark:border-slate-700 shadow-sm h-[320px] flex flex-col">
                     <CardHeader>
                         <div className="flex items-center justify-between">
@@ -223,7 +165,7 @@ export default async function StudentDashboardPage() {
                     </CardContent>
                 </Card>
 
-                {/* 3. Recent Exam Results */}
+                {/* 3. Son Sınav Sonuçları */}
                 <Card className="border-slate-200 dark:border-slate-700 shadow-sm">
                     <CardHeader>
                         <div className="flex items-center justify-between">
@@ -260,10 +202,10 @@ export default async function StudentDashboardPage() {
                 </Card>
             </div>
 
-            {/* RIGHT COLUMN */}
+            {/* SAĞ SÜTUN */}
             <div className="space-y-6">
 
-                {/* 1. Pending Homework */}
+                {/* Ödevler */}
                 <Card className="border-slate-200 dark:border-slate-700 shadow-sm h-full max-h-[400px]">
                     <CardHeader>
                         <CardTitle className="text-lg font-bold flex items-center gap-2">
@@ -304,7 +246,7 @@ export default async function StudentDashboardPage() {
                     </CardContent>
                 </Card>
 
-                {/* 2. Study Session Requests */}
+                {/* Etüt Talepleri */}
                 <Card className="border-slate-200 dark:border-slate-700 shadow-sm">
                     <CardHeader>
                         <CardTitle className="text-lg font-bold flex items-center gap-2">

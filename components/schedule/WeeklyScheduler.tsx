@@ -50,11 +50,11 @@ const HOURS = Array.from({ length: 14 }, (_, i) => i + 8) // 08:00 - 21:00
 const HOUR_HEIGHT = 100
 
 export function WeeklyScheduler({ events, studySessions = [], role, onDelete, onEventClick, onSlotClick, currentUserId }: WeeklySchedulerProps) {
-    // State for navigation
+    // State for navigation — bugünden başla
     const [startDate, setStartDate] = useState(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        return getMonday(today);
+        return today;
     });
 
     const [createModal, setCreateModal] = useState<{ open: boolean, date: Date | null, startTime?: string }>({
@@ -211,7 +211,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
     const handleToday = () => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        setStartDate(getMonday(today));
+        setStartDate(today);
     }
 
     // Generate dates based on startDate
@@ -381,6 +381,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                                                 <div className="absolute top-1 right-1 text-[9px] font-bold opacity-60 uppercase tracking-tighter">Ders</div>
                                                 <div className={cn("font-bold leading-tight", classes.title)}>{event.courses?.name}</div>
                                                 <div className={cn("opacity-90 text-[10px]", classes.subtitle)}>{event.classes?.name}</div>
+                                                <div className={cn("opacity-80 text-[9px] mt-0.5 truncate font-medium", classes.subtitle)}>{event.profiles?.full_name}</div>
                                             </div>
                                         )
                                     })}

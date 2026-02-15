@@ -59,7 +59,7 @@ export default async function StudentStudyRequestsPage() {
                     <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Etüt Talepleri</h2>
                     <p className="text-slate-500 dark:text-slate-400">Birebir ders taleplerinizi yönetin</p>
                 </div>
-                <BookSessionDialog />
+                <BookSessionDialog userId={user.id} />
             </div>
 
             <div className="grid grid-cols-1 gap-4">
@@ -112,7 +112,7 @@ export default async function StudentStudyRequestsPage() {
                             Henüz hiç etüt talebi oluşturmadınız. Eksik hissettiğiniz konularda öğretmenlerinizden yardım isteyebilirsiniz.
                         </p>
                         <div className="mt-4">
-                            <BookSessionDialog />
+                            <BookSessionDialog userId={user.id} />
                         </div>
                     </div>
                 )}

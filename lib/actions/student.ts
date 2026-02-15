@@ -29,8 +29,12 @@ export type StudentFormData = {
     birth_date?: string;
 }
 
+export type GetStudentsResponse =
+    | { success: true; data: Profile[]; count: number }
+    | { success: false; error: string };
+
 // Öğrencileri getir — arama, sınıf filtresi ve sayfalama destekli
-export async function getStudents(search?: string, classId?: string, page: number = 1, limit: number = 10) {
+export async function getStudents(search?: string, classId?: string, page: number = 1, limit: number = 10): Promise<GetStudentsResponse> {
     const { supabase, organizationId, error } = await getAuthContext();
     if (error || !organizationId) return { success: false, error: error || "Unauthorized" };
 
@@ -45,9 +49,9 @@ export async function getStudents(search?: string, classId?: string, page: numbe
         .eq('organization_id', organizationId)
         .eq('roles.name', 'student');
 
-    // Arama filtresi
+    // Arama filtresi — isim, öğrenci no ve email ile aranabilir
     if (search) {
-        query = query.ilike('full_name', `%${search}%`);
+        query = query.or(`full_name.ilike.%${search}%,student_number.ilike.%${search}%,email.ilike.%${search}%`);
     }
 
     // Sınıf filtresi
@@ -65,7 +69,7 @@ export async function getStudents(search?: string, classId?: string, page: numbe
 
     if (dbError) return { success: false, error: dbError.message };
 
-    return { success: true, data, count };
+    return { success: true, data: data as Profile[], count: count || 0 };
 }
 
 // Yeni öğrenci ekle

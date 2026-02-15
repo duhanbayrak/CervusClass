@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { Toaster } from "@/components/ui/toaster";
+import NextTopLoader from 'nextjs-toploader';
 
 export default function RootLayout({
   children,
@@ -31,6 +32,18 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
+          <NextTopLoader
+            color="#2563eb"
+            initialPosition={0.08}
+            crawlSpeed={200}
+            height={4}
+            crawl={true}
+            showSpinner={false}
+            easing="ease"
+            speed={200}
+            shadow="0 0 10px #2563eb,0 0 5px #2563eb"
+            zIndex={99999}
+          />
           {children}
           <Toaster />
         </AuthProvider>

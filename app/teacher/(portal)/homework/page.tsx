@@ -1,33 +1,17 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import HomeworkListTable from '@/components/dashboard/teacher/homework-list-table';
+import { getAuthContext } from '@/lib/auth-context';
 
 const STUDENT_ROLE_ID = '380914a0-783e-4300-8fb7-b55c81f575b7';
 
 export default async function TeacherHomeworkPage() {
+    // Merkezi auth context — tek supabase client
+    const { supabase, user } = await getAuthContext();
 
-
-    // Server Client Initialization
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                }
-            }
-        }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
-
-    // Fetch Assignments
+    // Ödevleri çek
     let assignments: any[] = [];
     if (user) {
         const { data: homework } = await supabase
@@ -41,10 +25,8 @@ export default async function TeacherHomeworkPage() {
         assignments = homework || [];
     }
 
-
-
     if (!user || assignments.length === 0) {
-        // Empty state return
+        // Boş durum
         const activeAssignments: any[] = [];
         const pastAssignments: any[] = [];
 
@@ -78,14 +60,14 @@ export default async function TeacherHomeworkPage() {
         );
     }
 
-    // 2. Fetch all submissions for these assignments
+    // Teslimleri çek
     const homeworkIds = assignments.map(a => a.id);
     const { data: submissions } = await supabase
         .from('homework_submissions')
         .select('homework_id, student_id, status')
         .in('homework_id', homeworkIds);
 
-    // 3. Fetch all students for the relevant classes (to calculate total assigned if needed)
+    // İlgili sınıflardaki öğrencileri çek
     const classIdsToCheck = assignments
         .filter(a => !a.assigned_student_ids || (Array.isArray(a.assigned_student_ids) && a.assigned_student_ids.length === 0))
         .map(a => a.class_id);
@@ -110,7 +92,7 @@ export default async function TeacherHomeworkPage() {
         }
     }
 
-    // 4. Categorize
+    // Kategorize et
     const activeAssignments: any[] = [];
     const pastAssignments: any[] = [];
     const now = new Date();
@@ -118,7 +100,7 @@ export default async function TeacherHomeworkPage() {
     assignments.forEach(hw => {
         const isPastDue = new Date(hw.due_date) < now;
 
-        // Calculate total assigned
+        // Toplam atanmış öğrenci sayısı
         let totalAssigned = 0;
         if (hw.assigned_student_ids && Array.isArray(hw.assigned_student_ids) && hw.assigned_student_ids.length > 0) {
             totalAssigned = hw.assigned_student_ids.length;
@@ -126,13 +108,13 @@ export default async function TeacherHomeworkPage() {
             totalAssigned = classStudentsMap[hw.class_id] || 0;
         }
 
-        // Calculate submitted (status != pending)
+        // Teslim edilen sayısı (status != pending)
         const relevantSubmissions = submissions?.filter(s => s.homework_id === hw.id && s.status !== 'pending') || [];
         const submissionCount = relevantSubmissions.length;
 
         const allSubmitted = totalAssigned > 0 && submissionCount >= totalAssigned;
 
-        // Determine Status
+        // Durum belirle
         let derivedStatus: 'active' | 'completed' | 'expired' = 'active';
 
         if (allSubmitted) {

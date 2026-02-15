@@ -337,7 +337,11 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
                     <TableBody>
                         {filteredTeachers.length > 0 ? (
                             filteredTeachers.map((teacher) => (
-                                <TableRow key={teacher.id}>
+                                <TableRow
+                                    key={teacher.id}
+                                    className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 group"
+                                    onClick={() => router.push(`/admin/teachers/${teacher.id}`)}
+                                >
                                     <TableCell>
                                         <Avatar className="h-9 w-9">
                                             <AvatarImage src={teacher.avatar_url || ''} />
@@ -358,7 +362,7 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
                                     <TableCell className="text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                <Button variant="ghost" className="h-8 w-8 p-0 opacity-50 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                                                     <span className="sr-only">Open menu</span>
                                                     <MoreHorizontal className="h-4 w-4" />
                                                 </Button>

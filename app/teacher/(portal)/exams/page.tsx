@@ -63,15 +63,10 @@ async function getExamsByClass() {
         .order('exam_date', { ascending: false })
 
     if (error) {
-        console.error('Error fetching exams:', error)
         return []
     }
 
-    console.log('Fetched exam results count:', results?.length)
-    if (results && results.length > 0) {
-        console.log('Sample result:', JSON.stringify(results[0], null, 2))
-        console.log('All exam names:', results.map(r => r.exam_name))
-    }
+
 
     // Group by exam name and class
     const examMap = new Map<string, ExamGroup>()

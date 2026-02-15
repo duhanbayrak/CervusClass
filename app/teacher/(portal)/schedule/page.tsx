@@ -1,15 +1,14 @@
-import { createClient } from '@/lib/supabase-server'
 import { TeacherScheduleClient } from '@/components/schedule/teacher-schedule-client'
 import { Card, CardContent } from '@/components/ui/card'
 import { ScheduleEvent, StudySessionEvent } from '@/components/schedule/WeeklyScheduler'
+import { getAuthContext } from '@/lib/auth-context'
 
 export default async function TeacherSchedulePage() {
-    const supabase = await createClient()
-
-    const { data: { user } } = await supabase.auth.getUser()
+    // Merkezi auth context — tek supabase client
+    const { supabase, user } = await getAuthContext()
     if (!user) return <div>Giriş yapınız.</div>
 
-    // Parallel Fetching
+    // Paralel veri çekme
     const [scheduleResponse, studySessionsResponse] = await Promise.all([
         supabase
             .from('schedule')
@@ -31,7 +30,7 @@ export default async function TeacherSchedulePage() {
             .eq('teacher_id', user.id)
     ]);
 
-    // Start of type definition
+    // Tip dönüşümü
     type RawSession = Omit<StudySessionEvent, 'status'> & {
         study_session_statuses: { name: string } | null
     };
