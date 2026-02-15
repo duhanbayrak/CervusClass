@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-// import { supabase } from '@/lib/supabase'; // Removed client usage
+import { createClient } from "@/lib/supabase"; // Removed client usage
 import { saveAttendance } from '@/lib/actions/attendance';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -96,6 +96,7 @@ export default function AttendanceForm({
                 };
             });
 
+            const supabase = createClient();
             const result = await saveAttendance(items);
 
             if (!result.success) {

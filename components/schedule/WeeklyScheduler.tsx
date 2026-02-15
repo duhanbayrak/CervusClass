@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useMemo, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { Schedule } from '@/types/database'
 import { Loader2, CalendarPlus, User, Plus, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
@@ -8,23 +8,8 @@ import { CreateAvailabilityDialog } from './create-availability-dialog'
 import { Button } from '../ui/button'
 
 // Extended type with relations
-export type ScheduleEvent = Schedule & {
-    courses?: { name: string, code?: string }
-    classes?: { name: string }
-    profiles?: { full_name: string }
-    room_name?: string
-}
-
-// Minimal type for Study Sessions to mix in
-export interface StudySessionEvent {
-    id: string
-    scheduled_at: string // ISO string
-    status: 'pending' | 'approved' | 'rejected' | 'completed' | 'no_show' | 'available'
-    teacher_id: string
-    student_id?: string | null
-    topic?: string | null
-    profiles?: { full_name: string } // Student info
-}
+import { DAYS, HOURS, HOUR_HEIGHT, getPosition, getStudySessionPosition, getEventClasses } from '@/lib/utils/schedule-helpers'
+import { ScheduleEvent, StudySessionEvent } from '@/types/schedule'
 
 interface WeeklySchedulerProps {
     events: ScheduleEvent[]
@@ -36,20 +21,10 @@ interface WeeklySchedulerProps {
     currentUserId?: string
 }
 
-// Helper to get Monday of the current week
-const getMonday = (d: Date) => {
-    const date = new Date(d);
-    const day = date.getDay();
-    const diff = date.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
-    return new Date(date.setDate(diff));
-}
-// ... (Weekly_Scheduler component start) ...
-
-const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar']
-const HOURS = Array.from({ length: 14 }, (_, i) => i + 8) // 08:00 - 21:00
-const HOUR_HEIGHT = 100
-
 export function WeeklyScheduler({ events, studySessions = [], role, onDelete, onEventClick, onSlotClick, currentUserId }: WeeklySchedulerProps) {
+
+
+
     // State for navigation — bugünden başla
     const [startDate, setStartDate] = useState(() => {
         const today = new Date();
@@ -62,94 +37,15 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
         date: null
     });
 
-    // Helper to determine classes (RESTORED)
-    const getEventClasses = (event: ScheduleEvent | StudySessionEvent, isStudySession: boolean) => {
-        if (isStudySession) {
-            const s = event as StudySessionEvent;
-            const isMySession = currentUserId && s.student_id === currentUserId;
-
-            if (s.status === 'available') {
-                return {
-                    container: "bg-emerald-200 border-emerald-500 border-dashed",
-                    title: "text-emerald-800",
-                    subtitle: "text-emerald-800",
-                    icon: "text-emerald-800"
-                }
-            } else if (isMySession) {
-                return {
-                    container: "bg-indigo-50 border-indigo-400 border-solid",
-                    title: "text-indigo-900",
-                    subtitle: "text-indigo-700",
-                    icon: "text-indigo-600"
-                }
-            } else {
-                if (role === 'teacher') {
-                    if (s.status === 'pending') {
-                        return {
-                            container: "bg-amber-50 border-amber-400 border-solid",
-                            title: "text-amber-900",
-                            subtitle: "text-amber-700",
-                            icon: "text-amber-600"
-                        }
-                    }
-                    if (s.status === 'completed') {
-                        return {
-                            container: "bg-blue-100 border-blue-500 border-solid",
-                            title: "text-blue-900",
-                            subtitle: "text-blue-700",
-                            icon: "text-blue-600"
-                        }
-                    }
-                    if (s.status === 'no_show') {
-                        return {
-                            container: "bg-red-100 border-red-500 border-solid",
-                            title: "text-red-900",
-                            subtitle: "text-red-700",
-                            icon: "text-red-600"
-                        }
-                    }
-                    // Default typically means 'approved' (student booked)
-                    return {
-                        container: "bg-purple-100 border-purple-500 border-solid",
-                        title: "text-purple-900",
-                        subtitle: "text-purple-700",
-                        icon: "text-purple-600"
-                    }
-                }
-                return {
-                    container: "bg-slate-100 border-slate-300 border-solid",
-                    title: "text-slate-600",
-                    subtitle: "text-slate-500",
-                    icon: "text-slate-400"
-                }
-            }
+    // Dialog kapandığında state'i temizle (key prop yerine)
+    useEffect(() => {
+        if (!createModal.open) {
+            // Animasyon bitmesini bekleyip temizlemek daha şık olabilir ama şimdilik gerek yok
+            // setCreateModal({ open: false, date: null }); 
+            // Burada bir şey yapmaya gerek yok, açılırken set ediyoruz zaten.
         }
+    }, [createModal.open]);
 
-        // Regular Schedule Events (Classes)
-        return {
-            container: "bg-zinc-100 border-zinc-300 border-solid",
-            title: "text-zinc-800",
-            subtitle: "text-zinc-600",
-            icon: "text-zinc-500"
-        }
-    }
-
-    const getPosition = (start: string, end: string) => {
-        const [h1, m1] = start.split(':').map(Number)
-        const [h2, m2] = end.split(':').map(Number)
-        const startOffset = (h1 - 8) * HOUR_HEIGHT + (m1 / 60) * HOUR_HEIGHT
-        const duration = (((h2 * 60 + m2) - (h1 * 60 + m1)) / 60) * HOUR_HEIGHT
-        return { top: startOffset, height: duration }
-    }
-
-    const getStudySessionPosition = (scheduledAt: string) => {
-        const date = new Date(scheduledAt);
-        const h = date.getHours();
-        const m = date.getMinutes();
-        const startOffset = (h - 8) * HOUR_HEIGHT + (m / 60) * HOUR_HEIGHT
-        const duration = 60 / 60 * HOUR_HEIGHT; // 1 hour fixed
-        return { top: startOffset, height: duration }
-    }
 
     // Drag to Scroll Logic (RESTORED)
     const scrollRef = React.useRef<HTMLDivElement>(null);
@@ -228,6 +124,35 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
             d1.getFullYear() === d2.getFullYear();
     }
 
+    // --- OPTIMIZATION START ---
+
+    // 1. Group events by day of week (1-7)
+    const eventsByDay = useMemo(() => {
+        const map = new Map<number, ScheduleEvent[]>();
+        events.forEach(e => {
+            const day = e.day_of_week;
+            if (!map.has(day)) map.set(day, []);
+            map.get(day)!.push(e);
+        });
+        return map;
+    }, [events]);
+
+    // 2. Group sessions by date string (YYYY-MM-DD or similar unique key)
+    // We use isSameDate logic, so let's pre-process keys to match dates logic
+    const sessionsByDateKey = useMemo(() => {
+        const map = new Map<string, StudySessionEvent[]>();
+        studySessions.forEach(s => {
+            const d = new Date(s.scheduled_at);
+            // Key format: "YYYY-M-D" matching how we might compare
+            const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+            if (!map.has(key)) map.set(key, []);
+            map.get(key)!.push(s);
+        });
+        return map;
+    }, [studySessions]);
+
+    // --- OPTIMIZATION END ---
+
     return (
         <div className="flex flex-col h-full bg-background rounded-lg border overflow-hidden">
             {/* Navigation Toolbar */}
@@ -258,7 +183,8 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                     onOpenChange={(val) => setCreateModal(prev => ({ ...prev, open: val }))}
                     date={createModal.date}
                     initialStartTime={createModal.startTime}
-                    key={createModal.date.toISOString() + createModal.startTime + createModal.open} // Force reset on change
+                // Key removed to prevent full re-mount, relying on date prop change or internal handling
+                // key={createModal.date.toISOString() + createModal.startTime + createModal.open} 
                 />
             )}
 
@@ -294,23 +220,19 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                         const dayName = date.toLocaleDateString('tr-TR', { weekday: 'long' });
                         const daStr = date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
                         const dayNumber = date.getDay() || 7; // 1 (Mon) - 7 (Sun)
+                        const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 
-                        // Filter Standard Events (Recurring by weekday, valid from creation date)
-                        const dayEvents = events.filter(e => {
-                            if (e.day_of_week !== dayNumber) return false;
-
-                            // Check if the current view date is on or after the event creation date
+                        // Optimized Filtering
+                        const potentialEvents = eventsByDay.get(dayNumber) || [];
+                        const dayEvents = potentialEvents.filter(e => {
                             const eventCreated = new Date(e.created_at);
                             eventCreated.setHours(0, 0, 0, 0);
-
                             const currentViewDate = new Date(date);
                             currentViewDate.setHours(0, 0, 0, 0);
-
                             return currentViewDate >= eventCreated;
                         });
 
-                        // Filter Study Sessions (Exact date)
-                        const daySessions = studySessions.filter(s => isSameDate(date, s.scheduled_at));
+                        const daySessions = sessionsByDateKey.get(dateKey) || [];
 
                         return (
                             <div key={i} className="flex-none w-[200px] md:w-[180px] border-r border-b relative group/col">
@@ -356,7 +278,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                                     {/* Standard Events */}
                                     {dayEvents.map(event => {
                                         const { top, height } = getPosition(event.start_time, event.end_time)
-                                        const classes = getEventClasses(event, false);
+                                        const classes = getEventClasses(event, false, currentUserId, role);
                                         const timeRange = `${event.start_time.substring(0, 5)} - ${event.end_time.substring(0, 5)}`
 
                                         return (
@@ -392,7 +314,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                                         const eventTime = new Date(session.scheduled_at);
                                         const endTime = new Date(eventTime.getTime() + 60 * 60 * 1000); // 1 hour fixed
                                         const timeRange = `${eventTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} - ${endTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
-                                        const classes = getEventClasses(session, true);
+                                        const classes = getEventClasses(session, true, currentUserId, role);
 
                                         return (
                                             <div

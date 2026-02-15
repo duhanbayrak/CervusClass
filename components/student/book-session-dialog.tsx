@@ -27,7 +27,8 @@ import { Loader2, Plus, ArrowLeft } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { requestSession, getTeacherSchedule, getTeachers } from "@/lib/actions/study-session"
-import { WeeklyScheduler, ScheduleEvent, StudySessionEvent } from "@/components/schedule/WeeklyScheduler"
+import { WeeklyScheduler } from "@/components/schedule/WeeklyScheduler"
+import { ScheduleEvent, StudySessionEvent } from "@/types/schedule";
 import { cn } from "@/lib/utils"
 
 export function BookSessionDialog({ userId }: { userId: string }) {
