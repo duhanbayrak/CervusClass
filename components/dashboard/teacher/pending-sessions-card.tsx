@@ -1,34 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check, X, AlertCircle } from "lucide-react";
-import { getPendingPastSessions } from "@/lib/actions/study-session";
 import { updateStudySessionStatus } from "@/lib/actions/study-session-admin";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { useRouter } from "next/navigation";
 
-export function PendingSessionsCard() {
-    const [sessions, setSessions] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+// İlk veri server component'ten prop olarak gelir — CSR waterfall yok
+interface PendingSessionsCardProps {
+    initialSessions?: any[];
+}
+
+export function PendingSessionsCard({ initialSessions = [] }: PendingSessionsCardProps) {
+    const [sessions, setSessions] = useState<any[]>(initialSessions);
     const [processing, setProcessing] = useState<string | null>(null);
     const router = useRouter();
-
-    const fetchSessions = async () => {
-        setLoading(true);
-        const res = await getPendingPastSessions();
-        if (res.data) {
-            setSessions(res.data);
-        }
-        setLoading(false);
-    };
-
-    useEffect(() => {
-        fetchSessions();
-    }, []);
 
     const handleAction = async (sessionId: string, status: 'completed' | 'no_show') => {
         setProcessing(sessionId);
@@ -48,7 +38,6 @@ export function PendingSessionsCard() {
         }
     };
 
-    if (loading) return null;
     if (sessions.length === 0) return null;
 
     return (
@@ -82,7 +71,7 @@ export function PendingSessionsCard() {
                                     variant="outline"
                                     className="bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-200 border-dashed"
                                     onClick={() => handleAction(session.id, 'no_show')}
-                                    disabled={loading || processing === session.id}
+                                    disabled={processing === session.id}
                                 >
                                     <X className="w-4 h-4 mr-1" />
                                     Gelmedi
@@ -91,7 +80,7 @@ export function PendingSessionsCard() {
                                     size="sm"
                                     className="bg-emerald-600 hover:bg-emerald-700 text-white"
                                     onClick={() => handleAction(session.id, 'completed')}
-                                    disabled={loading || processing === session.id}
+                                    disabled={processing === session.id}
                                 >
                                     <Check className="w-4 h-4 mr-1" />
                                     Geldi (Tamamla)

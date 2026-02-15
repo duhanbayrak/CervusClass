@@ -12,6 +12,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { addClass, updateClass, ClassFormData } from "@/lib/actions/class";
 import { Class } from "@/types/database";
@@ -95,16 +102,22 @@ export function ClassDialog({ open, onOpenChange, cls, onSave }: ClassDialogProp
                         />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="grade">Kademe (9, 10, 11, 12)</Label>
-                        <Input
-                            id="grade"
-                            type="number"
-                            min={1}
-                            max={12}
-                            value={formData.grade_level}
-                            onChange={(e) => setFormData({ ...formData, grade_level: parseInt(e.target.value) || 0 })}
-                            required
-                        />
+                        <Label htmlFor="grade">Kademe</Label>
+                        <Select
+                            value={formData.grade_level.toString()}
+                            onValueChange={(val) => setFormData({ ...formData, grade_level: parseInt(val) })}
+                        >
+                            <SelectTrigger id="grade">
+                                <SelectValue placeholder="Kademe Seçin" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="9">9. Sınıf</SelectItem>
+                                <SelectItem value="10">10. Sınıf</SelectItem>
+                                <SelectItem value="11">11. Sınıf</SelectItem>
+                                <SelectItem value="12">12. Sınıf</SelectItem>
+                                <SelectItem value="13">Mezun</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                     <DialogFooter>
                         <Button type="submit" disabled={isLoading}>

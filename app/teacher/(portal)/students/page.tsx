@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+import { Loader2 } from 'lucide-react';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import StudentList from '@/components/dashboard/teacher/student-list';
@@ -8,6 +10,20 @@ interface PageProps {
         query?: string;
         class?: string;
     }>;
+}
+
+interface StudentWithClass {
+    id: string;
+    student_number?: string;
+    full_name: string;
+    email?: string;
+    avatar_url: string | null;
+    classes: {
+        name: string;
+    } | null;
+    roles?: {
+        name: string;
+    } | null;
 }
 
 async function getData(query?: string, className?: string) {
@@ -71,7 +87,7 @@ async function getData(query?: string, className?: string) {
 
 
     return {
-        students: students || [],
+        students: (students as unknown as StudentWithClass[]) || [],
         classes: classes || [],
         error: null
     };
@@ -97,7 +113,9 @@ export default async function TeacherStudentsPage(props: PageProps) {
                 </div>
             </div>
 
-            <StudentList students={students as any} classes={classes || []} />
+            <Suspense fallback={<div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-slate-500" /></div>}>
+                <StudentList students={students} classes={classes || []} />
+            </Suspense>
         </div>
     );
 }

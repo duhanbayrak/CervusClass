@@ -5,7 +5,8 @@ import NextImage from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { NavItem } from '@/lib/navigation';
-import { School, LogOut, ChevronUp } from 'lucide-react';
+import { School, LogOut, ChevronUp, Loader2 } from 'lucide-react';
+import { useState } from 'react';
 import { useUserRole } from '@/components/providers/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -22,7 +23,15 @@ interface SidebarProps {
 
 export default function Sidebar({ items, basePath, title = "CervusClass", subtitle = "Portal", className, onNavigate }: SidebarProps) {
     const pathname = usePathname();
-    const { profile, role, signOut } = useUserRole();
+    const { profile, role, signOut, loading } = useUserRole();
+
+    const [isSigningOut, setIsSigningOut] = useState(false);
+
+    const handleSignOut = async (event: Event) => {
+        event.preventDefault();
+        setIsSigningOut(true);
+        await signOut();
+    };
 
     return (
         <aside className={cn("hidden md:flex w-72 flex-shrink-0 bg-white dark:bg-[#151c2b] border-r border-slate-200 dark:border-slate-800 flex-col transition-all duration-300 h-screen sticky top-0", className)}>
@@ -81,21 +90,34 @@ export default function Sidebar({ items, basePath, title = "CervusClass", subtit
                                 <AvatarFallback>{profile?.full_name?.substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
                             </Avatar>
 
-                            <div className="flex flex-col items-start overflow-hidden flex-1">
-                                <span className="text-sm font-bold text-slate-900 dark:text-white truncate w-full text-left">
-                                    {profile?.full_name || 'Loading...'}
-                                </span>
-                                <span className="text-xs text-slate-500 dark:text-slate-400 truncate w-full text-left capitalize">
-                                    {role || 'Guest'}
-                                </span>
+                            <div className="flex flex-col items-start overflow-hidden flex-1 gap-0.5">
+                                {loading ? (
+                                    <>
+                                        <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                                        <div className="h-3 w-16 bg-slate-200 dark:bg-slate-700 rounded animate-pulse mt-1" />
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="text-sm font-bold text-slate-900 dark:text-white truncate w-full text-left">
+                                            {profile?.full_name || 'Kullanıcı'}
+                                        </span>
+                                        <span className="text-xs text-slate-500 dark:text-slate-400 truncate w-full text-left capitalize">
+                                            {role || 'Misafir'}
+                                        </span>
+                                    </>
+                                )}
                             </div>
                             <ChevronUp className="w-5 h-5 text-slate-400" />
                         </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56" forceMount>
-                        <DropdownMenuItem className="cursor-pointer text-red-600 focus:text-red-600" onSelect={() => signOut()}>
-                            <LogOut className="mr-2 h-4 w-4" />
-                            <span>Çıkış Yap</span>
+                        <DropdownMenuItem
+                            className="cursor-pointer text-red-600 focus:text-red-600"
+                            onSelect={handleSignOut}
+                            disabled={isSigningOut}
+                        >
+                            {isSigningOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+                            <span>{isSigningOut ? 'Çıkış Yapılıyor...' : 'Çıkış Yap'}</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

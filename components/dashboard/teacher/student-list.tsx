@@ -40,7 +40,7 @@ interface StudentListProps {
 export default function StudentList({ students, classes }: StudentListProps) {
     const searchParams = useSearchParams();
     const pathname = usePathname();
-    const { replace } = useRouter();
+    const router = useRouter(); // Use full router for push
 
     // Local state for input
     const [searchTerm, setSearchTerm] = useState(searchParams.get('query') || '');
@@ -69,7 +69,7 @@ export default function StudentList({ students, classes }: StudentListProps) {
             // Keep class filter intact (using the params object which started as a clone of searchParams)
             // No need to manually reset 'class' unless we want to clear it on search.
 
-            replace(`${pathname}?${params.toString()}`);
+            router.replace(`${pathname}?${params.toString()}`);
         }, 500); // 500ms debounce
     };
 
@@ -88,12 +88,12 @@ export default function StudentList({ students, classes }: StudentListProps) {
             params.set('query', searchTerm);
         }
 
-        replace(`${pathname}?${params.toString()}`);
+        router.replace(`${pathname}?${params.toString()}`);
     };
 
     const clearFilters = () => {
         setSearchTerm("");
-        replace(pathname);
+        router.replace(pathname);
     };
 
     return (
@@ -160,7 +160,11 @@ export default function StudentList({ students, classes }: StudentListProps) {
                         <TableBody>
                             {students.length > 0 ? (
                                 students.map((student) => (
-                                    <TableRow key={student.id}>
+                                    <TableRow
+                                        key={student.id}
+                                        className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50"
+                                        onClick={() => router.push(`/teacher/students/${student.id}`)}
+                                    >
                                         <TableCell className="font-medium font-mono">
                                             {student.student_number || '-'}
                                         </TableCell>
@@ -181,7 +185,11 @@ export default function StudentList({ students, classes }: StudentListProps) {
                                         <TableCell className="text-right">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                                    <Button
+                                                        variant="ghost"
+                                                        className="h-8 w-8 p-0"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
                                                         <span className="sr-only">Menü</span>
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>

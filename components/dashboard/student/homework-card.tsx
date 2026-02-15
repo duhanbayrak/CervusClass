@@ -36,7 +36,6 @@ export function HomeworkCard({ hw, status, referenceDate }: HomeworkCardProps) {
     const handleSubmit = async () => {
         startTransition(async () => {
             const result = await submitHomework(hw.id);
-            console.log('Submit Action Result:', result); // Debugging log
             if (result.error) {
                 toast.error(result.error);
             } else {
@@ -119,8 +118,8 @@ export function HomeworkCard({ hw, status, referenceDate }: HomeworkCardProps) {
                             <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
                                 Ödevi tamamladıysan aşağıdaki butona tıklayarak öğretmenine bildirebilirsin.
                             </p>
-                            <Button onClick={handleSubmit} disabled={isPending} className="w-full bg-blue-600 hover:bg-blue-700">
-                                {isPending ? 'İşleniyor...' : 'Ödevi Tamamladım'}
+                            <Button onClick={handleSubmit} isLoading={isPending} className="w-full bg-blue-600 hover:bg-blue-700">
+                                Ödevi Tamamladım
                             </Button>
                         </div>
                     )}

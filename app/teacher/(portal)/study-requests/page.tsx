@@ -1,45 +1,56 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import StudyRequestsList from '@/components/dashboard/teacher/study-requests-list';
+import { getAuthContext } from '@/lib/auth-context';
 
+// Etüt taleplerini çekmek için yardımcı fonksiyon
 async function getData() {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                }
-            }
-        }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const { supabase, user } = await getAuthContext();
     if (!user) return { pending: [], history: [] };
 
-    // Fetch all requests for this teacher
+    // Öğretmen için tüm talepleri çek
     const { data, error } = await supabase
         .from('study_sessions')
         .select(`
             id,
             topic,
             scheduled_at,
-            status,
-            student:profiles!student_id(full_name, avatar_url)
+            status:study_session_statuses(name),
+            student:profiles!student_id(full_name, avatar_url, classes(name))
         `)
         .eq('teacher_id', user.id)
         .order('created_at', { ascending: false });
 
-    const requests = data || [];
-
     if (error) {
-
+        return { pending: [], history: [] };
     }
 
-    const pending = requests.filter(r => r.status === 'pending');
-    const history = requests.filter(r => r.status !== 'pending');
+    // Response'u tiplendir
+    interface StudyRequestRaw {
+        id: string;
+        topic: string | null;
+        scheduled_at: string;
+        status: { name: string } | null;
+        student: {
+            full_name: string | null;
+            avatar_url: string | null;
+            classes: { name: string } | null;
+        } | null;
+    }
+
+    const rawData = data as unknown as StudyRequestRaw[];
+
+    const requests = rawData.map((r) => ({
+        ...r,
+        topic: r.topic || '',
+        status: (r.status?.name || 'unknown') as "pending" | "approved" | "rejected" | "completed",
+        student: r.student ? {
+            full_name: r.student.full_name || 'İsimsiz',
+            avatar_url: r.student.avatar_url,
+            classes: r.student.classes
+        } : { full_name: 'Öğrenci Bilgisi Yok', avatar_url: null, classes: null }
+    }));
+
+    const pending = requests.filter((r) => r.status === 'pending');
+    const history = requests.filter((r) => r.status !== 'pending');
 
     return { pending, history };
 }
@@ -54,7 +65,7 @@ export default async function TeacherStudyRequestsPage() {
                 <p className="text-slate-500 dark:text-slate-400">Öğrencilerden gelen birebir çalışma taleplerini yönetin.</p>
             </div>
 
-            <StudyRequestsList pendingRequests={pending as any} pastRequests={history as any} />
+            <StudyRequestsList pendingRequests={pending} pastRequests={history} />
         </div>
     );
 }

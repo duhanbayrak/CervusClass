@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -56,6 +56,7 @@ interface Teacher {
 
 export default function TeacherList({ initialTeachers, initialBranches }: { initialTeachers: Teacher[], initialBranches: string[] }) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -64,7 +65,10 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
 
     useEffect(() => {
         setMounted(true);
-    }, []);
+        if (searchParams.get('action') === 'create') {
+            setIsAddDialogOpen(true);
+        }
+    }, [searchParams]);
 
     // Form States
     const [formData, setFormData] = useState({
@@ -113,10 +117,20 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
             setEditingTeacher(null);
             setFormData({ fullName: '', branch: '', email: '', password: '', phone: '', title: '', bio: '' });
             router.refresh();
-            router.refresh();
 
-        } catch (error: any) {
-            toast.error(error.message);
+            // Cleanup query param if exists
+            if (searchParams.get('action') === 'create') {
+                const params = new URLSearchParams(searchParams.toString());
+                params.delete('action');
+                router.replace(`?${params.toString()}`);
+            }
+
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                toast.error(error.message);
+            } else {
+                toast.error('Bilinmeyen bir hata oluştu');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -138,8 +152,12 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
 
             toast.success('Öğretmen silindi.');
             router.refresh();
-        } catch (error: any) {
-            toast.error(error.message);
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                toast.error(error.message);
+            } else {
+                toast.error('Bilinmeyen bir hata oluştu');
+            }
         }
     };
 
@@ -162,6 +180,13 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
         if (!open) {
             setEditingTeacher(null);
             setFormData({ fullName: '', branch: '', email: '', password: '', phone: '', title: '', bio: '' });
+
+            // Remove action param if it exists
+            if (searchParams.get('action') === 'create') {
+                const params = new URLSearchParams(searchParams.toString());
+                params.delete('action');
+                router.replace(`?${params.toString()}`);
+            }
         }
     };
 
@@ -312,7 +337,11 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
                     <TableBody>
                         {filteredTeachers.length > 0 ? (
                             filteredTeachers.map((teacher) => (
-                                <TableRow key={teacher.id}>
+                                <TableRow
+                                    key={teacher.id}
+                                    className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 group"
+                                    onClick={() => router.push(`/admin/teachers/${teacher.id}`)}
+                                >
                                     <TableCell>
                                         <Avatar className="h-9 w-9">
                                             <AvatarImage src={teacher.avatar_url || ''} />
@@ -333,7 +362,7 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
                                     <TableCell className="text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                <Button variant="ghost" className="h-8 w-8 p-0 opacity-50 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                                                     <span className="sr-only">Open menu</span>
                                                     <MoreHorizontal className="h-4 w-4" />
                                                 </Button>

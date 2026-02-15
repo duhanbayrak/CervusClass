@@ -1,14 +1,14 @@
 "use client"
 
 import { useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle2, XCircle, Clock, Calendar, User } from 'lucide-react';
-import { useToast } from "@/hooks/use-toast"; // Assuming toast hook exists, if not need to create or fallback
+import { useToast } from "@/hooks/use-toast";
 import { useRouter } from 'next/navigation';
+import { approveSession, rejectSession } from '@/lib/actions/study-session';
 
 interface StudySession {
     id: string;
@@ -31,29 +31,32 @@ interface StudyRequestsListProps {
 export default function StudyRequestsList({ pendingRequests, pastRequests }: StudyRequestsListProps) {
     const [isUpdating, setIsUpdating] = useState(false);
     const router = useRouter();
-    // const { toast } = useToast(); // Commented out until we confirm toast existence
-
-    const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const { toast } = useToast();
 
     const handleStatusUpdate = async (id: string, newStatus: 'approved' | 'rejected') => {
         setIsUpdating(true);
         try {
-            const { error } = await supabase
-                .from('study_sessions')
-                .update({ status: newStatus })
-                .eq('id', id);
+            let result;
+            if (newStatus === 'approved') {
+                result = await approveSession(id);
+            } else {
+                result = await rejectSession(id);
+            }
 
-            if (error) throw error;
+            if (result.error) throw new Error(result.error);
 
-            // Optimistic update or router refresh
+            toast({
+                title: "Başarılı",
+                description: `Talep ${newStatus === 'approved' ? 'onaylandı' : 'reddedildi'}.`
+            });
+
             router.refresh();
-            // toast({ title: "Başarılı", description: `Talep ${newStatus === 'approved' ? 'onaylandı' : 'reddedildi'}.` });
-        } catch (error) {
-
-            // toast({ title: "Hata", description: "İşlem sırasında bir hata oluştu.", variant: "destructive" });
+        } catch (error: any) {
+            toast({
+                title: "Hata",
+                description: error.message || "İşlem sırasında bir hata oluştu.",
+                variant: "destructive"
+            });
         } finally {
             setIsUpdating(false);
         }

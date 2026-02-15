@@ -1,11 +1,24 @@
+'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
-import { Mail, Phone, Calendar, ChevronLeft, TrendingUp, Check, X, Clock } from 'lucide-react';
-import Link from 'next/link';
+import {
+    Mail, Phone, ChevronLeft, TrendingUp, Check, X, Clock,
+    User, Users, Hash, Cake, Pencil
+} from 'lucide-react';
+import { cn, formatPhone } from '@/lib/utils';
+import { StudentDialog } from '@/components/student/student-dialog';
+import { useToast } from '@/components/ui/use-toast';
+import { CopyableInfoRow, StatMiniCard } from './detail/info-cards';
+import { StudentAcademicTab } from './detail/academic-tab';
+import { StudentAttendanceTab } from './detail/attendance-tab';
+import { StudentNotesTab } from './detail/notes-tab';
 
 interface StudentDetailViewProps {
     profile: any;
@@ -39,199 +52,251 @@ interface StudentDetailViewProps {
 }
 
 export function StudentDetailView({ profile, examResults, stats, role }: StudentDetailViewProps) {
+    const router = useRouter();
+    const { toast } = useToast();
     const backLink = role === 'admin' ? '/admin/students' : '/teacher/students';
+
+    // Profil düzenleme dialog state'i
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+    // StudentDialog'un beklediği Student tipine dönüşüm
+    const studentForDialog = {
+        ...profile,
+        class: profile.classes ? { id: profile.class_id, name: profile.classes.name, grade_level: 0 } : null,
+    };
+
+    // Kayıt sonrası sayfayı yenile
+    const handleSave = () => {
+        setEditDialogOpen(false);
+        router.refresh();
+        toast({ description: "Profil başarıyla güncellendi." });
+    };
+
+    // Doğum tarihini formatla
+    const formattedBirthDate = profile.birth_date
+        ? new Date(profile.birth_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
+        : null;
+
+
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Header / Back Link */}
-            <div className="flex items-center gap-2">
-                <Link href={backLink}>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                </Link>
-                <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Öğrenci Profili</h2>
-                    <p className="text-slate-500 dark:text-slate-400">Akademik durum ve kişisel bilgiler</p>
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <Link href={backLink}>
+                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
+                            <ChevronLeft className="w-5 h-5" />
+                        </Button>
+                    </Link>
+                    <div>
+                        <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            Öğrenci Profili
+                        </h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                            Kişisel bilgiler ve akademik durum
+                        </p>
+                    </div>
                 </div>
+
+                {/* Düzenle Butonu (Header'da) */}
+                {role === 'admin' && (
+                    <Button
+                        onClick={() => setEditDialogOpen(true)}
+                        className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                    >
+                        <Pencil className="w-4 h-4" />
+                        <span className="hidden sm:inline">Profili Düzenle</span>
+                    </Button>
+                )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Left Column: Profile Card */}
-                <div className="md:col-span-1 space-y-6">
-                    <Card className="border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                        <div className="h-32 bg-gradient-to-r from-indigo-500 to-purple-600"></div>
-                        <CardContent className="pt-0 relative">
-                            <Avatar className="h-24 w-24 border-4 border-white dark:border-slate-900 absolute -top-12 left-6">
-                                <AvatarImage src={profile.avatar_url || undefined} alt={profile.full_name} />
-                                <AvatarFallback className="text-xl bg-slate-100 dark:bg-slate-800">
-                                    {profile.full_name?.slice(0, 2).toUpperCase()}
-                                </AvatarFallback>
-                            </Avatar>
+            {/* Üst Profil Kartı — Minimalist */}
+            <Card className="border-slate-200 dark:border-slate-700/50 shadow-sm overflow-hidden">
+                {/* İnce üst accent çizgisi */}
+                <div className="h-1 bg-gradient-to-r from-slate-800 via-slate-600 to-slate-400 dark:from-slate-300 dark:via-slate-500 dark:to-slate-700" />
 
-                            <div className="mt-14 mb-6">
-                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">{profile.full_name}</h3>
-                                <p className="text-slate-500 text-sm flex items-center gap-2 mt-1">
-                                    <Badge variant="secondary" className="font-normal">
-                                        {profile.classes?.name || 'Sınıfsız'}
+                <CardContent className="py-6">
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+                        {/* Avatar */}
+                        <Avatar className="h-20 w-20 border-2 border-slate-100 dark:border-slate-800 shadow-sm">
+                            <AvatarImage src={profile.avatar_url || undefined} alt={profile.full_name} />
+                            <AvatarFallback className="text-xl font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                {(profile.full_name || '?').slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                        </Avatar>
+
+                        {/* İsim ve Bilgiler */}
+                        <div className="flex-1 min-w-0 text-center sm:text-left">
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white truncate">
+                                {profile.full_name}
+                            </h3>
+                            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
+                                <Badge
+                                    variant="secondary"
+                                    className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-0 font-medium"
+                                >
+                                    {profile.classes?.name || 'Sınıfsız'}
+                                </Badge>
+                                {profile.student_number && (
+                                    <Badge variant="outline" className="font-mono text-xs text-slate-500">
+                                        #{profile.student_number}
                                     </Badge>
-                                    <span className="text-xs">#{profile.id.slice(0, 8)}</span>
-                                </p>
-                            </div>
-
-                            <div className="space-y-3 pt-6 border-t border-slate-100 dark:border-slate-800">
-                                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-                                    <Mail className="w-4 h-4 text-slate-400" />
-                                    <span className="truncate">{profile.email || 'E-posta bilgisi yok'}</span>
-                                </div>
-                                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-                                    <Phone className="w-4 h-4 text-slate-400" />
-                                    <span>{profile.phone || '+90 5XX XXX XX XX'}</span>
-                                </div>
-                                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-                                    <Calendar className="w-4 h-4 text-slate-400" />
-                                    <span>Kayıt: {new Date(profile.created_at).toLocaleDateString('tr-TR')}</span>
-                                </div>
-                            </div>
-
-                            <div className="mt-6">
-                                {role === 'admin' ? (
-                                    <Button className="w-full" variant="outline">
-                                        Profili Düzenle
-                                    </Button>
-                                ) : (
-                                    <Button className="w-full bg-slate-900 text-white hover:bg-slate-800">
-                                        Mesaj Gönder
-                                    </Button>
                                 )}
                             </div>
+                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
+                                Kayıt: {new Date(profile.created_at).toLocaleDateString('tr-TR')}
+                            </p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Sol Kolon: İletişim Bilgileri */}
+                <div className="lg:col-span-1 space-y-6">
+                    {/* İletişim Bilgileri */}
+                    <Card className="border-slate-200 dark:border-slate-700/50 shadow-sm">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                                <User className="w-4 h-4 text-indigo-500" />
+                                Öğrenci Bilgileri
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                                Tıklayarak kopyalayabilirsiniz
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-1 pt-0">
+                            <CopyableInfoRow
+                                icon={Mail}
+                                label="E-posta"
+                                value={profile.email}
+                                placeholder="Kayıtlı değil"
+                            />
+                            <CopyableInfoRow
+                                icon={Phone}
+                                label="Telefon"
+                                value={formatPhone(profile.phone)}
+                                placeholder="Kayıtlı değil"
+                            />
+                            <CopyableInfoRow
+                                icon={Hash}
+                                label="Öğrenci No"
+                                value={profile.student_number}
+                                placeholder="Atanmadı"
+                            />
+                            <CopyableInfoRow
+                                icon={Cake}
+                                label="Doğum Tarihi"
+                                value={formattedBirthDate}
+                                placeholder="Belirtilmedi"
+                            />
                         </CardContent>
                     </Card>
 
-                    {/* Quick Stats Card */}
-                    <Card className="border-slate-200 dark:border-slate-700 shadow-sm">
-                        <CardHeader>
-                            <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wide">Genel Durum</CardTitle>
+                    {/* Veli Bilgileri */}
+                    <Card className="border-slate-200 dark:border-slate-700/50 shadow-sm">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                                <Users className="w-4 h-4 text-purple-500" />
+                                Veli Bilgileri
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                                Tıklayarak kopyalayabilirsiniz
+                            </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <div className="p-2 bg-green-100 text-green-600 rounded-lg">
-                                        <TrendingUp className="w-4 h-4" />
-                                    </div>
-                                    <span className="text-sm font-medium">Ortalama</span>
-                                </div>
-                                <span className="text-lg font-bold">{stats.averageGrade || '-'}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
-                                        <Check className="w-4 h-4" />
-                                    </div>
-                                    <span className="text-sm font-medium">Yapılan Ödev</span>
-                                </div>
-                                <span className="text-lg font-bold text-green-600">{stats.homework.approved}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <div className="p-2 bg-red-100 text-red-600 rounded-lg">
-                                        <X className="w-4 h-4" />
-                                    </div>
-                                    <span className="text-sm font-medium">Yapılmayan Ödev</span>
-                                </div>
-                                <span className="text-lg font-bold text-red-600">{stats.homework.rejected}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <div className="p-2 bg-orange-100 text-orange-600 rounded-lg">
-                                        <Clock className="w-4 h-4" />
-                                    </div>
-                                    <span className="text-sm font-medium">Bekleyen Ödev</span>
-                                </div>
-                                <span className="text-lg font-bold text-orange-600">{stats.homework.pending}</span>
-                            </div>
+                        <CardContent className="space-y-1 pt-0">
+                            <CopyableInfoRow
+                                icon={User}
+                                label="Veli Adı"
+                                value={profile.parent_name}
+                                placeholder="Kayıtlı değil"
+                            />
+                            <CopyableInfoRow
+                                icon={Phone}
+                                label="Veli Telefon"
+                                value={formatPhone(profile.parent_phone)}
+                                placeholder="Kayıtlı değil"
+                            />
+                        </CardContent>
+                    </Card>
+
+                    {/* Genel İstatistikler */}
+                    <Card className="border-slate-200 dark:border-slate-700/50 shadow-sm">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                                <TrendingUp className="w-4 h-4 text-emerald-500" />
+                                Genel Durum
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2 pt-0">
+                            <StatMiniCard
+                                icon={TrendingUp}
+                                label="Ortalama"
+                                value={stats.averageGrade || '—'}
+                                color="indigo"
+                            />
+                            <StatMiniCard
+                                icon={Check}
+                                label="Yapılan Ödev"
+                                value={stats.homework.approved}
+                                color="green"
+                            />
+                            <StatMiniCard
+                                icon={X}
+                                label="Yapılmayan"
+                                value={stats.homework.rejected}
+                                color="red"
+                            />
+                            <StatMiniCard
+                                icon={Clock}
+                                label="Bekleyen"
+                                value={stats.homework.pending}
+                                color="orange"
+                            />
                         </CardContent>
                     </Card>
                 </div>
 
-                {/* RIGHT COLUMN: Tabs and Details */}
-                <div className="md:col-span-2">
+                {/* Sağ Kolon: Sekmeler */}
+                <div className="lg:col-span-2">
                     <Tabs defaultValue="academic" className="space-y-4">
-                        <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
-                            <TabsTrigger value="academic">Akademik</TabsTrigger>
-                            <TabsTrigger value="attendance">Devamsızlık</TabsTrigger>
-                            <TabsTrigger value="notes">Notlar</TabsTrigger>
+                        <TabsList className="grid w-full grid-cols-3 lg:w-[400px] bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl">
+                            <TabsTrigger value="academic" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
+                                Akademik
+                            </TabsTrigger>
+                            <TabsTrigger value="attendance" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
+                                Devamsızlık
+                            </TabsTrigger>
+                            <TabsTrigger value="notes" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
+                                Notlar
+                            </TabsTrigger>
                         </TabsList>
 
-                        {/* ACADEMIC TAB */}
                         <TabsContent value="academic" className="space-y-4">
-                            <Card className="border-slate-200 dark:border-slate-700 shadow-sm">
-                                <CardHeader>
-                                    <CardTitle>Sınav Sonuçları</CardTitle>
-                                    <CardDescription>Öğrencinin girdiği son sınavlar ve puanları.</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    {examResults.length > 0 ? (
-                                        <div className="space-y-4">
-                                            {examResults.map((exam) => (
-                                                <div key={exam.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
-                                                    <div>
-                                                        <h4 className="font-bold text-slate-900 dark:text-white">{exam.exam_name}</h4>
-                                                        <p className="text-xs text-slate-500">{new Date(exam.exam_date).toLocaleDateString('tr-TR')}</p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{exam.score}</div>
-                                                        <div className="text-xs text-slate-400">Puan</div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-12 text-slate-400">
-                                            <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                                            <p>Henüz kayıtlı sınav sonucu bulunmuyor.</p>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
+                            <StudentAcademicTab examResults={examResults} />
                         </TabsContent>
 
-                        {/* ATTENDANCE TAB */}
                         <TabsContent value="attendance">
-                            <Card className="border-slate-200 dark:border-slate-700 shadow-sm">
-                                <CardHeader>
-                                    <CardTitle>Devamsızlık Bilgisi</CardTitle>
-                                    <CardDescription>Son 30 günlük devamsızlık kayıtları.</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-center py-12 text-slate-400">
-                                        <Calendar className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                                        <p>Devamsızlık kaydı bulunamadı (Modül yapım aşamasında).</p>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                            <StudentAttendanceTab stats={stats} />
                         </TabsContent>
 
-                        {/* NOTES TAB */}
                         <TabsContent value="notes">
-                            <Card className="border-slate-200 dark:border-slate-700 shadow-sm">
-                                <CardHeader>
-                                    <CardTitle>Öğretmen Notları</CardTitle>
-                                    <CardDescription>Bu öğrenci hakkında alınan özel notlar.</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-center py-12 text-slate-400">
-                                        <p>Henüz not girilmemiş.</p>
-                                        {role === 'teacher' && (
-                                            <Button variant="outline" className="mt-4">Yeni Not Ekle</Button>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
+                            <StudentNotesTab role={role} />
                         </TabsContent>
                     </Tabs>
                 </div>
-            </div >
-        </div >
+            </div>
+
+            {/* Profil Düzenleme Dialog'u */}
+            {role === 'admin' && (
+                <StudentDialog
+                    open={editDialogOpen}
+                    onOpenChange={setEditDialogOpen}
+                    student={studentForDialog}
+                    onSave={handleSave}
+                />
+            )}
+        </div>
     );
 }

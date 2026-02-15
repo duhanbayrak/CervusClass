@@ -3,249 +3,176 @@
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { revalidatePath } from 'next/cache'
+import { type SupabaseClient } from '@supabase/supabase-js'
+import { getAuthContext } from '@/lib/auth-context'
 
-async function getStatusId(supabase: any, name: string) {
+// Status ID helper
+async function getStatusId(supabase: SupabaseClient, name: string) {
     const { data } = await supabase.from('study_session_statuses').select('id').eq('name', name).single();
     return data?.id;
 }
 
+// Öğretmenleri getir
 export async function getTeachers() {
     try {
-        const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return { error: 'Oturum bulunamadı (User null)' }
+        const { supabase, organizationId, error } = await getAuthContext();
+        if (error || !organizationId) return { error: error || 'Oturum bulunamadı' };
 
-        // Debug Env Vars
         if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-            return { error: 'CRITICAL: Service Role Key missing in server environment' }
+            return { error: 'CRITICAL: Service Role Key missing in server environment' };
         }
 
-        // Get user's organization explicitly
-        const { data: profile, error: profileError } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single()
-        if (profileError || !profile?.organization_id) {
-            return { error: `Profil/Organizasyon hatası: ${profileError?.message || 'OrgId yok'} (User: ${user.id})` }
-        }
-
-        // Determine target Role ID (Teacher)
-        const { data: role, error: roleError } = await supabaseAdmin.from('roles').select('id, name').eq('name', 'teacher').single()
+        // Öğretmen rolünü bul
+        const { data: role, error: roleError } = await supabaseAdmin.from('roles').select('id, name').eq('name', 'teacher').single();
 
         if (roleError || !role) {
-            return { error: `Rol bulma hatası: ${roleError?.message} (Aranan: 'teacher')` }
+            return { error: `Rol bulma hatası: ${roleError?.message} (Aranan: 'teacher')` };
         }
 
-        // Fetch teachers using Admin client
+        // Öğretmenleri getir — Admin client ile
         const { data: teachers, error: teachersError } = await supabaseAdmin
             .from('profiles')
-            .select('id, full_name') // Removed branch as it doesn't exist on profiles
+            .select('id, full_name')
             .eq('role_id', role.id)
-            .eq('organization_id', profile.organization_id)
-            .order('full_name')
+            .eq('organization_id', organizationId)
+            .order('full_name');
 
         if (teachersError) {
-            return { error: `Öğretmen sorgu hatası: ${teachersError.message}` }
+            return { error: `Öğretmen sorgu hatası: ${teachersError.message}` };
         }
 
         if (!teachers || teachers.length === 0) {
-            return { error: `Sorgu başarılı ama 0 öğretmen döndü. (Org: ${profile.organization_id}, Role: ${role.id})` }
+            return { error: `Sorgu başarılı ama 0 öğretmen döndü. (Org: ${organizationId}, Role: ${role.id})` };
         }
 
-        return { data: teachers }
-    } catch (err: any) {
-        return { error: `Beklenmedik Server Hatası: ${err.message}` }
+        return { data: teachers };
+    } catch (err: unknown) {
+        return { error: `Beklenmedik Server Hatası: ${handleError(err)}` };
     }
 }
 
+// Öğretmen takvimini ve etüt oturumlarını getir
 export async function getTeacherSchedule(teacherId: string) {
     try {
-        const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return { schedule: [], sessions: [], teacherName: '', error: 'User not found' }
+        const { user, organizationId, error } = await getAuthContext();
+        if (error || !user || !organizationId) return { schedule: [], sessions: [], teacherName: '', error: error || 'User not found' };
 
-        // Verify user's organization to prevent cross-org data access
-        const { data: userProfile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single()
-        if (!userProfile?.organization_id) return { schedule: [], sessions: [], teacherName: '', error: 'Org not found' }
-
-        // Fetch data using Admin client
-        // 1. Fixed Schedule (Classes) - REMOVED for Students
-        const schedule: any[] = []
-
-        // 2. Get Teacher's Available/Pending Sessions
-        const normalSessionsQuery = supabaseAdmin
+        // Etüt oturumlarını getir — Admin client ile
+        const { data: rawSessions, error: sessionError } = await supabaseAdmin
             .from('study_sessions')
             .select('*, study_session_statuses(name)')
             .eq('teacher_id', teacherId)
-            .eq('organization_id', userProfile.organization_id)
+            .eq('organization_id', organizationId)
             .gt('scheduled_at', new Date().toISOString());
 
-        const { data: rawSessions, error: sessionError } = await normalSessionsQuery;
-
         if (sessionError) {
-            return { schedule: [], sessions: [], teacherName: '', error: sessionError.message }
+            return { schedule: [], sessions: [], teacherName: '', error: sessionError.message };
         }
 
-        // Helper to get status name safely
-        const getStatus = (s: any) => s.study_session_statuses?.name;
+        // Status adını güvenli al
+        const getStatus = (s: Record<string, unknown>) => (s.study_session_statuses as Record<string, string> | null)?.name;
 
-        // Sanitize sessions: Hide private info for slots booked by others
+        // Oturumları sanitize et — başkalarının detaylarını gizle
         const sessions = rawSessions?.filter(s => getStatus(s) !== 'cancelled').map(session => {
             const status = getStatus(session);
-            const isMySession = session.student_id === user.id
-            const isAvailable = status === 'available'
+            const isMySession = session.student_id === user.id;
+            const isAvailable = status === 'available';
 
-            // Inject status string for frontend compatibility
             const sessionWithStatus = { ...session, status };
 
             if (isAvailable || isMySession) {
-                return sessionWithStatus
+                return sessionWithStatus;
             } else {
-                // Mask details for others' bookings
+                // Başkalarının bilgilerini gizle
                 return {
                     ...sessionWithStatus,
-                    topic: 'Dolu', // Mask topic
-                    student_id: null // Mask student ID
-                }
+                    topic: 'Dolu',
+                    student_id: null
+                };
             }
-        })
+        });
 
-        // 3. Get Teacher Info
-        const { data: profile } = await supabaseAdmin.from('profiles').select('full_name').eq('id', teacherId).single()
+        // Öğretmen bilgisi
+        const { data: profile } = await supabaseAdmin.from('profiles').select('full_name').eq('id', teacherId).single();
 
         return {
-            schedule: [], // Always empty for student view
+            schedule: [],
             sessions: sessions || [],
             teacherName: profile?.full_name
-        }
-    } catch (e: any) {
-
-        return { schedule: [], sessions: [], teacherName: '', error: e.message }
+        };
+    } catch (e: unknown) {
+        return { schedule: [], sessions: [], teacherName: '', error: handleError(e) };
     }
 }
 
+// Müsaitlik oluştur (öğretmen)
 export async function createAvailability(date: string, startTime: string, endTime: string) {
-    console.log('>>> createAvailability CALLED', { date, startTime, endTime });
-    const supabase = await createClient()
+    const { supabase, user, organizationId, error } = await getAuthContext();
+    if (error || !user || !organizationId) return { error: error || 'Unauthorized' };
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { error: 'Unauthorized' }
+    // Yetki Kontrolü
+    const userRole = user.app_metadata?.role || user.user_metadata?.role;
+    if (userRole !== 'teacher' && userRole !== 'admin' && userRole !== 'super_admin') {
+        return { error: 'Bu işlem için yetkiniz bulunmamaktadır.' };
+    }
 
-    // Get current user's organization_id
-    const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single()
-    if (!profile) return { error: 'Profile not found' }
-
-    // 1. Calculate Timestamps considering Timezone (Assume Turkey Time +03:00)
-    const startDateTime = new Date(`${date}T${startTime}:00+03:00`)
-    const endDateTime = new Date(`${date}T${endTime}:00+03:00`)
+    // Zaman damgaları hesapla (Türkiye saati +03:00)
+    const startDateTime = new Date(`${date}T${startTime}:00+03:00`);
+    const endDateTime = new Date(`${date}T${endTime}:00+03:00`);
 
     if (startDateTime < new Date()) {
-        return { error: 'Geçmiş bir tarihe etüt ekleyemezsiniz.' }
+        return { error: 'Geçmiş bir tarihe etüt ekleyemezsiniz.' };
     }
 
     if (endDateTime <= startDateTime) {
-        return { error: 'Bitiş saati başlangıç saatinden sonra olmalıdır.' }
+        return { error: 'Bitiş saati başlangıç saatinden sonra olmalıdır.' };
     }
 
-    // 2. Check for conflicts with Weekly Schedule (Classes)
-    // We need to map the specific date to a day of week (1-7).
-    // JS getDay(): 0=Sun, 1=Mon ... 6=Sat.
-    // DB schedule uses: 1=Mon ... 7=Sun (ISO/Postgres convention usually? or existing app convention?)
-    // Let's check `WeeklyScheduler.tsx`: 
-    // const dayNumber = date.getDay() || 7; // 1 (Mon) - 7 (Sun)
-    const dayOfWeek = startDateTime.getDay() || 7;
-
-    const { data: classes, error: scheduleError } = await supabase
-        .from('schedule')
-        .select('start_time, end_time, courses(name)')
-        .eq('teacher_id', user.id)
-        .eq('day_of_week', dayOfWeek)
-
-    if (scheduleError) {
-        return { error: 'Ders programı kontrol edilirken hata oluştu.' }
-    }
-
-    // Check overlap with classes
-    for (const cls of classes || []) {
-        // Construct TRT dates for class times
-        const classStart = new Date(`${date}T${cls.start_time}+03:00`)
-        const classEnd = new Date(`${date}T${cls.end_time}+03:00`)
-
-        if (startDateTime < classEnd && endDateTime > classStart) {
-            return { error: `Bu saatte dersiniz var: ${cls.courses?.name || 'Ders'}` }
-        }
-    }
-
-    // 3. Check for conflicts with existing Study Sessions
-    // Fetch full day in TRT
-    const dayStart = new Date(`${date}T00:00:00+03:00`).toISOString()
-    const dayEnd = new Date(`${date}T23:59:59+03:00`).toISOString()
-
-    // Needs to filter by status name joined
-    const { data: existingSessions, error: sessionError } = await supabase
-        .from('study_sessions')
-        .select('scheduled_at, study_session_statuses!inner(name)')
-        .eq('teacher_id', user.id)
-        .gte('scheduled_at', dayStart)
-        .lte('scheduled_at', dayEnd)
-        .neq('study_session_statuses.name', 'cancelled')
-
-    if (sessionError) {
-        return { error: 'Mevcut etütler kontrol edilirken hata oluştu.' }
-    }
-
-    for (const session of existingSessions || []) {
-        const sessionStart = new Date(session.scheduled_at)
-        const sessionEnd = new Date(sessionStart.getTime() + 60 * 60 * 1000) // Assume 1 hour
-
-        console.log('CHECKING CONFLICT:', {
-            newStart: startDateTime.toISOString(),
-            newEnd: endDateTime.toISOString(),
-            existingStart: sessionStart.toISOString(),
-            existingEnd: sessionEnd.toISOString()
-        });
-
-        // Correct check: new start < existing end AND new end > existing start
-        if (startDateTime < sessionEnd && endDateTime > sessionStart) {
-            console.log('!!! CONFLICT FOUND !!!');
-            return { error: 'Bu saat aralığında zaten bir etüt veya müsaitlik var.' }
-        }
+    // Çakışma kontrolü
+    const conflictResult = await checkAvailabilityConflicts(supabase, user.id, date, startDateTime, endDateTime);
+    if (conflictResult.error) {
+        return { error: conflictResult.error };
     }
 
     try {
         const availableId = await getStatusId(supabase, 'available');
-        // 4. Insert if no conflicts
-        const { error } = await supabase.from('study_sessions').insert({
+        const { error: dbError } = await supabase.from('study_sessions').insert({
             teacher_id: user.id,
-            organization_id: profile.organization_id,
+            organization_id: organizationId,
             student_id: null,
             status_id: availableId,
             scheduled_at: startDateTime.toISOString(),
             topic: ''
-        })
+        });
 
-        if (error) throw error;
-    } catch (e: any) {
-        return { error: e.message || 'Kayıt hatası' }
+        if (dbError) throw dbError;
+    } catch (e: unknown) {
+        return { error: handleError(e) || 'Kayıt hatası' };
     }
 
-
-
-    revalidatePath('/teacher/schedule')
-    revalidatePath('/teacher/study-requests')
-    revalidatePath('/teacher/dashboard')
-    revalidatePath('/student/study-requests')
-    return { success: true }
+    revalidatePath('/teacher/schedule');
+    revalidatePath('/teacher/study-requests');
+    revalidatePath('/teacher/dashboard');
+    revalidatePath('/student/study-requests');
+    return { success: true };
 }
 
+// Öğrenci etüt talebi
 export async function requestSession(sessionId: string, topic: string) {
-    const supabase = await createClient()
+    const { supabase, user, error } = await getAuthContext();
+    if (error || !user) return { error: error || 'Unauthorized' };
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { error: 'Unauthorized' }
+    // Yetki Kontrolü - Sadece öğrenciler talep edebilir
+    const userRole = user.app_metadata?.role || user.user_metadata?.role;
+    if (userRole !== 'student') {
+        return { error: 'Sadece öğrenciler etüt talebinde bulunabilir.' };
+    }
 
     try {
         const pendingId = await getStatusId(supabase, 'pending');
         const availableId = await getStatusId(supabase, 'available');
 
-        const { error } = await supabase
+        const { error: dbError } = await supabase
             .from('study_sessions')
             .update({
                 student_id: user.id,
@@ -253,70 +180,144 @@ export async function requestSession(sessionId: string, topic: string) {
                 topic: topic
             })
             .eq('id', sessionId)
-            .eq('status_id', availableId) // Optimistic locking
+            .eq('status_id', availableId);
 
-        if (error) throw error;
-    } catch (e: any) {
-        return { error: e.message }
+        if (dbError) throw dbError;
+    } catch (e: unknown) {
+        return { error: handleError(e) };
     }
 
-
-
-    revalidatePath('/student/study-requests')
-    revalidatePath('/teacher/study-requests')
-    revalidatePath('/teacher/dashboard')
-    revalidatePath('/teacher/schedule')
-    return { success: true }
+    revalidatePath('/student/study-requests');
+    revalidatePath('/teacher/study-requests');
+    revalidatePath('/teacher/dashboard');
+    revalidatePath('/teacher/schedule');
+    return { success: true };
 }
 
+// Etüt onayla
 export async function approveSession(sessionId: string) {
-    const supabase = await createClient()
+    const { supabase, user, error } = await getAuthContext();
+    if (error || !user) return { error: error || "Unauthorized" };
 
-    // RLS ensures only the teacher owner can update
     try {
+        // Oturumu ve öğretmenini kontrol et
+        const { data: session, error: sessionError } = await supabase
+            .from('study_sessions')
+            .select('teacher_id')
+            .eq('id', sessionId)
+            .single();
+
+        if (sessionError || !session) return { error: "Oturum bulunamadı." };
+
+        const userRole = user.app_metadata?.role || user.user_metadata?.role;
+        const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+
+        if (!isAdmin && session.teacher_id !== user.id) {
+            return { error: "Bu işlemi sadece ilgili öğretmen veya yönetici yapabilir." };
+        }
         const approvedId = await getStatusId(supabase, 'approved');
-        const { error } = await supabase
+        const { error: dbError } = await supabase
             .from('study_sessions')
             .update({ status_id: approvedId })
-            .eq('id', sessionId)
+            .eq('id', sessionId);
 
-        if (error) throw error;
-    } catch (e: any) {
-        return { error: e.message }
+        if (dbError) throw dbError;
+    } catch (e: unknown) {
+        return { error: handleError(e) };
     }
 
-
-
-    revalidatePath('/teacher/schedule')
-    return { success: true }
+    revalidatePath('/teacher/schedule');
+    return { success: true };
 }
 
+// Etüt reddet
+export async function rejectSession(sessionId: string, reason?: string) {
+    const { supabase, user, error } = await getAuthContext();
+    if (error || !user) return { error: error || "Unauthorized" };
+
+    try {
+        // Oturumu ve öğretmenini kontrol et
+        const { data: session, error: sessionError } = await supabase
+            .from('study_sessions')
+            .select('teacher_id')
+            .eq('id', sessionId)
+            .single();
+
+        if (sessionError || !session) return { error: "Oturum bulunamadı." };
+
+        const userRole = user.app_metadata?.role || user.user_metadata?.role;
+        const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+
+        if (!isAdmin && session.teacher_id !== user.id) {
+            return { error: "Bu işlemi sadece ilgili öğretmen veya yönetici yapabilir." };
+        }
+        const rejectedId = await getStatusId(supabase, 'rejected');
+
+        const { error: dbError } = await supabase
+            .from('study_sessions')
+            .update({
+                status_id: rejectedId,
+                rejection_reason: reason
+            })
+            .eq('id', sessionId);
+
+        if (dbError) throw dbError;
+    } catch (e: unknown) {
+        return { error: handleError(e) };
+    }
+
+    revalidatePath('/teacher/study-requests');
+    revalidatePath('/teacher/dashboard');
+    revalidatePath('/teacher/schedule');
+    return { success: true };
+}
+
+// Etüt iptal
 export async function cancelSession(sessionId: string) {
-    const supabase = await createClient()
+    const { supabase, user, error } = await getAuthContext();
+    if (error || !user) return { error: error || "Unauthorized" };
 
-    // Teacher can delete/cancel.
-    const { error } = await supabase
-        .from('study_sessions')
-        .delete()
-        .eq('id', sessionId)
+    try {
+        // Oturumu ve öğretmenini kontrol et
+        const { data: session, error: sessionError } = await supabase
+            .from('study_sessions')
+            .select('teacher_id')
+            .eq('id', sessionId)
+            .single();
 
-    if (error) return { error: error.message }
+        if (sessionError || !session) return { error: "Oturum bulunamadı." };
 
-    revalidatePath('/teacher/schedule')
-    return { success: true }
+        const userRole = user.app_metadata?.role || user.user_metadata?.role;
+        const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+
+        if (!isAdmin && session.teacher_id !== user.id) {
+            return { error: "Bu işlemi sadece ilgili öğretmen veya yönetici yapabilir." };
+        }
+
+        const { error: dbError } = await supabase
+            .from('study_sessions')
+            .delete()
+            .eq('id', sessionId);
+
+        if (dbError) return { error: dbError.message };
+
+        revalidatePath('/teacher/schedule');
+        return { success: true };
+    } catch (e: unknown) {
+        return { error: handleError(e) };
+    }
 }
 
+// Geçmiş onaylı etüt oturumları (tamamlanmadı/gelmedi kontrol için)
 export async function getPendingPastSessions() {
     try {
-        const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const { user, error } = await getAuthContext();
+        if (error || !user) return { error: error || 'Oturum bulunamadı' };
 
-        if (!user) return { error: 'Oturum bulunamadı' }
+        const now = new Date().toISOString();
 
-        const now = new Date().toISOString()
-
-        // Use Admin client to bypass RLS for this specific check, ensuring we only fetch for the logged-in teacher
-        const { data: sessions, error } = await supabaseAdmin
+        // Admin client — RLS bypass gerekli
+        const { data: sessions, error: dbError } = await supabaseAdmin
             .from('study_sessions')
             .select(`
                 *,
@@ -330,16 +331,79 @@ export async function getPendingPastSessions() {
             .eq('teacher_id', user.id)
             .eq('study_session_statuses.name', 'approved')
             .lt('scheduled_at', now)
-            .order('scheduled_at', { ascending: true })
+            .order('scheduled_at', { ascending: true });
 
-        if (error) {
-            return { error: 'Veri çekilemedi' }
+        if (dbError) {
+            return { error: 'Veri çekilemedi' };
         }
 
-        return { data: sessions || [] }
-    } catch (e: any) {
-        return { error: e.message }
+        return { data: sessions || [] };
+    } catch (e: unknown) {
+        return { error: handleError(e) };
     }
 }
 
+// Çakışma kontrolü helper
+async function checkAvailabilityConflicts(
+    supabase: SupabaseClient,
+    userId: string,
+    dateString: string,
+    startDateTime: Date,
+    endDateTime: Date
+) {
+    // Haftalık ders programı çakışması kontrolü
+    const dayOfWeek = startDateTime.getDay() || 7;
 
+    const { data: classes, error: scheduleError } = await supabase
+        .from('schedule')
+        .select('start_time, end_time, courses(name)')
+        .eq('teacher_id', userId)
+        .eq('day_of_week', dayOfWeek);
+
+    if (scheduleError) {
+        return { error: 'Ders programı kontrol edilirken hata oluştu.' };
+    }
+
+    // Ders çakışma kontrolü
+    for (const cls of classes || []) {
+        const classStart = new Date(`${dateString}T${cls.start_time}+03:00`);
+        const classEnd = new Date(`${dateString}T${cls.end_time}+03:00`);
+
+        if (startDateTime < classEnd && endDateTime > classStart) {
+            const courseName = (cls as Record<string, unknown>).courses as Record<string, string> | null;
+            return { error: `Bu saatte dersiniz var: ${courseName?.name || 'Ders'}` };
+        }
+    }
+
+    // Mevcut etüt oturumu çakışma kontrolü
+    const dayStart = new Date(`${dateString}T00:00:00+03:00`).toISOString();
+    const dayEnd = new Date(`${dateString}T23:59:59+03:00`).toISOString();
+
+    const { data: existingSessions, error: sessionError } = await supabase
+        .from('study_sessions')
+        .select('scheduled_at, study_session_statuses!inner(name)')
+        .eq('teacher_id', userId)
+        .gte('scheduled_at', dayStart)
+        .lte('scheduled_at', dayEnd)
+        .neq('study_session_statuses.name', 'cancelled');
+
+    if (sessionError) {
+        return { error: 'Mevcut etütler kontrol edilirken hata oluştu.' };
+    }
+
+    for (const session of existingSessions || []) {
+        const sessionStart = new Date(session.scheduled_at);
+        const sessionEnd = new Date(sessionStart.getTime() + 60 * 60 * 1000); // 1 saat varsayım
+
+        if (startDateTime < sessionEnd && endDateTime > sessionStart) {
+            return { error: 'Bu saat aralığında zaten bir etüt veya müsaitlik var.' };
+        }
+    }
+
+    return { success: true };
+}
+
+// Hata yönetimi helper
+function handleError(e: unknown): string {
+    return e instanceof Error ? e.message : 'Bilinmeyen hata';
+}

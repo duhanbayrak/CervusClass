@@ -11,10 +11,10 @@ import {
 } from "@/components/ui/dialog"
 import { approveSession, cancelSession } from "@/lib/actions/study-session"
 import { updateStudySessionStatus } from "@/lib/actions/study-session-admin"
-import { Loader2, Check, X, Ban } from "lucide-react"
+import { Check, X, Ban } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
-import { StudySessionEvent } from "./WeeklyScheduler"
+import { StudySessionEvent } from "@/types/schedule";
 
 interface ManageSessionDialogProps {
     session: StudySessionEvent | null
@@ -121,16 +121,14 @@ export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Ma
                 <DialogFooter className="gap-2 flex-col sm:flex-row sm:justify-between">
                     {/* Left Side: Reject/Delete (Always available except completed/noshow maybe?) */}
                     {session.status !== 'completed' && session.status !== 'no_show' && (
-                        <Button variant="destructive" onClick={handleReject} disabled={loading} size="sm">
-                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Button variant="destructive" onClick={handleReject} isLoading={loading} size="sm">
                             Reddet/Sil
                         </Button>
                     )}
 
                     <div className="flex gap-2 justify-end w-full sm:w-auto">
                         {isApprovable && (
-                            <Button onClick={handleApprove} disabled={loading} className="bg-green-600 hover:bg-green-700">
-                                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            <Button onClick={handleApprove} isLoading={loading} className="bg-green-600 hover:bg-green-700">
                                 Onayla
                             </Button>
                         )}
@@ -140,14 +138,14 @@ export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Ma
                                 <Button
                                     variant="outline"
                                     onClick={() => handleStatusUpdate('no_show')}
-                                    disabled={loading}
+                                    isLoading={loading}
                                     className="text-red-600 hover:bg-red-50 border-red-200"
                                 >
                                     <Ban className="mr-2 h-4 w-4" /> Gelmedi
                                 </Button>
                                 <Button
                                     onClick={() => handleStatusUpdate('completed')}
-                                    disabled={loading}
+                                    isLoading={loading}
                                     className="bg-green-600 hover:bg-green-700 text-white"
                                 >
                                     <Check className="mr-2 h-4 w-4" /> Tamamlandı

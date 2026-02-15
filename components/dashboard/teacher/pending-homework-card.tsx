@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check, X, ClipboardList, Loader2 } from "lucide-react";
+import { Check, X, ClipboardList } from "lucide-react";
 import { assessHomework } from "@/lib/actions/teacher-homework";
 import { toast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
@@ -141,9 +141,9 @@ export function PendingHomeworkCard({ initialHomeworks }: PendingHomeworkCardPro
                                         size="sm"
                                         className="bg-blue-600 hover:bg-blue-700 text-white"
                                         onClick={() => handleApprove(hw.id)}
-                                        disabled={!!processing && processing === hw.id}
+                                        isLoading={processing === hw.id}
                                     >
-                                        {processing === hw.id ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Check className="w-4 h-4 mr-1" />}
+                                        {!processing && <Check className="w-4 h-4 mr-1" />}
                                         Onayla
                                     </Button>
                                 </div>
@@ -194,8 +194,7 @@ export function PendingHomeworkCard({ initialHomeworks }: PendingHomeworkCardPro
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setRejectId(null)}>İptal</Button>
-                        <Button variant="destructive" onClick={handleReject} disabled={!!processing}>
-                            {processing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        <Button variant="destructive" onClick={handleReject} isLoading={!!processing}>
                             İşlemi Tamamla
                         </Button>
                     </DialogFooter>

@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Upload, FileSpreadsheet, Loader2, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { uploadStudents } from '@/lib/actions/student-upload'
-import * as XLSX from 'xlsx'
+// Duplicate import removed
+// import * as XLSX from 'xlsx' // Dynamic import used instead
 
 export function StudentUploader() {
     const [isPending, setIsPending] = useState(false)
@@ -41,7 +42,10 @@ export function StudentUploader() {
         }
     }
 
-    const downloadTemplate = () => {
+    // import removed
+
+    const downloadTemplate = async () => {
+        const XLSX = await import('xlsx');
         const headers = ['Ad Soyad', 'Email', 'Sınıf', 'Parola', 'Öğrenci No', 'Öğrenci Telefon', 'Veli Adı', 'Veli Telefon', 'Doğum Tarihi']
         const data = [
             ['Ali Yılmaz', 'ali@ornek.com', '12-A', '123456', '101', '5551234567', 'Ahmet Yılmaz', '5559876543', '2005-01-01'],

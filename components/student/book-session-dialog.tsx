@@ -2,7 +2,7 @@
 
 'use client'
 
-import { createBrowserClient } from '@supabase/ssr'
+
 
 import { Button } from "@/components/ui/button"
 import {
@@ -27,10 +27,11 @@ import { Loader2, Plus, ArrowLeft } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { requestSession, getTeacherSchedule, getTeachers } from "@/lib/actions/study-session"
-import { WeeklyScheduler, ScheduleEvent, StudySessionEvent } from "@/components/schedule/WeeklyScheduler"
+import { WeeklyScheduler } from "@/components/schedule/WeeklyScheduler"
+import { ScheduleEvent, StudySessionEvent } from "@/types/schedule";
 import { cn } from "@/lib/utils"
 
-export function BookSessionDialog() {
+export function BookSessionDialog({ userId }: { userId: string }) {
     const [open, setOpen] = useState(false)
     const [step, setStep] = useState<'select-teacher' | 'select-slot'>('select-teacher')
 
@@ -50,19 +51,7 @@ export function BookSessionDialog() {
     const [topic, setTopic] = useState("")
     const [submitting, setSubmitting] = useState(false)
 
-    const [currentUserId, setCurrentUserId] = useState<string>("")
-
     useEffect(() => {
-        const fetchUser = async () => {
-            const supabase = createBrowserClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-            )
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user) setCurrentUserId(user.id)
-        }
-        fetchUser()
-
         if (open && step === 'select-teacher') {
             fetchTeachers()
         }
@@ -221,7 +210,7 @@ export function BookSessionDialog() {
                                         events={events}
                                         studySessions={studySessions}
                                         role="student"
-                                        currentUserId={currentUserId}
+                                        currentUserId={userId}
                                         onEventClick={handleEventClick}
                                     />
 
@@ -243,10 +232,10 @@ export function BookSessionDialog() {
                                             </div>
                                             <Button
                                                 onClick={handleSubmit}
-                                                disabled={submitting || !topic}
+                                                disabled={!topic}
+                                                isLoading={submitting}
                                                 className="bg-slate-600 hover:bg-slate-700 text-white font-medium px-6"
                                             >
-                                                {submitting && <Loader2 className="animate-spin w-4 h-4 mr-2" />}
                                                 Talep Gönder
                                             </Button>
                                             <Button

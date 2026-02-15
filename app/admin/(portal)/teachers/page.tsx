@@ -1,22 +1,13 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import TeacherList from '@/components/dashboard/admin/teacher-list'
+import { Suspense } from 'react';
+import { Loader2 } from 'lucide-react';
+import TeacherList from '@/components/dashboard/admin/teacher-list';
+import { getAuthContext } from '@/lib/auth-context';
 
 export default async function TeachersPage() {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                }
-            }
-        }
-    )
+    // Merkezi auth context — tek supabase client
+    const { supabase } = await getAuthContext();
 
-    // 1. Get Teacher Role ID first for reliable filtering
+    // 1. Öğretmen rolü ID'sini al
     const { data: roleData } = await supabase
         .from('roles')
         .select('id')
@@ -25,11 +16,24 @@ export default async function TeachersPage() {
 
     const teacherRoleId = roleData?.id;
 
-    // 2. Fetch profiles with that role_id
-    let teachers: any[] = [];
+    // 2. Öğretmen profillerini çek
+    interface TeacherProfile {
+        id: string;
+        full_name: string | null;
+        email: string | null;
+        phone: string | null;
+        title: string | null;
+        bio: string | null;
+        avatar_url: string | null;
+        created_at: string;
+        branches: { name: string } | null;
+        role_id: string;
+    }
+
+    let teachers: TeacherProfile[] = [];
 
     if (teacherRoleId) {
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from('profiles')
             .select(`
                 id,
@@ -46,19 +50,11 @@ export default async function TeachersPage() {
             .order('created_at', { ascending: false });
 
         if (data) {
-            teachers = data;
-            if (data.length > 0) {
-                console.log('Teachers Fetch Sample:', JSON.stringify(data[0], null, 2));
-            }
-        }
-        if (error) {
-            console.error('Error fetching teachers (Detailed):', JSON.stringify(error, null, 2));
-            // Try fetching without filter to see if it works
-            // ...
+            teachers = data as unknown as TeacherProfile[];
         }
     }
 
-    // 3. Fetch branches for the dropdown
+    // 3. Şubeleri çek
     const { data: branchesData } = await supabase
         .from('branches')
         .select('name')
@@ -66,7 +62,7 @@ export default async function TeachersPage() {
 
     const branches = branchesData?.map(b => b.name) || [];
 
-    // Handle potential errors or empty states (ignore error for now, return empty)
+    // Öğretmen verilerini formatlayarak gönder
     const formattedTeachers = teachers?.map(t => ({
         id: t.id,
         full_name: t.full_name,
@@ -87,7 +83,9 @@ export default async function TeachersPage() {
                 </p>
             </div>
 
-            <TeacherList initialTeachers={formattedTeachers} initialBranches={branches} />
+            <Suspense fallback={<div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-slate-500" /></div>}>
+                <TeacherList initialTeachers={formattedTeachers} initialBranches={branches} />
+            </Suspense>
         </div>
     )
 }
