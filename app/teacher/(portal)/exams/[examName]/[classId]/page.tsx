@@ -10,6 +10,7 @@ import {
     TrendingDown,
     Award,
     ChevronRight,
+    LineChart,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -22,6 +23,9 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import Link from 'next/link'
+import { getTeacherExamDetailData } from '@/actions/exam-stats'
+import { TeacherExamCharts } from '@/components/teacher/exams/teacher-exam-charts'
+
 
 interface StudentExamData {
     studentId: string
@@ -69,6 +73,7 @@ async function getClassExamResults(examName: string, classId: string) {
         `)
         .eq('exam_name', examName)
         .eq('profiles.class_id', classId)
+
         .order('total_net', { ascending: false })
 
     if (error || !results || results.length === 0) {
@@ -143,6 +148,10 @@ export default async function ClassExamDetailPage({
     const highestNet = students.length > 0 ? students[0].totalNet : 0
     const lowestNet = students.length > 0 ? students[students.length - 1].totalNet : 0
 
+    // Grafik verilerini çek
+    const statsData = await getTeacherExamDetailData(decodeURIComponent(examName), classId)
+
+
     return (
         <div className="container py-8 max-w-7xl mx-auto space-y-6">
             {/* Header with Back Button */}
@@ -214,6 +223,17 @@ export default async function ClassExamDetailPage({
                 </div>
             </div>
 
+            {/* Grafik Karşılaştırmaları */}
+            {statsData && (
+                <TeacherExamCharts
+                    classSubjectAverages={statsData.classSubjectAverages}
+                    classTotalAvg={statsData.classTotalAvg}
+                    schoolSubjectAverages={statsData.schoolSubjectAverages}
+                    schoolTotalAvg={statsData.schoolTotalAvg}
+                />
+            )}
+
+
             {/* Students Table */}
             <div className="border rounded-xl overflow-hidden bg-card">
                 <div className="p-6 border-b bg-muted/50">
@@ -233,7 +253,7 @@ export default async function ClassExamDetailPage({
                             <TableHead className="text-center font-semibold">Fen</TableHead>
                             <TableHead className="text-center font-semibold">Sosyal</TableHead>
                             <TableHead className="text-center font-bold text-primary bg-primary/5">Toplam Net</TableHead>
-                            <TableHead className="w-12"></TableHead>
+                            <TableHead className="w-24"></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -266,11 +286,18 @@ export default async function ClassExamDetailPage({
                                         </span>
                                     </TableCell>
                                     <TableCell>
-                                        <Link href={`/teacher/exams/${encodeURIComponent(classData.examName)}/students/${student.studentId}`}>
-                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                <ChevronRight className="h-4 w-4" />
-                                            </Button>
-                                        </Link>
+                                        <div className="flex items-center gap-1">
+                                            <Link href={`/teacher/exams/${encodeURIComponent(classData.examName)}/students/${student.studentId}`}>
+                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Sınav Analizi">
+                                                    <ChevronRight className="h-4 w-4" />
+                                                </Button>
+                                            </Link>
+                                            <Link href={`/teacher/students/${student.studentId}/exams`}>
+                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary" title="Tüm Sınav Gelişimi">
+                                                    <LineChart className="h-4 w-4" />
+                                                </Button>
+                                            </Link>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             )

@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
-import { Mail, Phone, Calendar, ChevronLeft, TrendingUp, Check, X, Clock } from 'lucide-react';
+import { Mail, Phone, Calendar, ChevronLeft, TrendingUp, Check, X, Clock, LineChart } from 'lucide-react';
 import Link from 'next/link';
 
 interface StudentDetailViewProps {
@@ -168,25 +168,56 @@ export function StudentDetailView({ profile, examResults, stats, role }: Student
                         {/* ACADEMIC TAB */}
                         <TabsContent value="academic" className="space-y-4">
                             <Card className="border-slate-200 dark:border-slate-700 shadow-sm">
-                                <CardHeader>
-                                    <CardTitle>Sınav Sonuçları</CardTitle>
-                                    <CardDescription>Öğrencinin girdiği son sınavlar ve puanları.</CardDescription>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7">
+                                    <div className="space-y-1">
+                                        <CardTitle>Sınav Sonuçları</CardTitle>
+                                        <CardDescription>Öğrencinin girdiği son sınavlar ve puanları.</CardDescription>
+                                    </div>
+                                    {role === 'teacher' && (
+                                        <Link href={`/teacher/students/${profile.id}/exams`}>
+                                            <Button variant="outline" size="sm" className="flex items-center gap-2">
+                                                <LineChart className="h-4 w-4" />
+                                                Tüm Sınav Detaylarını Gör
+                                            </Button>
+                                        </Link>
+                                    )}
                                 </CardHeader>
                                 <CardContent>
                                     {examResults.length > 0 ? (
                                         <div className="space-y-4">
-                                            {examResults.map((exam) => (
-                                                <div key={exam.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
-                                                    <div>
-                                                        <h4 className="font-bold text-slate-900 dark:text-white">{exam.exam_name}</h4>
-                                                        <p className="text-xs text-slate-500">{new Date(exam.exam_date).toLocaleDateString('tr-TR')}</p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{exam.score}</div>
-                                                        <div className="text-xs text-slate-400">Puan</div>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                            {examResults.map((exam) => {
+                                                const examUrl = role === 'teacher'
+                                                    ? `/teacher/exams/${encodeURIComponent(exam.exam_name)}/students/${profile.id}`
+                                                    : `/student/exams/${exam.id}`;
+
+                                                return (
+                                                    <Link
+                                                        key={exam.id}
+                                                        href={examUrl}
+                                                        className="block group"
+                                                    >
+                                                        <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all cursor-pointer group-hover:border-indigo-200 dark:group-hover:border-indigo-900/50">
+                                                            <div>
+                                                                <h4 className="font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                                                    {exam.exam_name}
+                                                                </h4>
+                                                                <p className="text-xs text-slate-500">
+                                                                    {exam.exam_date ? new Date(exam.exam_date).toLocaleDateString('tr-TR') : 'Tarih Belirtilmemiş'}
+                                                                </p>
+                                                            </div>
+                                                            <div className="text-right flex items-center gap-4">
+                                                                <div>
+                                                                    <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400">
+                                                                        {exam.total_net ?? '-'}
+                                                                    </div>
+                                                                    <div className="text-xs text-slate-400">Net</div>
+                                                                </div>
+                                                                <ChevronLeft className="h-4 w-4 rotate-180 text-slate-300 group-hover:text-indigo-400 transition-colors" />
+                                                            </div>
+                                                        </div>
+                                                    </Link>
+                                                );
+                                            })}
                                         </div>
                                     ) : (
                                         <div className="text-center py-12 text-slate-400">

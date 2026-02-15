@@ -9,6 +9,7 @@ import {
     Award,
     TrendingUp,
     BarChart3,
+    LineChart,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +22,8 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import Link from 'next/link'
+import { getExamDetailData } from '@/actions/exam-stats'
+import { ExamDetailCharts } from '@/components/student/exams/exam-detail-charts'
 
 async function getStudentExamDetails(examName: string, studentId: string) {
     const cookieStore = await cookies()
@@ -53,31 +56,49 @@ async function getStudentExamDetails(examName: string, studentId: string) {
                 classes!inner (
                     id,
                     name
-                )
+                ),
+                organization_id
             )
         `)
         .eq('exam_name', examName)
         .eq('student_id', studentId)
         .single()
 
+
     if (error || !result) {
         return null
     }
 
-    // Get class average and ranking
-    const classId = (result.profiles as any)?.classes?.id
+    // Get class average and ranking using the SAME logic/query as the class list page
+    const classId = (result.profiles as any)?.class_id
+
+    // Get ALL results for this class and this exam to calculate rank and average consistently
     const { data: classResults } = await supabase
         .from('exam_results')
-        .select('total_net, student_id')
+        .select(`
+            total_net,
+            student_id,
+            profiles!inner (
+                class_id
+            )
+        `)
         .eq('exam_name', examName)
         .eq('profiles.class_id', classId)
         .order('total_net', { ascending: false })
 
-    let classRank = 1
+    let classRank: string | number = '-'
     let classAvg = 0
-    if (classResults) {
-        classAvg = classResults.reduce((sum: number, r: any) => sum + (r.total_net || 0), 0) / classResults.length
-        classRank = classResults.findIndex((r: any) => r.student_id === studentId) + 1
+
+    if (classResults && classResults.length > 0) {
+        // Calculate Average
+        const totalSum = classResults.reduce((sum, r) => sum + (Number(r.total_net) || 0), 0)
+        classAvg = totalSum / classResults.length
+
+        // Calculate Rank - exactly as it appears in the list view (index + 1)
+        const studentIndex = classResults.findIndex(r => r.student_id === studentId)
+        if (studentIndex !== -1) {
+            classRank = studentIndex + 1
+        }
     }
 
     // Parse scores
@@ -135,9 +156,11 @@ async function getStudentExamDetails(examName: string, studentId: string) {
             date: result.exam_date
         },
         scores,
+        rawScores: scoresData,
         totalNet: result.total_net || 0,
         classRank,
-        classAvg
+        classAvg,
+        examId: result.id
     }
 }
 
@@ -171,6 +194,9 @@ export default async function StudentExamDetailPage({
         notFound()
     }
 
+    // Grafik verilerini çek (Bu fonksiyonu artık studentId ile çağırabiliyoruz)
+    const statsData = await getExamDetailData(data.examId, studentId)
+
     return (
         <div className="container py-8 max-w-6xl mx-auto space-y-6">
             {/* Header with Back Button */}
@@ -202,6 +228,12 @@ export default async function StudentExamDetailPage({
                             </span>
                         </div>
                     </div>
+                    <Link href={`/teacher/students/${studentId}/exams`}>
+                        <Button variant="outline" size="sm" className="flex items-center gap-2">
+                            <LineChart className="h-4 w-4" />
+                            Tüm Sınav Detaylarını Gör
+                        </Button>
+                    </Link>
                 </div>
                 <div className="pt-2">
                     <h2 className="text-xl font-semibold text-muted-foreground">{data.exam.name}</h2>
@@ -301,19 +333,17 @@ export default async function StudentExamDetailPage({
                 </Table>
             </div>
 
-            {/* Placeholder for charts */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-6 rounded-xl border bg-muted/30 border-dashed">
-                    <p className="text-sm text-muted-foreground text-center">
-                        Ders bazında performans grafiği yakında eklenecek
-                    </p>
-                </div>
-                <div className="p-6 rounded-xl border bg-muted/30 border-dashed">
-                    <p className="text-sm text-muted-foreground text-center">
-                        Sınıf karşılaştırma grafiği yakında eklenecek
-                    </p>
-                </div>
-            </div>
+            {/* Analytics Charts */}
+            {statsData && (
+                <ExamDetailCharts
+                    scores={data.rawScores}
+                    totalNet={data.totalNet}
+                    classSubjectAverages={statsData.classSubjectAverages}
+                    classTotalAvg={statsData.classTotalAvg}
+                    schoolSubjectAverages={statsData.schoolSubjectAverages}
+                    schoolTotalAvg={statsData.schoolTotalAvg}
+                />
+            )}
         </div>
     )
 }

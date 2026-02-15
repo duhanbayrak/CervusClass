@@ -22,6 +22,8 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import Link from 'next/link'
+import { getExamDetailData } from '@/actions/exam-stats'
+import { ExamDetailCharts } from '@/components/student/exams/exam-detail-charts'
 
 async function getExamDetails(examId: string, userId: string) {
     const cookieStore = await cookies()
@@ -80,6 +82,9 @@ export default async function ExamDetailPage({
     if (!exam) {
         notFound()
     }
+
+    // Detay verileri (sınıf/okul ortalamaları)
+    const detailData = await getExamDetailData(id)
 
     // Parse scores - handle both string and object format
     let scoresData: any = exam.scores
@@ -272,19 +277,17 @@ export default async function ExamDetailPage({
                 </Table>
             </div>
 
-            {/* Future sections placeholder */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-6 rounded-xl border bg-muted/30 border-dashed">
-                    <p className="text-sm text-muted-foreground text-center">
-                        Sınav analizi yakında eklenecek
-                    </p>
-                </div>
-                <div className="p-6 rounded-xl border bg-muted/30 border-dashed">
-                    <p className="text-sm text-muted-foreground text-center">
-                        Grafik görselleri yakında eklenecek
-                    </p>
-                </div>
-            </div>
+            {/* Grafik Karşılaştırmaları */}
+            {detailData && (
+                <ExamDetailCharts
+                    scores={exam.scores}
+                    totalNet={exam.total_net}
+                    classSubjectAverages={detailData.classSubjectAverages}
+                    classTotalAvg={detailData.classTotalAvg}
+                    schoolSubjectAverages={detailData.schoolSubjectAverages}
+                    schoolTotalAvg={detailData.schoolTotalAvg}
+                />
+            )}
         </div>
     )
 }

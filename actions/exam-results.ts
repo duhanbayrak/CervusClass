@@ -26,7 +26,12 @@ export async function uploadExamResult(prevState: any, formData: FormData) {
         return { success: false, message: 'Yetkiniz yok.' }
     }
 
-    // 2. Validate File
+    // 2. Validate Input
+    const examName = formData.get('exam_name') as string
+    if (!examName) {
+        return { success: false, message: 'Sınav ismi girmelisiniz.' }
+    }
+
     const file = formData.get('file') as File
     if (!file) {
         return { success: false, message: 'Dosya seçilmedi.' }
@@ -74,6 +79,7 @@ export async function uploadExamResult(prevState: any, formData: FormData) {
                 },
                 body: JSON.stringify({
                     file_url: fileUrl,
+                    exam_name: examName,
                     admin_id: user.id,
                     uploaded_at: new Date().toISOString(),
                     original_name: file.name

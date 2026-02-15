@@ -1,13 +1,22 @@
 
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { notFound } from 'next/navigation'
 import { ExamHistory } from '@/components/student/exams/exam-history'
 import { ExamOverviewChart } from '@/components/student/exams/exam-overview-chart'
 import { SubjectOverviewCharts } from '@/components/student/exams/subject-overview-charts'
 import { getExamOverviewData } from '@/actions/exam-stats'
+import { ArrowLeft, User } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 
-export default async function StudentExamsPage() {
-    const overviewData = await getExamOverviewData()
+export default async function TeacherStudentExamsPage({
+    params,
+}: {
+    params: Promise<{ id: string }>
+}) {
+    const { id } = await params
+    const overviewData = await getExamOverviewData(id)
 
     const cookieStore = await cookies()
     const supabase = createServerClient(
@@ -22,24 +31,51 @@ export default async function StudentExamsPage() {
         }
     )
 
-    const { data: { user } } = await supabase.auth.getUser()
+    // Get student profile for header
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select(`
+            full_name,
+            classes (
+                name
+            )
+        `)
+        .eq('id', id)
+        .single()
+
+    if (!profile) {
+        notFound()
+    }
 
     let exams: any[] = []
-    if (user) {
-        const { data } = await supabase
-            .from('exam_results')
-            .select('*')
-            .eq('student_id', user.id)
-            .order('exam_date', { ascending: false })
-        exams = data || []
-    }
+    const { data } = await supabase
+        .from('exam_results')
+        .select('*')
+        .eq('student_id', id)
+        .order('exam_date', { ascending: false })
+    exams = data || []
 
     return (
         <div className="container py-8 max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
+            {/* Header with Back Button */}
+            <div className="flex items-center gap-4">
+                <Link href={`/teacher/students/${id}`}>
+                    <Button variant="ghost" size="sm">
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Geri
+                    </Button>
+                </Link>
+                <div className="h-8 w-px bg-border" />
+                <div className="flex items-center gap-2 text-muted-foreground">
+                    <User className="h-4 w-4" />
+                    <span className="text-sm font-medium">Öğrenci Gelişim Analizi</span>
+                </div>
+            </div>
+
             <div className="flex flex-col gap-2 border-b pb-6">
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">Sınav Geçmişi</h1>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">{profile.full_name} - Sınav Gelişimi</h1>
                 <p className="text-muted-foreground">
-                    Katıldığınız tüm deneme sınavlarının sonuçlarını ve detaylı analizlerini buradan inceleyebilirsiniz.
+                    {(profile as any).classes?.name} sınıfı öğrencisinin tüm sınav geçmişi ve gelişim grafikleri.
                 </p>
             </div>
 
@@ -62,7 +98,7 @@ export default async function StudentExamsPage() {
             )}
 
             {/* Sınav Listesi */}
-            <ExamHistory exams={exams} />
+            <ExamHistory exams={exams} role="teacher" studentId={id} />
         </div>
     )
 }

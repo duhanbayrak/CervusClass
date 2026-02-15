@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { uploadExamResult } from '@/actions/exam-results'
 import { toast } from 'sonner'
-import { Loader2, Upload, FileSpreadsheet } from 'lucide-react'
+import { Loader2, Upload, FileSpreadsheet, FileText } from 'lucide-react'
 
 export function AdminExamUploader() {
     const [isPending, setIsPending] = useState(false)
@@ -66,6 +66,20 @@ export function AdminExamUploader() {
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="space-y-2">
+                        <Label htmlFor="exam_name" className="flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            Sınav Adı
+                        </Label>
+                        <Input
+                            id="exam_name"
+                            name="exam_name"
+                            type="text"
+                            placeholder="Örn: TYT Deneme - 1"
+                            required
+                            disabled={isPending}
+                        />
+                    </div>
                     <div className="space-y-2">
                         <Label htmlFor="file">Excel Dosyası</Label>
                         <Input
