@@ -12,7 +12,7 @@ export type ScheduleEvent = Schedule & {
 export interface StudySessionEvent {
     id: string
     scheduled_at: string // ISO string
-    status: 'pending' | 'approved' | 'rejected' | 'completed' | 'no_show' | 'available'
+    status: 'pending' | 'approved' | 'rejected' | 'completed' | 'no_show' | 'available' | 'cancelled'
     teacher_id: string
     student_id?: string | null
     topic?: string | null

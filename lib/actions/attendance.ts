@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getAuthContext } from "@/lib/auth-context";
+import { handleError } from "@/lib/utils/error";
 
 export type AttendanceItem = {
     student_id: string;
@@ -36,7 +37,9 @@ export async function saveAttendance(items: AttendanceItem[]) {
         revalidatePath('/teacher/attendance');
         return { success: true };
 
-    } catch {
-        return { success: false, error: 'Beklenmedik bir hata oluştu.' };
+    } catch (e: unknown) {
+        return { success: false, error: `Beklenmedik bir hata oluştu: ${handleError(e)}` };
     }
 }
+
+// Hata yönetimi helper kaldırıldı -> lib/utils/error.ts kullanılıyor

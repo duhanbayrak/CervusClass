@@ -43,7 +43,7 @@ async function getScheduleWithStudents(scheduleId: string) {
         .single();
 
     if (scheduleError || !schedule) {
-        return { schedule: null, students: [], existingAttendance: [] };
+        return { schedule: null, students: [], existingAttendance: [], date: '' };
     }
 
     // 2. Get Students in that class
@@ -62,19 +62,31 @@ async function getScheduleWithStudents(scheduleId: string) {
     if (studentsError) {
     }
 
-    // 3. Get existing attendance for today
-    const today = new Date().toISOString().split('T')[0];
+    // 3. Calculate Target Date based on Schedule Day of Week
+    // This ensures that even if teacher takes attendance on Wednesday for a Monday class,
+    // the date is recorded as Monday.
+    const now = new Date();
+    const currentDayISO = now.getDay() || 7; // 1 (Mon) - 7 (Sun)
+    const targetDayISO = schedule.day_of_week; // 1 - 7
+
+    // Calculate difference in days to find the target date within the CURRENT week
+    const dayDiff = targetDayISO - currentDayISO;
+    const targetDateObj = new Date(now);
+    targetDateObj.setDate(now.getDate() + dayDiff);
+    const targetDateStr = targetDateObj.toISOString().split('T')[0];
+
+    // Get existing attendance for the TARGET date
     const { data: existingAttendance } = await supabase
         .from('attendance')
         .select('*')
         .eq('schedule_id', scheduleId)
-        .eq('date', today);
+        .eq('date', targetDateStr);
 
     return {
         schedule,
         students: students || [],
         existingAttendance: existingAttendance || [],
-        today
+        date: targetDateStr // Renamed from today to date
     };
 }
 
@@ -92,7 +104,7 @@ export default async function TakeAttendancePage({ params }: { params: any }) {
         notFound();
     }
 
-    const { schedule, students, existingAttendance, today } = data;
+    const { schedule, students, existingAttendance, date } = data;
 
     // Create a map of existing attendance for easy lookup
     const attendanceMap: Record<string, { status: string; late_minutes: number; id: string }> = {};
@@ -138,7 +150,7 @@ export default async function TakeAttendancePage({ params }: { params: any }) {
                 <CardHeader>
                     <CardTitle>Öğrenci Listesi</CardTitle>
                     <CardDescription>
-                        {today} tarihli yoklama. Durumu seçip kaydedin.
+                        {date && new Date(date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' })} tarihli yoklama. Durumu seçip kaydedin.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -148,7 +160,7 @@ export default async function TakeAttendancePage({ params }: { params: any }) {
                             classId={schedule.class_id}
                             students={students}
                             attendanceMap={attendanceMap}
-                            date={today!}
+                            date={date!}
                         />
                     ) : (
                         <div className="text-center py-12 text-slate-400">

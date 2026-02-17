@@ -12,7 +12,7 @@ export default async function AdminSchedulePage() {
     if (!organizationId) return <div>Kurum bilgisi bulunamadı.</div>
 
     // Paralel veri çekme
-    const [eventsResult, teacherRoleResult, coursesResult, classesResult] = await Promise.all([
+    const [eventsResult, teacherRoleResult, coursesResult, classesResult, studySessionsResult] = await Promise.all([
         // Program etkinlikleri
         supabase
             .from('schedule')
@@ -31,7 +31,21 @@ export default async function AdminSchedulePage() {
         supabase.from('courses').select('id, name, branch_id').eq('organization_id', organizationId).order('name'),
 
         // Sınıflar
-        supabase.from('classes').select('id, name').eq('organization_id', organizationId).order('name')
+        supabase.from('classes').select('id, name').eq('organization_id', organizationId).order('name'),
+
+        // Etüt Oturumları
+        supabase
+            .from('study_sessions')
+            .select(`
+                id,
+                teacher_id,
+                student_id,
+                scheduled_at,
+                topic,
+                status:study_session_statuses ( name ),
+                student:profiles!student_id ( full_name )
+            `)
+            .eq('organization_id', organizationId)
     ]);
 
     // Öğretmen listesi (rol ID bağımlı — sıralı sorgu)
@@ -55,6 +69,17 @@ export default async function AdminSchedulePage() {
     })) || [];
 
     const classOptions = classesResult.data?.map(c => ({ id: c.id, label: c.name })) || [];
+
+    // Etüt verisini dönüştür
+    const studySessions: any[] = studySessionsResult.data?.map((s: any) => ({
+        id: s.id,
+        scheduled_at: s.scheduled_at,
+        teacher_id: s.teacher_id,
+        student_id: s.student_id,
+        topic: s.topic,
+        status: s.status?.name || 'available',
+        profiles: s.student ? { full_name: s.student.full_name } : undefined
+    })) || [];
 
     return (
         <div className="space-y-6">
@@ -98,6 +123,7 @@ export default async function AdminSchedulePage() {
                         <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
                             <AdminScheduleView
                                 events={(eventsResult.data as any) || []}
+                                studySessions={studySessions}
                                 teachers={teacherOptions}
                                 courses={courseOptions}
                                 classes={classOptions}

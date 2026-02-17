@@ -14,6 +14,7 @@ interface Option {
 
 interface AdminScheduleViewProps {
     events: ScheduleEvent[];
+    studySessions?: StudySessionEvent[];
     teachers: Option[];
     courses: Option[];
     classes: Option[];
@@ -28,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
-export function AdminScheduleView({ events, teachers, courses, classes }: AdminScheduleViewProps) {
+export function AdminScheduleView({ events, studySessions = [], teachers, courses, classes }: AdminScheduleViewProps) {
     const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [selectedTeacherId, setSelectedTeacherId] = useState<string>(teachers[0]?.id || '');
@@ -41,8 +42,9 @@ export function AdminScheduleView({ events, teachers, courses, classes }: AdminS
         }
     };
 
-    // Filter events based on selected teacher
+    // Filter events and study sessions based on selected teacher
     const filteredEvents = events.filter(e => e.teacher_id === selectedTeacherId);
+    const filteredStudySessions = studySessions.filter(s => s.teacher_id === selectedTeacherId);
 
     return (
         <div className="flex flex-col h-full space-y-4">
@@ -74,6 +76,7 @@ export function AdminScheduleView({ events, teachers, courses, classes }: AdminS
             <div className="flex-1 overflow-hidden">
                 <WeeklyScheduler
                     events={filteredEvents}
+                    studySessions={filteredStudySessions}
                     role="admin"
                     onEventClick={handleEventClick}
                 />

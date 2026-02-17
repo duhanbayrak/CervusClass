@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getAuthContext } from '@/lib/auth-context'
 import { type SupabaseClient } from '@supabase/supabase-js'
+import { handleError } from '@/lib/utils/error'
 
 // Status ID helper
 async function getStatusId(supabase: SupabaseClient, name: string) {
@@ -38,8 +39,8 @@ export async function updateStudySessionStatus(sessionId: string, status: 'compl
             .eq('id', sessionId);
 
         if (dbError) throw dbError;
-    } catch {
-        return { error: 'Güncelleme sırasında bir hata oluştu.' };
+    } catch (e: unknown) {
+        return { error: `Güncelleme sırasında bir hata oluştu: ${handleError(e)}` };
     }
 
     revalidatePath('/admin/teachers/[id]', 'page');
@@ -48,3 +49,5 @@ export async function updateStudySessionStatus(sessionId: string, status: 'compl
 
     return { success: true };
 }
+
+// Hata yönetimi helper kaldırıldı -> lib/utils/error.ts kullanılıyor

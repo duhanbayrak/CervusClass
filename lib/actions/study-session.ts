@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { revalidatePath } from 'next/cache'
 import { type SupabaseClient } from '@supabase/supabase-js'
 import { getAuthContext } from '@/lib/auth-context'
+import { handleError } from '@/lib/utils/error'
 
 // Status ID helper
 async function getStatusId(supabase: SupabaseClient, name: string) {
@@ -403,7 +404,4 @@ async function checkAvailabilityConflicts(
     return { success: true };
 }
 
-// Hata yönetimi helper
-function handleError(e: unknown): string {
-    return e instanceof Error ? e.message : 'Bilinmeyen hata';
-}
+// Hata yönetimi helper kaldırıldı -> lib/utils/error.ts kullanılıyor

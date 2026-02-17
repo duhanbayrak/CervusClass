@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, CheckCircle2, AlertCircle, ClipboardList, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { redirect } from 'next/navigation';
 
@@ -156,8 +156,24 @@ export default async function AttendancePage(props: PageProps) {
                             </CardHeader>
                             <CardFooter>
                                 <Link href={`/teacher/attendance/${item.id}`} className="w-full">
-                                    <Button className="w-full" variant={item.isAttendanceTaken ? "outline" : "default"}>
-                                        {item.isAttendanceTaken ? "Düzenle / Göster" : "Yoklama Al"}
+                                    <Button
+                                        className={item.isAttendanceTaken
+                                            ? "w-full border-zinc-300 text-zinc-700 hover:bg-zinc-50 group hover:border-zinc-400"
+                                            : "w-full bg-indigo-600 hover:bg-indigo-700 shadow-md hover:shadow-lg transition-all text-white group"
+                                        }
+                                        variant={item.isAttendanceTaken ? "outline" : "default"}
+                                    >
+                                        {item.isAttendanceTaken ? (
+                                            <>
+                                                <Eye className="w-4 h-4 mr-2 text-zinc-500 group-hover:text-zinc-700" />
+                                                Düzenle / Göster
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ClipboardList className="w-4 h-4 mr-2" />
+                                                Yoklama Al
+                                            </>
+                                        )}
                                     </Button>
                                 </Link>
                             </CardFooter>
