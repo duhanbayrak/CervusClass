@@ -39,6 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
+
 # Agentic files
 .agent/
 
+# Documentation
+*.md
+!README.md
