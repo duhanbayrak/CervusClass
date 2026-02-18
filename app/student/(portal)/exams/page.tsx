@@ -3,17 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { ExamHistory } from '@/components/student/exams/exam-history'
 
-import dynamic from 'next/dynamic'
-
-const ExamOverviewChart = dynamic(() => import('@/components/student/exams/exam-overview-chart').then(mod => mod.ExamOverviewChart), {
-    loading: () => <div className="h-[400px] w-full bg-muted/20 animate-pulse rounded-xl" />,
-    ssr: false
-})
-
-const SubjectOverviewCharts = dynamic(() => import('@/components/student/exams/subject-overview-charts').then(mod => mod.SubjectOverviewCharts), {
-    loading: () => <div className="h-[400px] w-full bg-muted/20 animate-pulse rounded-xl" />,
-    ssr: false
-})
+import { DynamicExamOverviewChart, DynamicSubjectOverviewCharts } from '@/components/student/exams/student-charts-wrapper'
 
 import { getExamOverviewData } from '@/lib/actions/exam-stats'
 
@@ -56,7 +46,7 @@ export default async function StudentExamsPage() {
 
             {/* Toplam Net Gelişim Grafiği */}
             {overviewData && overviewData.studentExams && overviewData.studentExams.length > 0 && (
-                <ExamOverviewChart
+                <DynamicExamOverviewChart
                     studentExams={overviewData.studentExams}
                     classAverages={overviewData.classAverages}
                     schoolAverages={overviewData.schoolAverages}
@@ -65,7 +55,7 @@ export default async function StudentExamsPage() {
 
             {/* Ders Bazlı Net Gelişimi */}
             {overviewData && overviewData.studentExams && overviewData.studentExams.length > 0 && (
-                <SubjectOverviewCharts
+                <DynamicSubjectOverviewCharts
                     studentExams={overviewData.studentExams}
                     classSubjectOverview={overviewData.classSubjectOverview ?? []}
                     schoolSubjectOverview={overviewData.schoolSubjectOverview ?? []}
