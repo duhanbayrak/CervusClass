@@ -14,16 +14,21 @@ export async function uploadExamResult(prevState: any, formData: FormData) {
         return { success: false, message: 'Oturum açmanız gerekiyor.' }
     }
 
-    // Verify Admin role
+    // Verify Admin role and get Organization ID
     const { data: profile } = await supabase
         .from('profiles')
-        .select('roles(name)')
+        .select('organization_id, roles(name)')
         .eq('id', user.id)
         .single()
 
     const roleName = profile?.roles?.name
     if (roleName !== 'admin' && roleName !== 'super_admin') {
         return { success: false, message: 'Yetkiniz yok.' }
+    }
+
+    const organizationId = profile?.organization_id
+    if (!organizationId) {
+        return { success: false, message: 'Kurum bilginiz bulunamadı.' }
     }
 
     // 2. Validate Input
@@ -45,7 +50,8 @@ export async function uploadExamResult(prevState: any, formData: FormData) {
     const timestamp = Date.now()
     // Clean filename to avoid issues
     const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
-    const filePath = `${timestamp}-${cleanFileName}`
+    // Organize by Organization ID for security and RLS
+    const filePath = `${organizationId}/${timestamp}-${cleanFileName}`
 
     const { data: storageData, error: storageError } = await supabase
         .storage
@@ -57,14 +63,18 @@ export async function uploadExamResult(prevState: any, formData: FormData) {
         return { success: false, message: 'Dosya yüklenirken hata oluştu: ' + storageError.message }
     }
 
-    // 4. Get Public URL (or Signed URL if bucket is private)
-    // Assuming public bucket for simplicity, or we generate a signed URL for n8n
-    const { data: publicUrlData } = supabase
+    // 4. Get Signed URL (Secure access)
+    // Valid for 1 hour (3600 seconds) - enough for n8n to process
+    const { data: signedUrlData, error: signedUrlError } = await supabase
         .storage
         .from(EXAM_FILES_BUCKET)
-        .getPublicUrl(filePath)
+        .createSignedUrl(filePath, 3600)
 
-    const fileUrl = publicUrlData.publicUrl
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+        return { success: false, message: 'İmzalı URL oluşturulamadı.' }
+    }
+
+    const fileUrl = signedUrlData.signedUrl
 
     // 5. Trigger n8n Webhook
     // TODO: Replace with actual n8n webhook URL from env or user input
@@ -81,6 +91,7 @@ export async function uploadExamResult(prevState: any, formData: FormData) {
                     file_url: fileUrl,
                     exam_name: examName,
                     admin_id: user.id,
+                    organization_id: organizationId,
                     uploaded_at: new Date().toISOString(),
                     original_name: file.name
                 }),

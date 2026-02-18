@@ -20,121 +20,31 @@ export async function getExamOverviewData(studentId?: string) {
 
     if (!profile) return null
 
-    // 2. Öğrencinin kendi sınavları
-    const { data: studentExams } = await supabase
-        .from('exam_results')
-        .select('*')
-        .eq('student_id', targetStudentId)
-        .order('exam_date', { ascending: false })
-        .order('created_at', { ascending: false })
+    // 2. RPC ile veritabanında hesaplanmış istatistikleri çek
+    // 'get_exam_stats' is a new function, avoiding type errors until types are regenerated
+    const { data, error } = await supabase
+        .rpc('get_exam_stats' as any, {
+            p_organization_id: profile.organization_id,
+            p_student_id: targetStudentId,
+            p_class_id: profile.class_id || null
+        });
 
-    if (!studentExams || studentExams.length === 0) return { studentExams: [], classAverages: [], schoolAverages: [] }
-
-    // 3. Sınıf ortalaması: aynı class_id'deki öğrencilerin sınavları
-    let classAverages: { exam_name: string; exam_date: string; avg_net: number }[] = []
-    // Ders bazlı sınıf ortalamaları: { exam_name_date -> { subject -> avg_net } }
-    let classSubjectOverview: { exam_name: string; exam_date: string; subjects: Record<string, number> }[] = []
-
-    if (profile.class_id) {
-        const { data: classmates } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('class_id', profile.class_id)
-            .eq('organization_id', profile.organization_id)
-
-        if (classmates && classmates.length > 0) {
-            const classmateIds = classmates.map(c => c.id)
-
-            const { data: classExams } = await supabase
-                .from('exam_results')
-                .select('exam_name, exam_date, total_net, scores')
-                .in('student_id', classmateIds)
-                .order('exam_date', { ascending: true })
-
-            if (classExams) {
-                const grouped: Record<string, { total: number; count: number; exam_date: string; exam_name: string; subjectTotals: Record<string, { total: number; count: number }> }> = {}
-                classExams.forEach(e => {
-                    const key = `${e.exam_name}_${e.exam_date}`
-                    if (!grouped[key]) {
-                        grouped[key] = { total: 0, count: 0, exam_date: e.exam_date || '', exam_name: e.exam_name, subjectTotals: {} }
-                    }
-                    grouped[key].total += e.total_net || 0
-                    grouped[key].count += 1
-
-                    // Ders bazlı
-                    let scores = e.scores
-                    if (typeof scores === 'string') { try { scores = JSON.parse(scores) } catch { scores = null } }
-                    if (scores && typeof scores === 'object') {
-                        Object.entries(scores as Record<string, any>).forEach(([subject, data]) => {
-                            const net = typeof data === 'number' ? data : (data?.net ?? 0)
-                            if (!grouped[key].subjectTotals[subject]) grouped[key].subjectTotals[subject] = { total: 0, count: 0 }
-                            grouped[key].subjectTotals[subject].total += net
-                            grouped[key].subjectTotals[subject].count += 1
-                        })
-                    }
-                })
-                classAverages = Object.values(grouped).map(g => ({
-                    exam_name: g.exam_name,
-                    exam_date: g.exam_date,
-                    avg_net: Math.round((g.total / g.count) * 100) / 100
-                }))
-                classSubjectOverview = Object.values(grouped).map(g => {
-                    const subjects: Record<string, number> = {}
-                    Object.entries(g.subjectTotals).forEach(([s, v]) => {
-                        subjects[s] = Math.round((v.total / v.count) * 100) / 100
-                    })
-                    return { exam_name: g.exam_name, exam_date: g.exam_date, subjects }
-                })
-            }
-        }
+    if (error) {
+        console.error('Error fetching exam stats:', error);
+        return { studentExams: [], classAverages: [], schoolAverages: [] };
     }
 
-    // 4. Okul ortalaması: aynı organization_id'deki tüm öğrencilerin sınavları
-    const { data: schoolExams } = await supabase
-        .from('exam_results')
-        .select('exam_name, exam_date, total_net, scores')
-        .eq('organization_id', profile.organization_id)
-        .order('exam_date', { ascending: true })
+    // RPC'den dönen veriyi uygun formata dönüştür (JSON olarak geliyor)
+    const stats = data as any;
+    const result = stats || {};
 
-    let schoolAverages: { exam_name: string; exam_date: string; avg_net: number }[] = []
-    let schoolSubjectOverview: { exam_name: string; exam_date: string; subjects: Record<string, number> }[] = []
-
-    if (schoolExams) {
-        const grouped: Record<string, { total: number; count: number; exam_date: string; exam_name: string; subjectTotals: Record<string, { total: number; count: number }> }> = {}
-        schoolExams.forEach(e => {
-            const key = `${e.exam_name}_${e.exam_date}`
-            if (!grouped[key]) {
-                grouped[key] = { total: 0, count: 0, exam_date: e.exam_date || '', exam_name: e.exam_name, subjectTotals: {} }
-            }
-            grouped[key].total += e.total_net || 0
-            grouped[key].count += 1
-
-            let scores = e.scores
-            if (typeof scores === 'string') { try { scores = JSON.parse(scores) } catch { scores = null } }
-            if (scores && typeof scores === 'object') {
-                Object.entries(scores as Record<string, any>).forEach(([subject, data]) => {
-                    const net = typeof data === 'number' ? data : (data?.net ?? 0)
-                    if (!grouped[key].subjectTotals[subject]) grouped[key].subjectTotals[subject] = { total: 0, count: 0 }
-                    grouped[key].subjectTotals[subject].total += net
-                    grouped[key].subjectTotals[subject].count += 1
-                })
-            }
-        })
-        schoolAverages = Object.values(grouped).map(g => ({
-            exam_name: g.exam_name,
-            exam_date: g.exam_date,
-            avg_net: Math.round((g.total / g.count) * 100) / 100
-        }))
-        schoolSubjectOverview = Object.values(grouped).map(g => {
-            const subjects: Record<string, number> = {}
-            Object.entries(g.subjectTotals).forEach(([s, v]) => {
-                subjects[s] = Math.round((v.total / v.count) * 100) / 100
-            })
-            return { exam_name: g.exam_name, exam_date: g.exam_date, subjects }
-        })
+    return {
+        studentExams: result.studentExams || [],
+        classAverages: result.classAverages || [],
+        schoolAverages: result.schoolAverages || [],
+        classSubjectOverview: result.classSubjectOverview || [],
+        schoolSubjectOverview: result.schoolSubjectOverview || []
     }
-
-    return { studentExams, classAverages, schoolAverages, classSubjectOverview, schoolSubjectOverview }
 }
 
 // Belirli bir sınav detay bilgileri + sınıf/okul ders bazlı ortalamaları

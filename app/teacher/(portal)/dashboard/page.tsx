@@ -7,6 +7,7 @@ import { PendingHomeworkCard } from '@/components/dashboard/teacher/pending-home
 import { PendingStudyRequestsList } from '@/components/dashboard/teacher/pending-study-requests-list';
 import { getAuthContext } from '@/lib/auth-context';
 import { Schedule, StudySession, Homework, HomeworkSubmission } from '@/types/database';
+import { MissingAttendanceAlert } from '@/components/dashboard/teacher/missing-attendance-alert';
 
 export default async function TeacherDashboardPage() {
     // Merkezi auth context — tek bir client + getUser + organizationId
@@ -19,13 +20,23 @@ export default async function TeacherDashboardPage() {
     if (todayDow === 0) todayDow = 7;
 
     // Paralel veri çekme — tüm sorgular aynı anda çalışır
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const currentTimeStr = now.toTimeString().slice(0, 5); // HH:mm
+
+    // Hafta başını bul (Pazartesi)
+    const startOfWeek = new Date(now);
+    const dayDiff = todayDow - 1; // Pazartesi'den fark
+    startOfWeek.setDate(now.getDate() - dayDiff);
+
     const [
         profileResult,
         scheduleResult,
         pendingRequestsResult,
         homeworkCountResult,
         pendingHomeworksResult,
-        pendingSessionActionsResult
+        pendingSessionActionsResult,
+        pastScheduleResult
     ] = await Promise.all([
         // 1. Profil
         supabase
@@ -92,7 +103,21 @@ export default async function TeacherDashboardPage() {
             .eq('teacher_id', user.id)
             .eq('status.name', 'pending')
             .lt('scheduled_at', new Date().toISOString())
-            .order('scheduled_at', { ascending: true })
+            .lt('scheduled_at', new Date().toISOString())
+            .order('scheduled_at', { ascending: true }),
+
+        // 7. Geçmiş Dersler ve Yoklamaları (Hafta başından itibaren)
+        supabase
+            .from('schedule')
+            .select(`
+                *,
+                classes(name),
+                courses(name),
+                attendance(date)
+            `)
+            .eq('teacher_id', user.id)
+            .gte('day_of_week', 1) // Pazartesiden
+            .lte('day_of_week', todayDow) // Bugüne kadar
     ]);
 
     const profile = profileResult.data;
@@ -103,12 +128,46 @@ export default async function TeacherDashboardPage() {
     const homeworkCount = homeworkCountResult.count || 0;
     const pendingApprovalCount = pendingHomeworksResult.count || 0;
     const pendingHomeworks = (pendingHomeworksResult.data || []) as unknown as HomeworkSubmission[];
+
     const pendingSessionActions = (pendingSessionActionsResult.data || []) as unknown as StudySession[];
+    const pastSchedules = (pastScheduleResult.data || []) as unknown as any[];
+
+    // --- EKSİK YOKLAMA HESAPLAMA ---
+    const missingAttendanceItems: any[] = [];
+
+    pastSchedules.forEach(item => {
+        // Hedef tarihi hesapla
+        const itemDayDow = item.day_of_week;
+        const diff = itemDayDow - 1; // Pazartesi(1) -> 0 fark
+        const targetDateObj = new Date(startOfWeek);
+        targetDateObj.setDate(startOfWeek.getDate() + diff);
+        const targetDateStr = targetDateObj.toISOString().split('T')[0];
+
+        // Gelecek dersleri ele (Bugünün ilerleyen saatleri)
+        if (targetDateStr > todayStr) return; // İmkansız ama güvenli olsun
+        if (targetDateStr === todayStr && item.start_time > currentTimeStr) return; // Bugün henüz başlamamış ders
+
+        // Yoklama var mı kontrol et
+        const hasAttendance = item.attendance?.some((att: any) => att.date === targetDateStr);
+
+        if (!hasAttendance) {
+            missingAttendanceItems.push({
+                id: item.id,
+                courseName: item.courses?.name,
+                className: item.classes?.name,
+                startTime: item.start_time?.slice(0, 5),
+                endTime: item.end_time?.slice(0, 5),
+                dayOfWeek: item.day_of_week,
+                date: targetDateStr
+            });
+        }
+    });
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
 
             <div className="md:col-span-3">
+                <MissingAttendanceAlert missingItems={missingAttendanceItems} />
                 <PendingHomeworkCard initialHomeworks={pendingHomeworks} />
                 <PendingSessionsCard initialSessions={pendingSessionActions} />
             </div>

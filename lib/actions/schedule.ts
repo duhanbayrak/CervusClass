@@ -82,7 +82,10 @@ export async function deleteScheduleItem(id: string) {
         return { success: false, error: "Bu işlem için yetkiniz bulunmamaktadır." };
     }
 
-    const { error: dbError } = await supabase.from('schedule').delete().eq('id', id);
+    const { error: dbError } = await supabase
+        .from('schedule')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id);
 
     if (dbError) return { success: false, error: dbError.message };
 
@@ -134,7 +137,7 @@ export async function deleteAllSchedule() {
 
     const { error: dbError } = await supabase
         .from('schedule')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('organization_id', organizationId);
 
     if (dbError) return { success: false, error: dbError.message };
@@ -202,7 +205,6 @@ const ScheduleRowSchema = z.object({
 });
 
 export async function uploadSchedule(prevState: unknown, formData: FormData) {
-    // getAuthContext kullanımı ile güncellenecek
     const { supabase, organizationId, user, error } = await getAuthContext();
     if (error || !user || !organizationId) return { message: error || 'Unauthorized', success: false };
 
@@ -229,33 +231,18 @@ export async function uploadSchedule(prevState: unknown, formData: FormData) {
             return { message: 'Dosya boş.', success: false }
         }
 
-        // 3. Pre-fetch Data
-        const { data: classes } = await supabase
-            .from('classes')
-            .select('id, name')
-            .eq('organization_id', organizationId)
+        // 3. Collect Unique Values
+        const classNames = new Set<string>();
+        const teacherEmails = new Set<string>();
+        const courseNames = new Set<string>();
 
-        const { data: teachers } = await supabase
-            .from('profiles')
-            .select('id, email')
-            .eq('organization_id', organizationId)
-
-        const { data: courses } = await supabase
-            .from('courses')
-            .select('id, name, code')
-            .eq('organization_id', organizationId)
-
-        const classMap = new Map(classes?.map(c => [c.name.trim().toLowerCase(), c.id]))
-        const teacherMap = new Map(teachers?.map(t => [t.email?.trim().toLowerCase(), t.id]))
-        const courseMap = new Map(courses?.map(c => [c.name.trim().toLowerCase(), c.id]))
-
-        const rowsToInsert = []
-        const errors: string[] = []
+        // Temporary storage for row data to avoid re-parsing
+        const parsedRows: any[] = [];
+        const errors: string[] = [];
 
         for (let i = 0; i < jsonData.length; i++) {
-            const row = jsonData[i]
-            const rowIndex = i + 2
-
+            const row = jsonData[i];
+            const rowIndex = i + 2;
             const result = ScheduleRowSchema.safeParse(row);
 
             if (!result.success) {
@@ -266,60 +253,131 @@ export async function uploadSchedule(prevState: unknown, formData: FormData) {
 
             const data = result.data;
             const className = data['Sınıf Adı'].trim();
-            const dayStr = data['Gün'].trim();
-            const courseName = data['Ders Adı'].trim();
             const teacherEmail = (data['Öğretmen Email'] || data['Öğretmen Maili'])?.trim();
+            const courseName = data['Ders Adı'].trim();
 
-            if (!teacherEmail) continue;
+            if (className) classNames.add(className.toLowerCase());
+            if (teacherEmail) teacherEmails.add(teacherEmail.toLowerCase());
+            if (courseName) courseNames.add(courseName.toLowerCase());
 
-            // Resolve IDs
-            const classId = classMap.get(className.toLowerCase())
+            parsedRows.push({ rowIndex, data });
+        }
 
+        if (errors.length > 0) {
+            return { message: errors.slice(0, 10).join('\n') + (errors.length > 10 ? `... ve ${errors.length - 10} hata daha.` : ''), success: false };
+        }
+
+        // 4. Bulk Fetch Existing Data
+        const { data: classes } = await supabase
+            .from('classes')
+            .select('id, name')
+            .eq('organization_id', organizationId)
+        // .in('name', Array.from(classNames)) // Case sensitivity might be an issue with .in(), better fetch all or handle carefully. 
+        // Since we stored lowercased names in Set, but DB might have different casing. 
+        // For safety and simplicity in this context, fetching all for the org is safer if the org size is reasonable.
+        // Adjusting to fetch all classes for the org to ensure we match case-insensitively via map.
+
+        // Fetch teacher role ID first to avoid "string | undefined" error
+        const { data: roleData } = await supabase.from('roles').select('id').eq('name', 'teacher').single();
+        const teacherRoleId = roleData?.id;
+
+        if (!teacherRoleId) {
+            return { message: 'Öğretmen rolü sistemde bulunamadı.', success: false };
+        }
+
+        const { data: teachers } = await supabase
+            .from('profiles')
+            .select('id, email')
+            .eq('organization_id', organizationId)
+            .eq('role_id', teacherRoleId)
+
+        const { data: courses } = await supabase
+            .from('courses')
+            .select('id, name, code')
+            .eq('organization_id', organizationId)
+
+        // 5. Create Maps
+        const classMap = new Map(classes?.map(c => [c.name.trim().toLowerCase(), c.id]));
+        const teacherMap = new Map(teachers?.map(t => [t.email?.trim().toLowerCase(), t.id]));
+        const courseMap = new Map(courses?.map(c => [c.name.trim().toLowerCase(), c.id]));
+
+        // 6. Handle Missing Courses (Bulk Insert)
+        const coursesToInsert: { organization_id: string, name: string, code: string }[] = [];
+        const newCourseNames = new Set<string>();
+
+        parsedRows.forEach(({ data }) => {
+            const courseName = data['Ders Adı'].trim();
+            const lowerName = courseName.toLowerCase();
+            if (!courseMap.has(lowerName) && !newCourseNames.has(lowerName)) {
+                coursesToInsert.push({
+                    organization_id: organizationId,
+                    name: courseName,
+                    code: data['Ders Kodu'] || ''
+                });
+                newCourseNames.add(lowerName);
+            }
+        });
+
+        if (coursesToInsert.length > 0) {
+            const { data: insertedCourses, error: courseInsertError } = await supabase
+                .from('courses')
+                .insert(coursesToInsert)
+                .select('id, name');
+
+            if (courseInsertError) {
+                return { message: 'Yeni dersler oluşturulurken hata: ' + courseInsertError.message, success: false };
+            }
+
+            insertedCourses?.forEach(c => {
+                courseMap.set(c.name.trim().toLowerCase(), c.id);
+            });
+        }
+
+        // 7. Prepare Schedule Rows
+        const rowsToInsert = [];
+
+        for (const { rowIndex, data } of parsedRows) {
+            const className = data['Sınıf Adı'].trim();
+            const teacherEmail = (data['Öğretmen Email'] || data['Öğretmen Maili'])?.trim();
+            const courseName = data['Ders Adı'].trim();
+            const dayStr = data['Gün'].trim();
+
+            const classId = classMap.get(className.toLowerCase());
             if (!classId) {
-                errors.push(`Satır ${rowIndex}: Sınıf bulunamadı (${className})`)
-                continue
+                errors.push(`Satır ${rowIndex}: Sınıf bulunamadı (${className})`);
+                continue;
             }
 
-            const teacherId = teacherMap.get(teacherEmail.toLowerCase())
+            if (!teacherEmail) {
+                errors.push(`Satır ${rowIndex}: Öğretmen emaili eksik.`);
+                continue;
+            }
+
+            const teacherId = teacherMap.get(teacherEmail.toLowerCase());
             if (!teacherId) {
-                errors.push(`Satır ${rowIndex}: Öğretmen bulunamadı (${teacherEmail})`)
-                continue
+                errors.push(`Satır ${rowIndex}: Öğretmen bulunamadı (${teacherEmail})`);
+                continue;
             }
 
-            // Resolve Course
-            let courseId = courseMap.get(courseName.toLowerCase())
+            const courseId = courseMap.get(courseName.toLowerCase());
             if (!courseId) {
-                // Create new course
-                const { data: newCourse, error: createError } = await supabase
-                    .from('courses')
-                    .insert({
-                        organization_id: organizationId,
-                        name: courseName,
-                        code: data['Ders Kodu']
-                    })
-                    .select()
-                    .single()
-
-                if (createError || !newCourse) {
-                    errors.push(`Satır ${rowIndex}: Ders oluşturulamadı (${courseName})`)
-                    continue
-                }
-                courseId = newCourse.id
-                courseMap.set(courseName.toLowerCase(), courseId)
+                // Should not happen if bulk insert worked
+                errors.push(`Satır ${rowIndex}: Ders ID bulunamadı (${courseName})`);
+                continue;
             }
 
-            const dayOfWeek = DAYS_MAP[dayStr] || DAYS_MAP[Object.keys(DAYS_MAP).find(k => k.toLowerCase() === dayStr.toLowerCase()) || '']
+            const dayOfWeek = DAYS_MAP[dayStr] || DAYS_MAP[Object.keys(DAYS_MAP).find(k => k.toLowerCase() === dayStr.toLowerCase()) || ''];
             if (!dayOfWeek) {
-                errors.push(`Satır ${rowIndex}: Geçersiz gün (${dayStr})`)
-                continue
+                errors.push(`Satır ${rowIndex}: Geçersiz gün (${dayStr})`);
+                continue;
             }
 
-            const startTime = parseTime(data['Başlangıç Saati'])
-            const endTime = parseTime(data['Bitiş Saati'])
+            const startTime = parseTime(data['Başlangıç Saati']);
+            const endTime = parseTime(data['Bitiş Saati']);
 
             if (!startTime || !endTime) {
-                errors.push(`Satır ${rowIndex}: Saat formatı hatalı.`)
-                continue
+                errors.push(`Satır ${rowIndex}: Saat formatı hatalı.`);
+                continue;
             }
 
             rowsToInsert.push({
@@ -331,30 +389,46 @@ export async function uploadSchedule(prevState: unknown, formData: FormData) {
                 start_time: startTime,
                 end_time: endTime,
                 room_name: data['Oda']
-            })
+            });
         }
 
         if (errors.length > 0) {
-            return { message: errors.slice(0, 10).join('\n') + (errors.length > 10 ? `... ve ${errors.length - 10} hata daha.` : ''), success: false }
+            return { message: errors.slice(0, 10).join('\n') + (errors.length > 10 ? `... ve ${errors.length - 10} hata daha.` : ''), success: false };
         }
 
-        for (const item of rowsToInsert) {
-            const { error } = await supabase.from('schedule').insert(item)
+        // 8. Bulk Insert Schedule
+        const BATCH_SIZE = 100;
+        let successCount = 0;
+        const insertErrors: string[] = [];
+
+        // Optional: Clear existing schedule for these classes/teachers if required? 
+        // Typically upload appends or user clears manually. Keeping current behavior (append).
+
+        for (let i = 0; i < rowsToInsert.length; i += BATCH_SIZE) {
+            const batch = rowsToInsert.slice(i, i + BATCH_SIZE);
+            const { error } = await supabase.from('schedule').insert(batch);
+
             if (error) {
-                if (error.code === '23P01') {
-                    return { message: `Çakışma var! Öğretmen zaten o saatte dolu.`, success: false }
-                }
-                return { message: `Veritabanı hatası: ${error.message}`, success: false }
+                insertErrors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1} Hatası: ${error.message}`);
+            } else {
+                successCount += batch.length;
             }
         }
 
-        revalidatePath('/admin/schedule')
-        revalidatePath('/teacher/schedule')
-        revalidatePath('/student/schedule')
+        if (insertErrors.length > 0) {
+            return {
+                message: `${successCount} ders yüklendi, ancak bazı hatalar oluştu:\n${insertErrors.join('\n')}`,
+                success: false
+            }
+        }
 
-        return { message: `${rowsToInsert.length} ders başarıyla yüklendi.`, success: true }
+        revalidatePath('/admin/schedule');
+        revalidatePath('/teacher/schedule');
+        revalidatePath('/student/schedule');
+
+        return { message: `${successCount} ders başarıyla yüklendi.`, success: true };
 
     } catch (error: unknown) {
-        return { message: 'Beklenmeyen bir hata oluştu.', success: false }
+        return { message: 'Beklenmeyen bir hata oluştu: ' + (error as Error)?.message, success: false }
     }
 }

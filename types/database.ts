@@ -34,6 +34,7 @@ export interface Profile {
     title?: string | null;
     start_date?: string | null;
     branch_id?: string | null;
+    deleted_at?: string | null;
 }
 
 export interface Class {
@@ -42,6 +43,7 @@ export interface Class {
     name: string;
     grade_level: number;
     created_at: string;
+    deleted_at?: string | null;
 }
 
 // Sınıf + öğrenci sayısı (Supabase aggregate count)
@@ -71,6 +73,7 @@ export interface Schedule {
     start_time: string; // Time string like "14:30:00"
     end_time: string;
     created_at: string;
+    deleted_at?: string | null;
 }
 
 export type StudySessionStatus = 'pending' | 'approved' | 'rejected' | 'completed' | 'no_show';
@@ -105,6 +108,7 @@ export interface ExamResult {
     scores: Record<string, number>; // JSONB: {"mat": 20, "fiz": 5}
     total_net: number | null;
     created_at: string;
+    deleted_at?: string | null;
 }
 
 export type AttendanceStatus = 'present' | 'absent' | 'late';
@@ -134,6 +138,7 @@ export interface Homework {
     completion_status: Record<string, boolean>; // JSONB: { student_id: true }
     assigned_student_ids: string[] | null; // null = entire class, array = specific students
     created_at: string;
+    deleted_at?: string | null;
 }
 
 export interface HomeworkSubmission {

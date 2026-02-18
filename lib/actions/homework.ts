@@ -10,7 +10,7 @@ export async function deleteHomework(id: string) {
 
     const { error: dbError } = await supabase
         .from('homework')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', id);
 
     if (dbError) return { success: false, error: dbError.message };

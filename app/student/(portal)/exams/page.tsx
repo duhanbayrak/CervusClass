@@ -2,8 +2,19 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { ExamHistory } from '@/components/student/exams/exam-history'
-import { ExamOverviewChart } from '@/components/student/exams/exam-overview-chart'
-import { SubjectOverviewCharts } from '@/components/student/exams/subject-overview-charts'
+
+import dynamic from 'next/dynamic'
+
+const ExamOverviewChart = dynamic(() => import('@/components/student/exams/exam-overview-chart').then(mod => mod.ExamOverviewChart), {
+    loading: () => <div className="h-[400px] w-full bg-muted/20 animate-pulse rounded-xl" />,
+    ssr: false
+})
+
+const SubjectOverviewCharts = dynamic(() => import('@/components/student/exams/subject-overview-charts').then(mod => mod.SubjectOverviewCharts), {
+    loading: () => <div className="h-[400px] w-full bg-muted/20 animate-pulse rounded-xl" />,
+    ssr: false
+})
+
 import { getExamOverviewData } from '@/lib/actions/exam-stats'
 
 export default async function StudentExamsPage() {

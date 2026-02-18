@@ -59,8 +59,8 @@ export async function middleware(request: NextRequest) {
 
     // If user is Logged In
     if (user) {
-        // Optimized: Fetch user role from JWT metadata
-        const role = user.user_metadata?.role as ProfileRole || user.app_metadata?.role as ProfileRole;
+        // Optimized: Fetch user role from JWT metadata (Prioritize app_metadata for security)
+        const role = user.app_metadata?.role as ProfileRole || user.user_metadata?.role as ProfileRole;
 
         // Redirect away from login pages to Dashboard
         if (path.includes('/login')) {
@@ -93,6 +93,6 @@ export const config = {
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
          */
-        '/((?!_next/static|_next/image|favicon.ico).*)',
+        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
 }

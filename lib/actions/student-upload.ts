@@ -2,7 +2,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
-import * as XLSX from 'xlsx';
+
 import { getAuthContext } from '@/lib/auth-context';
 import { getUserRole } from '@/lib/auth-helpers';
 import { Profile } from '@/types/database';
@@ -68,6 +68,7 @@ export async function uploadStudents(prevState: { message: string; success: bool
         }
 
         const buffer = await file.arrayBuffer();
+        const XLSX = await import('xlsx');
         const workbook = XLSX.read(buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
@@ -94,12 +95,30 @@ export async function uploadStudents(prevState: { message: string; success: bool
             return { message: 'Sistem hatası: Öğrenci rolü bulunamadı.', success: false };
         }
 
+        // Collect all emails to pre-fetch existing profiles
+        const emails = jsonData.map(row => {
+            const raw = (row as any)['Email'];
+            return typeof raw === 'string' ? raw.trim() : '';
+        }).filter(e => e.length > 0);
+
+        // Pre-fetch existing profiles
+        const { data: existingProfiles } = await supabaseAdmin
+            .from('profiles')
+            .select('id, email')
+            .in('email', emails);
+
+        const existingProfileMap = new Map(existingProfiles?.map(p => [p.email!.toLowerCase(), p.id]));
+
         const errors: string[] = [];
         let successCount = 0;
+        const profilesToUpsert: any[] = [];
+
+        // Concurrency limit for Auth calls could be added here if needed, 
+        // strictly keeping sequential for safety against rate limits for now.
 
         for (let i = 0; i < jsonData.length; i++) {
             const row = jsonData[i];
-            const rowIndex = i + 2; // +2 for Header and 0-index
+            const rowIndex = i + 2;
 
             // Normalize keys
             const normalizedRow: Record<string, unknown> = {};
@@ -119,21 +138,13 @@ export async function uploadStudents(prevState: { message: string; success: bool
             const passwordVal = normalizedRow['Parola'];
             const password = (typeof passwordVal === 'string' || typeof passwordVal === 'number') ? String(passwordVal).trim() : '123456';
 
-            const studentNumberVal = normalizedRow['Öğrenci No'];
-            const studentNumber = (typeof studentNumberVal === 'string' || typeof studentNumberVal === 'number') ? String(studentNumberVal).trim() : undefined;
+            // Optional fields
+            const studentNumber = normalizedRow['Öğrenci No'] ? String(normalizedRow['Öğrenci No']).trim() : undefined;
+            const phone = normalizedRow['Öğrenci Telefon'] ? String(normalizedRow['Öğrenci Telefon']).trim() : undefined;
+            const parentName = normalizedRow['Veli Adı'] ? String(normalizedRow['Veli Adı']).trim() : undefined;
+            const parentPhone = normalizedRow['Veli Telefon'] ? String(normalizedRow['Veli Telefon']).trim() : undefined;
+            const birthDate = normalizedRow['Doğum Tarihi'] ? String(normalizedRow['Doğum Tarihi']).trim() : undefined;
 
-            const phoneVal = normalizedRow['Öğrenci Telefon'];
-            const phone = (typeof phoneVal === 'string' || typeof phoneVal === 'number') ? String(phoneVal).trim() : undefined;
-
-            const parentNameVal = normalizedRow['Veli Adı'];
-            const parentName = (typeof parentNameVal === 'string' || typeof parentNameVal === 'number') ? String(parentNameVal).trim() : undefined;
-
-            const parentPhoneVal = normalizedRow['Veli Telefon'];
-            const parentPhone = (typeof parentPhoneVal === 'string' || typeof parentPhoneVal === 'number') ? String(parentPhoneVal).trim() : undefined;
-
-            // Basic date handling
-            const birthDateVal = normalizedRow['Doğum Tarihi'];
-            const birthDate = (typeof birthDateVal === 'string') ? String(birthDateVal).trim() : undefined;
 
             if (!fullName || !email || !className) {
                 errors.push(`Satır ${rowIndex}: Eksik bilgi (Ad Soyad, Email veya Sınıf)`);
@@ -143,86 +154,79 @@ export async function uploadStudents(prevState: { message: string; success: bool
             // Resolve Class
             const classId = classMap.get(className.toLowerCase());
             if (!classId) {
-                // Optional: Auto-create class? No, sticking to validation for now.
                 errors.push(`Satır ${rowIndex}: Sınıf bulunamadı (${className})`);
                 continue;
             }
 
-            // Create User (Auth)
-            // We use upsert-like behavior: create, catch existing.
+            let userId = existingProfileMap.get(email.toLowerCase());
 
-            // Check if user exists first? NO, createUser handles it or returns error.
-            // But if user exists, we might want to update their profile/class.
-            // Admin createUser returns error if email exists.
+            // Check if user needs to be created in Auth
+            // Note: We blindly try to create if we don't have it mapped? 
+            // OR even if we have it mapped, we might need to update password? (Skipping password update for existing)
 
-            let userId = null;
+            if (!userId) {
+                // Try create
+                const { data: createdUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+                    email: email,
+                    password: password,
+                    email_confirm: true,
+                    user_metadata: {
+                        full_name: fullName,
+                        organization_id: organization_id
+                    }
+                });
 
-            const { data: createdUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-                email: email,
-                password: password,
-                email_confirm: true,
-                user_metadata: {
-                    full_name: fullName,
-                    organization_id: organization_id
-                }
-            });
+                if (createError) {
+                    if (createError.message.includes('already registered')) {
+                        // Edge case: Email exists in Auth but NOT in profiles (pre-fetch miss).
+                        // Fallback to fetch single (rare race condition or data anomaly)
+                        // Or maybe our pre-fetch missed it due to case sensitivity? (Handled by toLowerCase map)
 
-            if (createError) {
-                // If user already exists, we find the ID to update profile
-                if (createError.message.includes('already registered')) {
-                    // Fetch existing user ID by email? 
-                    // supabaseAdmin doesn't have getUserByEmail easily exposed in verify context usually?
-                    // Actually listUsers or similar?
-                    // Or, we can query profiles if we trust consistent email.
-
-                    // Warning: Admin API create shouldn't override password of existing user unless explicit.
-                    // We'll skip password update for existing users, just update profile.
-
-                    // Find user ID from profiles table is safer if we can't search Auth easily.
-                    const { data: existingProfile } = await supabaseAdmin
-                        .from('profiles')
-                        .select('id')
-                        .eq('email', email)
-                        .single();
-
-                    if (existingProfile) {
-                        userId = existingProfile.id;
+                        // Try to find if we can get ID? 
+                        // Admin API doesn't return ID on 'already registered' error sadly.
+                        // We must assume it's lost or requires manual intervention if not in 'profiles'.
+                        // BUT, if it's in Auth but not profiles, we can't get ID easily without listUsers.
+                        // Let's log error.
+                        errors.push(`Satır ${rowIndex}: Kullanıcı Auth'da var ama Profil tablosunda ve önbellekte bulunamadı.`);
+                        continue;
                     } else {
-                        errors.push(`Satır ${rowIndex}: Kullanıcı Auth'da kayıtlı ama profili yok (${email}).`);
+                        errors.push(`Satır ${rowIndex}: Kullanıcı oluşturulamadı (${createError.message})`);
                         continue;
                     }
                 } else {
-                    errors.push(`Satır ${rowIndex}: Kullanıcı oluşturulamadı (${createError.message})`);
-                    continue;
+                    userId = createdUser.user.id;
                 }
-            } else {
-                userId = createdUser.user.id;
             }
 
             if (userId) {
-                // Upsert Profile
-                const { error: profileError } = await supabaseAdmin
-                    .from('profiles')
-                    .upsert({
-                        id: userId,
-                        organization_id: organization_id,
-                        full_name: fullName,
-                        email: email,
-                        class_id: classId,
-                        role_id: studentRoleId,
-                        student_number: studentNumber || null,
-                        phone: phone || null,
-                        parent_name: parentName || null,
-                        parent_phone: parentPhone || null,
-                        birth_date: birthDate || null
-                    });
-
-                if (profileError) {
-                    errors.push(`Satır ${rowIndex}: Profil güncellenemedi (${profileError.message})`);
-                } else {
-                    successCount++;
-                }
+                // Add to batch
+                profilesToUpsert.push({
+                    id: userId,
+                    organization_id: organization_id,
+                    full_name: fullName,
+                    email: email,
+                    class_id: classId,
+                    role_id: studentRoleId,
+                    student_number: studentNumber || null,
+                    phone: phone || null,
+                    parent_name: parentName || null,
+                    parent_phone: parentPhone || null,
+                    birth_date: birthDate || null,
+                    updated_at: new Date().toISOString() // Good practice
+                });
             }
+        }
+
+        // 4. Batch Upsert Profiles
+        if (profilesToUpsert.length > 0) {
+            const { error: batchError } = await supabaseAdmin
+                .from('profiles')
+                .upsert(profilesToUpsert);
+
+            if (batchError) {
+                return { message: 'Toplu profil güncellenirken hata oluştu: ' + batchError.message, success: false };
+            }
+            successCount = profilesToUpsert.length;
         }
 
         revalidatePath('/admin/students');

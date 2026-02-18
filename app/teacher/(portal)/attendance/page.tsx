@@ -44,45 +44,53 @@ async function getSchedule(dayOfWeek: number) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    // Fetch schedule for the teacher and specific day
-    // Also check if attendance exists for this schedule AND today's date
-    // Note: Checking specific date 'today' for attendance status. 
-    // Since day_of_week is generic, we need to know if attendance was taken "for this specific occurrence".
-    // For simplicity, we just check if ANY attendance record exists for this schedule_id and TODAY.
+    // Calculate the actual date for the selected day of the week (in the current week)
+    const now = new Date();
+    const currentDayJS = now.getDay(); // 0=Sun, 1=Mon...6=Sat
+    const currentDayISO = currentDayJS === 0 ? 7 : currentDayJS; // 1=Mon...7=Sun
 
-    const today = new Date().toISOString().split('T')[0];
+    const dayDifference = dayOfWeek - currentDayISO;
+    const targetDateObj = new Date(now);
+    targetDateObj.setDate(now.getDate() + dayDifference);
+    const targetDate = targetDateObj.toISOString().split('T')[0];
 
+    // 1. Fetch Basic Schedule
     const { data: schedules, error } = await supabase
         .from('schedule')
         .select(`
             *,
             classes (name),
-            courses (name),
-            attendance (
-                id,
-                created_at,
-                date
-            )
+            courses (name)
         `)
         .eq('teacher_id', user.id)
         .eq('day_of_week', dayOfWeek)
         .order('start_time');
 
-    if (error) {
-
+    if (error || !schedules || schedules.length === 0) {
         return [];
     }
 
-    const processedSchedules = schedules?.map(item => {
-        const todaysAttendance = item.attendance?.find((att: any) => att.date === today);
+    // 2. Fetch Attendance ONLY for this day and these schedules
+    const scheduleIds = schedules.map(s => s.id);
+    const { data: attendanceRecords } = await supabase
+        .from('attendance')
+        .select('id, schedule_id')
+        .eq('date', targetDate)
+        .in('schedule_id', scheduleIds);
+
+    // 3. Merge Data
+    const attendanceMap = new Map(attendanceRecords?.map(a => [a.schedule_id, a.id]));
+
+    const processedSchedules = schedules.map(item => {
+        const attendanceId = attendanceMap.get(item.id);
         return {
             ...item,
-            isAttendanceTaken: !!todaysAttendance,
-            attendanceId: todaysAttendance?.id
+            isAttendanceTaken: !!attendanceId,
+            attendanceId: attendanceId
         };
     });
 
-    return processedSchedules || [];
+    return processedSchedules;
 }
 
 export default async function AttendancePage(props: PageProps) {

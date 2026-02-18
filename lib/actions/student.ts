@@ -49,9 +49,13 @@ export async function getStudents(search?: string, classId?: string, page: numbe
         .eq('organization_id', organizationId)
         .eq('roles.name', 'student');
 
-    // Arama filtresi — isim, öğrenci no ve email ile aranabilir
+    // Arama filtresi — Full Text Search (tsvector)
     if (search) {
-        query = query.or(`full_name.ilike.%${search}%,student_number.ilike.%${search}%,email.ilike.%${search}%`);
+        // 'turkish' config ile arama yapılıyor (migrasyondaki yapılandırmaya uygun)
+        query = query.textSearch('search_vector', search, {
+            config: 'turkish',
+            type: 'plain' // plainto_tsquery: girdiyi normalize eder
+        });
     }
 
     // Sınıf filtresi
@@ -63,6 +67,9 @@ export async function getStudents(search?: string, classId?: string, page: numbe
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
+    // Sıralama
+    // Eğer arama yapılıyorsa en iyi eşleşmeyi öne getirmek mantıklı olabilir ama
+    // şimdilik isme göre sıralamayı koruyoruz. İleride 'rank' eklenebilir.
     const { data, count, error: dbError } = await query
         .range(from, to)
         .order('full_name', { ascending: true });
@@ -192,7 +199,7 @@ export async function deleteStudent(id: string) {
 
     const { error: dbError } = await supabaseAdmin
         .from('profiles')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', id);
 
     if (dbError) return { success: false, error: dbError.message };

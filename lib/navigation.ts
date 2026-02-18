@@ -45,7 +45,7 @@ export const ADMIN_NAV: NavItem[] = [
     { title: 'Ders Programı', href: '/admin/schedule', icon: Calendar },
     { title: 'Öğretmenler', href: '/admin/teachers', icon: GraduationCap },
     { title: 'Öğrenciler', href: '/admin/students', icon: Users },
-    { title: 'Sınavlar', href: '/admin/exams/upload', icon: FileText },
+    { title: 'Sınavlar', href: '/admin/exams', icon: FileText },
     { title: 'Sınıflar', href: '/admin/classes', icon: School },
     { title: 'Raporlar', href: '/admin/reports', icon: BarChart },
 ];

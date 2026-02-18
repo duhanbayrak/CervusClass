@@ -119,7 +119,10 @@ export async function deleteClass(id: string) {
         return { success: false, error: "Bu işlem için yetkiniz bulunmamaktadır." };
     }
 
-    const { error: dbError } = await supabase.from('classes').delete().eq('id', id);
+    const { error: dbError } = await supabase
+        .from('classes')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id);
 
     if (dbError) return { success: false, error: dbError.message };
 

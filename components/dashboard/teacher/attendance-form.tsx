@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from "@/lib/supabase"; // Removed client usage
+
 import { saveAttendance } from '@/lib/actions/attendance';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -45,6 +45,10 @@ export default function AttendanceForm({
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
 
+    // Virtualization / Lazy Loading State
+    const [visibleCount, setVisibleCount] = useState(50);
+    const observerTarget = useRef<HTMLDivElement>(null);
+
     // Initialize state from existing attendance or default to 'present'
     const [attendance, setAttendance] = useState<Record<string, { status: AttendanceStatus; late_minutes: number }>>(() => {
         const initial: Record<string, { status: AttendanceStatus; late_minutes: number }> = {};
@@ -57,6 +61,32 @@ export default function AttendanceForm({
         });
         return initial;
     });
+
+    // Infinite Scroll Handler
+    const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
+        const [target] = entries;
+        if (target.isIntersecting) {
+            setVisibleCount((prev) => Math.min(prev + 50, students.length));
+        }
+    }, [students.length]);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(handleObserver, {
+            root: null,
+            rootMargin: "200px",
+            threshold: 0
+        });
+
+        if (observerTarget.current) {
+            observer.observe(observerTarget.current);
+        }
+
+        return () => {
+            if (observerTarget.current) observer.unobserve(observerTarget.current);
+        };
+    }, [handleObserver]);
+
+    const visibleStudents = students.slice(0, visibleCount);
 
     const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
         setAttendance(prev => ({
@@ -96,7 +126,7 @@ export default function AttendanceForm({
                 };
             });
 
-            const supabase = createClient();
+
             const result = await saveAttendance(items);
 
             if (!result.success) {
@@ -136,7 +166,10 @@ export default function AttendanceForm({
     return (
         <div className="space-y-6">
             {/* Quick Actions */}
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-between items-center">
+                <div className="text-sm text-slate-500">
+                    Toplam {students.length} öğrenci, {Math.min(visibleCount, students.length)} gösteriliyor
+                </div>
                 <Button variant="outline" size="sm" onClick={markAllPresent}>
                     <CheckCircle2 className="w-4 h-4 mr-1" />
                     Hepsini Var İşaretle
@@ -145,7 +178,7 @@ export default function AttendanceForm({
 
             {/* Student List */}
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {students.map((student) => (
+                {visibleStudents.map((student) => (
                     <div key={student.id} className="py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
                         {/* Student Info */}
                         <div className="flex items-center gap-3 min-w-[200px]">
@@ -206,11 +239,18 @@ export default function AttendanceForm({
                         )}
                     </div>
                 ))}
+
+                {/* Intersection Observer Target */}
+                {visibleCount < students.length && (
+                    <div ref={observerTarget} className="py-8 flex justify-center text-slate-400">
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                    </div>
+                )}
             </div>
 
             {/* Submit */}
-            <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
-                <Button onClick={handleSubmit} disabled={loading} className="bg-[#135bec] hover:bg-blue-700">
+            <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800 sticky bottom-0 bg-white dark:bg-slate-950 p-4 shadow-lg border-t z-10">
+                <Button onClick={handleSubmit} disabled={loading} className="bg-[#135bec] hover:bg-blue-700 w-full sm:w-auto">
                     {loading ? (
                         <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />

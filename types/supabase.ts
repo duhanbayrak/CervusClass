@@ -105,6 +105,7 @@ export type Database = {
           id: string
           name: string
           organization_id: string
+          deleted_at: string | null
         }
         Insert: {
           created_at?: string
@@ -112,6 +113,7 @@ export type Database = {
           id?: string
           name: string
           organization_id: string
+          deleted_at?: string | null
         }
         Update: {
           created_at?: string
@@ -119,6 +121,7 @@ export type Database = {
           id?: string
           name?: string
           organization_id?: string
+          deleted_at?: string | null
         }
         Relationships: [
           {
@@ -182,6 +185,7 @@ export type Database = {
           scores: Json | null
           student_id: string
           total_net: number | null
+          deleted_at: string | null
         }
         Insert: {
           created_at?: string
@@ -192,6 +196,7 @@ export type Database = {
           scores?: Json | null
           student_id: string
           total_net?: number | null
+          deleted_at?: string | null
         }
         Update: {
           created_at?: string
@@ -202,6 +207,7 @@ export type Database = {
           scores?: Json | null
           student_id?: string
           total_net?: number | null
+          deleted_at?: string | null
         }
         Relationships: [
           {
@@ -232,6 +238,7 @@ export type Database = {
           organization_id: string
           target_students: Json | null
           teacher_id: string
+          deleted_at: string | null
         }
         Insert: {
           assigned_student_ids?: Json | null
@@ -244,6 +251,7 @@ export type Database = {
           organization_id: string
           target_students?: Json | null
           teacher_id: string
+          deleted_at?: string | null
         }
         Update: {
           assigned_student_ids?: Json | null
@@ -256,6 +264,7 @@ export type Database = {
           organization_id?: string
           target_students?: Json | null
           teacher_id?: string
+          deleted_at?: string | null
         }
         Relationships: [
           {
@@ -385,6 +394,7 @@ export type Database = {
           start_date: string | null
           student_number: string | null
           title: string | null
+          deleted_at: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -404,6 +414,7 @@ export type Database = {
           start_date?: string | null
           student_number?: string | null
           title?: string | null
+          deleted_at?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -423,6 +434,7 @@ export type Database = {
           start_date?: string | null
           student_number?: string | null
           title?: string | null
+          deleted_at?: string | null
         }
         Relationships: [
           {
@@ -488,6 +500,7 @@ export type Database = {
           room_name: string | null
           start_time: string
           teacher_id: string
+          deleted_at: string | null
         }
         Insert: {
           class_id: string
@@ -500,6 +513,7 @@ export type Database = {
           room_name?: string | null
           start_time: string
           teacher_id: string
+          deleted_at?: string | null
         }
         Update: {
           class_id?: string
@@ -512,6 +526,7 @@ export type Database = {
           room_name?: string | null
           start_time?: string
           teacher_id?: string
+          deleted_at?: string | null
         }
         Relationships: [
           {
