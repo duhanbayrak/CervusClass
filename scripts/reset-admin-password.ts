@@ -1,5 +1,5 @@
 
-const { createClient } = require('@supabase/supabase-js')
+const { createClient: createSupabaseClient } = require('@supabase/supabase-js')
 const dotenv = require('dotenv')
 const path = require('path')
 
@@ -13,7 +13,7 @@ if (!supabaseUrl || !serviceRoleKey) {
     process.exit(1)
 }
 
-const supabase = createClient(supabaseUrl, serviceRoleKey, {
+const supabase = createSupabaseClient(supabaseUrl, serviceRoleKey, {
     auth: {
         autoRefreshToken: false,
         persistSession: false
@@ -39,3 +39,5 @@ async function resetPassword() {
 }
 
 resetPassword()
+
+export { }

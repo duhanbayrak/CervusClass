@@ -1,5 +1,5 @@
 
-const { createClient } = require('@supabase/supabase-js')
+const { createClient: createSupabaseClient } = require('@supabase/supabase-js')
 const dotenv = require('dotenv')
 const path = require('path')
 
@@ -14,7 +14,7 @@ if (!supabaseUrl || !serviceRoleKey) {
 }
 
 // Admin Client (for setup/cleanup)
-const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+const adminClient = createSupabaseClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false }
 })
 
@@ -41,7 +41,7 @@ async function runTests() {
         // Better check: Can student see other students' grades?
 
         console.log('\n--- TC_SEC_003: Student Data Isolation ---')
-        const studentClient = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+        const studentClient = createSupabaseClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
         const { data: { session: studentSession }, error: loginError } = await studentClient.auth.signInWithPassword({
             email: emailStudent,
             password: passStudent
@@ -74,7 +74,7 @@ async function runTests() {
 
         // 2. TC_SEC_002: Teacher accessing Admin Data
         console.log('\n--- TC_SEC_002: Teacher Access Control ---')
-        const teacherClient = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+        const teacherClient = createSupabaseClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
         const { data: { session: teacherSession }, error: tLoginError } = await teacherClient.auth.signInWithPassword({
             email: emailTea,
             password: passTea
@@ -133,3 +133,5 @@ async function runTests() {
 }
 
 runTests()
+
+export { }

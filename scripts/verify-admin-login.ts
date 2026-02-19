@@ -1,5 +1,5 @@
 
-const { createClient } = require('@supabase/supabase-js')
+const { createClient: createSupabaseClient } = require('@supabase/supabase-js')
 const dotenv = require('dotenv')
 const path = require('path')
 
@@ -14,7 +14,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
     process.exit(1)
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey)
 
 async function verifyAdminLogin() {
     console.log('Attempting login as admin@cervus.com...')
@@ -53,3 +53,5 @@ async function verifyAdminLogin() {
 }
 
 verifyAdminLogin()
+
+export { }
