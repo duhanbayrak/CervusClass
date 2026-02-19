@@ -46,17 +46,6 @@ BEGIN
         ) t;
 
         -- Subject-based Class Average per Exam
-        -- This logic mimics the detailed JS logic but simplified for SQL aggregation
-        -- It assumes 'scores' is a JSONB column where keys are subjects and values have 'net' or are numbers
-        -- Note: Complete subject extraction in complex JSON structures might be tricky in pure SQL without knowing exact schema
-        -- For robust implementation matching JS exactly, we might need to rely on the application to parse detailed breakdown
-        -- OR use advanced JSONB queries. 
-        
-        -- Simplified Approach: We return the aggregated scores JSON if possible, or leave detailed subject breakdown 
-        -- to a separate specific query if needed. 
-        -- However, user wants to replace the WHOLE logic.
-        -- Let's try to aggregate subject scores using jsonb_each.
-        
         SELECT json_agg(t) INTO v_class_subject_overview
         FROM (
             SELECT 
@@ -79,7 +68,13 @@ BEGIN
                         END
                     ) as avg_score
                 FROM exam_results er
-                CROSS JOIN LATERAL jsonb_each(er.scores)
+                CROSS JOIN LATERAL jsonb_each(
+                    CASE 
+                        WHEN jsonb_typeof(er.scores) = 'object' THEN er.scores 
+                        WHEN jsonb_typeof(er.scores) = 'string' THEN (er.scores #>> '{}')::jsonb
+                        ELSE '{}'::jsonb 
+                    END
+                )
                 WHERE er.organization_id = p_organization_id
                   AND er.student_id IN (SELECT id FROM profiles WHERE class_id = p_class_id)
                 GROUP BY er.exam_name, er.exam_date, key
@@ -130,7 +125,13 @@ BEGIN
                     END
                 ) as avg_score
             FROM exam_results er
-            CROSS JOIN LATERAL jsonb_each(er.scores)
+            CROSS JOIN LATERAL jsonb_each(
+                CASE 
+                    WHEN jsonb_typeof(er.scores) = 'object' THEN er.scores 
+                    WHEN jsonb_typeof(er.scores) = 'string' THEN (er.scores #>> '{}')::jsonb
+                    ELSE '{}'::jsonb 
+                END
+            )
             WHERE er.organization_id = p_organization_id
             GROUP BY er.exam_name, er.exam_date, key
         ) sub

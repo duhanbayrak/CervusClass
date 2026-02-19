@@ -136,7 +136,7 @@ export async function createAvailability(date: string, startTime: string, endTim
     }
 
     try {
-        const availableId = await getStatusId(supabase, 'available');
+        const availableId = await getStatusId(supabaseAdmin, 'available');
         const { error: dbError } = await supabase.from('study_sessions').insert({
             teacher_id: user.id,
             organization_id: organizationId,
@@ -170,8 +170,8 @@ export async function requestSession(sessionId: string, topic: string) {
     }
 
     try {
-        const pendingId = await getStatusId(supabase, 'pending');
-        const availableId = await getStatusId(supabase, 'available');
+        const pendingId = await getStatusId(supabaseAdmin, 'pending');
+        const availableId = await getStatusId(supabaseAdmin, 'available');
 
         const { error: dbError } = await supabase
             .from('study_sessions')
@@ -216,7 +216,7 @@ export async function approveSession(sessionId: string) {
         if (!isAdmin && session.teacher_id !== user.id) {
             return { error: "Bu işlemi sadece ilgili öğretmen veya yönetici yapabilir." };
         }
-        const approvedId = await getStatusId(supabase, 'approved');
+        const approvedId = await getStatusId(supabaseAdmin, 'approved');
         const { error: dbError } = await supabase
             .from('study_sessions')
             .update({ status_id: approvedId })
@@ -252,7 +252,7 @@ export async function rejectSession(sessionId: string, reason?: string) {
         if (!isAdmin && session.teacher_id !== user.id) {
             return { error: "Bu işlemi sadece ilgili öğretmen veya yönetici yapabilir." };
         }
-        const rejectedId = await getStatusId(supabase, 'rejected');
+        const rejectedId = await getStatusId(supabaseAdmin, 'rejected');
 
         const { error: dbError } = await supabase
             .from('study_sessions')

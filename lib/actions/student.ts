@@ -47,7 +47,9 @@ export async function getStudents(search?: string, classId?: string, page: numbe
             roles!inner(name)
         `, { count: 'exact' })
         .eq('organization_id', organizationId)
-        .eq('roles.name', 'student');
+        .eq('organization_id', organizationId)
+        .eq('roles.name', 'student')
+        .is('deleted_at', null);
 
     // Arama filtresi — Full Text Search (tsvector)
     if (search) {
@@ -115,7 +117,8 @@ export async function addStudent(formData: StudentFormData) {
     // Profil oluştur
     const { error: profileError } = await supabaseAdmin
         .from('profiles')
-        .update({
+        .upsert({
+            id: authData.user.id,
             full_name: formData.full_name,
             email: formData.email,
             class_id: formData.class_id,
@@ -126,8 +129,7 @@ export async function addStudent(formData: StudentFormData) {
             birth_date: formData.birth_date || null,
             organization_id: organizationId,
             role_id: role.id
-        })
-        .eq('id', authData.user.id);
+        });
 
     if (profileError) return { success: false, error: profileError.message };
 

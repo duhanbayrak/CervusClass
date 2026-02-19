@@ -21,6 +21,16 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from '@/components/ui/label';
 import { Plus, Trash2, Search, MoreHorizontal, Mail, BookOpen, Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -62,6 +72,10 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
     const [isLoading, setIsLoading] = useState(false);
     const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
     const [mounted, setMounted] = useState(false);
+
+    // Delete Modal State
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [teacherToDelete, setTeacherToDelete] = useState<{ id: string, name: string } | null>(null);
 
     useEffect(() => {
         setMounted(true);
@@ -118,7 +132,6 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
             setFormData({ fullName: '', branch: '', email: '', password: '', phone: '', title: '', bio: '' });
             router.refresh();
 
-            // Cleanup query param if exists
             if (searchParams.get('action') === 'create') {
                 const params = new URLSearchParams(searchParams.toString());
                 params.delete('action');
@@ -136,12 +149,16 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
         }
     };
 
-    const handleDeleteTeacher = async (id: string, name: string) => {
-        if (!confirm(`${name} isimli öğretmeni silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
+    const confirmDelete = (id: string, name: string) => {
+        setTeacherToDelete({ id, name });
+        setDeleteDialogOpen(true);
+    };
+
+    const handleDeleteTeacher = async () => {
+        if (!teacherToDelete) return;
 
         try {
-            // In a real app we might want to just soft-delete or check for dependencies (classes, etc.)
-            const response = await fetch(`/api/admin/users?id=${id}`, {
+            const response = await fetch(`/api/admin/users?id=${teacherToDelete.id}`, {
                 method: 'DELETE',
             });
 
@@ -158,6 +175,9 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
             } else {
                 toast.error('Bilinmeyen bir hata oluştu');
             }
+        } finally {
+            setDeleteDialogOpen(false);
+            setTeacherToDelete(null);
         }
     };
 
@@ -181,7 +201,6 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
             setEditingTeacher(null);
             setFormData({ fullName: '', branch: '', email: '', password: '', phone: '', title: '', bio: '' });
 
-            // Remove action param if it exists
             if (searchParams.get('action') === 'create') {
                 const params = new URLSearchParams(searchParams.toString());
                 params.delete('action');
@@ -322,6 +341,27 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
                 </Dialog>
             </div>
 
+            {/* DELETE ALERT DIALOG */}
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {teacherToDelete?.name} isimli öğretmeni silmek istediğinize emin misiniz? Bu işlem geri alınamaz (soft delete).
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>İptal</AlertDialogCancel>
+                        <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white focus:ring-red-600" onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTeacher();
+                        }}>
+                            Sil
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
             {/* List */}
             <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
                 <Table>
@@ -375,11 +415,14 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
                                                 <DropdownMenuItem onClick={() => handleEditClick(teacher)}>
                                                     <BookOpen className="mr-2 h-4 w-4" /> Düzenle
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => navigator.clipboard.writeText(teacher.email || '')}>
+                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(teacher.email || ''); }}>
                                                     <Mail className="mr-2 h-4 w-4" /> E-posta Kopyala
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => handleDeleteTeacher(teacher.id, teacher.full_name || 'Öğretmen')}>
+                                                <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    confirmDelete(teacher.id, teacher.full_name || 'Öğretmen');
+                                                }}>
                                                     <Trash2 className="mr-2 h-4 w-4" /> Sil
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>

@@ -19,16 +19,22 @@ async function getRequests(userId: string) {
         }
     );
 
-    const { data: requests } = await supabase
+    const { data: requestsData } = await supabase
         .from('study_sessions')
         .select(`
             *,
+            study_session_statuses(name),
             teacher:profiles!teacher_id(full_name)
         `)
         .eq('student_id', userId)
         .order('created_at', { ascending: false });
 
-    return requests || [];
+    const requests = requestsData?.map(req => ({
+        ...req,
+        status: (req.study_session_statuses as any)?.name
+    })) || [];
+
+    return requests;
 }
 
 import { BookSessionDialog } from '@/components/student/book-session-dialog';

@@ -47,6 +47,7 @@ export default async function TeachersPage() {
                 branches (name)
             `)
             .eq('role_id', teacherRoleId)
+            .is('deleted_at', null)
             .order('created_at', { ascending: false });
 
         if (data) {

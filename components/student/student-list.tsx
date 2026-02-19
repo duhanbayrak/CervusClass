@@ -23,6 +23,16 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -65,6 +75,11 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
     const [classFilter, setClassFilter] = useState<string>("all");
     const [classList, setClassList] = useState<{ id: string; name: string }[]>([]);
     const isFirstRender = useRef(true);
+
+    // Delete Modal State
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
+
 
     // Sayfalama state'leri
     const [currentPage, setCurrentPage] = useState(1);
@@ -131,10 +146,15 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
         }
     }, [searchParams]);
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Bu öğrenciyi silmek istediğinize emin misiniz?")) return;
+    const confirmDelete = (id: string) => {
+        setStudentToDelete(id);
+        setDeleteDialogOpen(true);
+    };
 
-        const res = await deleteStudent(id);
+    const handleDelete = async () => {
+        if (!studentToDelete) return;
+
+        const res = await deleteStudent(studentToDelete);
         if (res.success) {
             toast({ description: "Öğrenci silindi." });
             loadStudents(currentPage);
@@ -145,6 +165,8 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
                 description: res.error
             });
         }
+        setDeleteDialogOpen(false);
+        setStudentToDelete(null);
     };
 
     const handleEdit = (student: Student) => {
@@ -337,7 +359,7 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
                                                     Düzenle
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
-                                                    onClick={(e) => { e.stopPropagation(); handleDelete(student.id); }}
+                                                    onClick={(e) => { e.stopPropagation(); confirmDelete(student.id); }}
                                                     className="text-red-600"
                                                 >
                                                     <Trash className="mr-2 h-4 w-4" />
@@ -352,6 +374,27 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
                     </TableBody>
                 </Table>
             </div>
+
+            {/* Delete Alert Dialog */}
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Bu öğrenciyi silmek istediğinize emin misiniz? Bu işlem geri alınamaz (soft delete).
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>İptal</AlertDialogCancel>
+                        <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white focus:ring-red-600" onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete();
+                        }}>
+                            Sil
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {/* Sayfalama Kontrolleri */}
             {totalCount > 0 && (

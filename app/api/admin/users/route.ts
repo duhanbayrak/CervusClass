@@ -163,8 +163,11 @@ export async function DELETE(request: Request) {
         return NextResponse.json({ error: 'Missing user ID' }, { status: 400 })
     }
 
-    // 3. Delete User
-    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
+    // 3. Soft Delete User
+    const { error: deleteError } = await supabaseAdmin
+        .from('profiles')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', userId)
 
     if (deleteError) {
         console.error("Delete User Error:", deleteError);
