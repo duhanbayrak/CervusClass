@@ -5,7 +5,15 @@ import React from 'react'
 export const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
         return (
-            <div className="bg-background/95 backdrop-blur-md border border-border shadow-xl rounded-xl p-4 min-w-[200px]">
+            <div
+                className="border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl p-4 min-w-[200px] z-50"
+                style={{
+                    backgroundColor: 'var(--background)',
+                    opacity: 1,
+                    backdropFilter: 'none'
+                }}
+            >
+                <div className="bg-white dark:bg-slate-950 absolute inset-0 -z-10 rounded-xl" />
                 <p className="font-semibold mb-3 pb-2 border-b border-border/50 text-foreground">
                     <span className="block text-sm font-normal text-muted-foreground">
                         {payload[0].payload.fullDate}

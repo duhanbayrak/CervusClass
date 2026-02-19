@@ -53,17 +53,40 @@ const TRACKS = {
     ALL: [] as string[]
 };
 
-const tooltipStyle = {
-    backgroundColor: 'hsl(var(--card))',
-    border: '1px solid hsl(var(--border))',
-    borderRadius: '0.75rem',
-    padding: '12px 16px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-}
-
-const tooltipFormatter = (value?: number | string) => {
-    const num = typeof value === 'number' ? value : parseFloat(String(value ?? '0'))
-    return isNaN(num) ? '-' : num.toFixed(2)
+const CustomSubjectTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+        return (
+            <div
+                className="border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl p-4 min-w-[200px] z-50"
+                style={{
+                    backgroundColor: 'var(--background)',
+                    opacity: 1,
+                    backdropFilter: 'none'
+                }}
+            >
+                <div className="bg-white dark:bg-slate-950 absolute inset-0 -z-10 rounded-xl" />
+                <p className="font-semibold mb-3 pb-2 border-b border-border/50 text-foreground relative">
+                    {label}
+                </p>
+                <div className="space-y-2">
+                    {payload.map((entry: any, index: number) => {
+                        const num = typeof entry.value === 'number' ? entry.value : parseFloat(String(entry.value ?? '0'))
+                        const formattedValue = isNaN(num) ? '-' : num.toFixed(2)
+                        return (
+                            <div key={index} className="flex items-center justify-between gap-4 text-sm">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.fill || entry.color }} />
+                                    <span className="text-muted-foreground">{entry.name}:</span>
+                                </div>
+                                <span className="font-bold font-mono text-foreground">{formattedValue}</span>
+                            </div>
+                        )
+                    })}
+                </div>
+            </div>
+        )
+    }
+    return null
 }
 
 export function ExamDetailCharts({
@@ -208,7 +231,7 @@ export function ExamDetailCharts({
                                         <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                                         <XAxis dataKey="subject" tick={{ fontSize: 12 }} />
                                         <YAxis tick={{ fontSize: 12 }} />
-                                        <Tooltip contentStyle={tooltipStyle} formatter={tooltipFormatter} />
+                                        <Tooltip content={<CustomSubjectTooltip />} cursor={{ fill: 'transparent' }} />
                                         <Legend
                                             verticalAlign="top" align="right" iconType="circle"
                                             wrapperStyle={{ fontSize: '13px', paddingBottom: '16px' }}
@@ -242,7 +265,7 @@ export function ExamDetailCharts({
                                             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                                             <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                                             <YAxis tick={{ fontSize: 11 }} />
-                                            <Tooltip contentStyle={tooltipStyle} formatter={tooltipFormatter} />
+                                            <Tooltip content={<CustomSubjectTooltip />} cursor={{ fill: 'transparent' }} />
                                             <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>
                                                 {[
                                                     { key: 'student', color: COLORS.student },
@@ -291,7 +314,7 @@ export function ExamDetailCharts({
                                         <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                                         <XAxis dataKey="subject" tick={{ fontSize: 12 }} />
                                         <YAxis tick={{ fontSize: 12 }} />
-                                        <Tooltip contentStyle={tooltipStyle} formatter={tooltipFormatter} />
+                                        <Tooltip content={<CustomSubjectTooltip />} cursor={{ fill: 'transparent' }} />
                                         <Legend
                                             verticalAlign="top" align="right" iconType="circle"
                                             wrapperStyle={{ fontSize: '13px', paddingBottom: '16px' }}
@@ -336,7 +359,7 @@ export function ExamDetailCharts({
                             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                             <XAxis dataKey="subject" tick={{ fontSize: 14 }} />
                             <YAxis tick={{ fontSize: 14 }} />
-                            <Tooltip contentStyle={tooltipStyle} formatter={tooltipFormatter} />
+                            <Tooltip content={<CustomSubjectTooltip />} cursor={{ fill: 'transparent' }} />
                             <Legend
                                 verticalAlign="top" align="right" iconType="circle"
                                 wrapperStyle={{ fontSize: '14px', paddingBottom: '16px' }}
@@ -386,7 +409,7 @@ export function ExamDetailCharts({
                                         <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                                         <XAxis dataKey="name" tick={{ fontSize: 14 }} />
                                         <YAxis tick={{ fontSize: 14 }} />
-                                        <Tooltip contentStyle={tooltipStyle} formatter={tooltipFormatter} />
+                                        <Tooltip content={<CustomSubjectTooltip />} cursor={{ fill: 'transparent' }} />
                                         <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={80}>
                                             {[COLORS.student, COLORS.class, COLORS.school].map((color, i) => (
                                                 <rect key={i} fill={color} />
@@ -428,7 +451,7 @@ export function ExamDetailCharts({
                                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                                 <XAxis dataKey="subject" tick={{ fontSize: 14 }} />
                                 <YAxis tick={{ fontSize: 14 }} />
-                                <Tooltip contentStyle={tooltipStyle} formatter={tooltipFormatter} />
+                                <Tooltip content={<CustomSubjectTooltip />} cursor={{ fill: 'transparent' }} />
                                 <Legend
                                     verticalAlign="top" align="right" iconType="circle"
                                     wrapperStyle={{ fontSize: '14px', paddingBottom: '16px' }}
