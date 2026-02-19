@@ -1,7 +1,9 @@
 'use server'
 
 import { createClient } from '@/lib/supabase-server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { revalidatePath } from 'next/cache'
+import { createBulkNotifications } from '@/lib/actions/notifications'
 
 const EXAM_FILES_BUCKET = 'exam-files'
 
@@ -115,6 +117,36 @@ export async function uploadExamResult(prevState: any, formData: FormData) {
     }
 
     revalidatePath('/admin/exams')
+
+    // Tüm öğrencilere sınav sonucu bildirimi gönder
+    try {
+        // Öğrenci rolünü bul
+        const { data: studentRole } = await supabaseAdmin
+            .from('roles')
+            .select('id')
+            .eq('name', 'student')
+            .single();
+
+        if (studentRole) {
+            const { data: students } = await supabaseAdmin
+                .from('profiles')
+                .select('id')
+                .eq('role_id', studentRole.id)
+                .eq('organization_id', organizationId);
+
+            if (students && students.length > 0) {
+                const notifications = students.map(s => ({
+                    userId: s.id,
+                    title: 'Yeni Sınav Sonucu 📊',
+                    message: `${examName} sınav sonuçları yayınlandı. Sonuçlarınızı kontrol edin.`,
+                    type: 'info' as const,
+                }));
+                await createBulkNotifications(notifications);
+            }
+        }
+    } catch (notifError) {
+        console.error('Exam notification error:', notifError);
+    }
 
     return {
         success: true,

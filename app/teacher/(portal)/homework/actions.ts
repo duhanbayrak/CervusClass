@@ -5,6 +5,69 @@ import { cookies } from 'next/headers';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { createBulkNotifications, createNotification } from '@/lib/actions/notifications';
+import { getAuthContext } from '@/lib/auth-context';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+
+// Süresi dolmuş ödevleri kontrol edip öğretmene bildirim gönder
+export async function checkExpiredHomework() {
+    try {
+        const { user, error } = await getAuthContext();
+        if (error || !user) return;
+
+        // Süresi dolmuş ve henüz bildirim gönderilmemiş ödevleri bul
+        const { data: expiredHomework } = await supabaseAdmin
+            .from('homework')
+            .select('id, description, due_date')
+            .eq('teacher_id', user.id)
+            .lt('due_date', new Date().toISOString())
+            .is('deleted_at', null);
+
+        if (!expiredHomework || expiredHomework.length === 0) return;
+
+        // Bu öğretmene zaten gönderilmiş "Ödev Süresi Doldu" bildirimlerini kontrol et
+        const { data: existingNotifications } = await supabaseAdmin
+            .from('notifications')
+            .select('message')
+            .eq('user_id', user.id)
+            .eq('title', 'Ödev Süresi Doldu ⏰');
+
+        const notifiedMessages = new Set(existingNotifications?.map(n => n.message) || []);
+
+        for (const hw of expiredHomework) {
+            const msg = `"${hw.description.substring(0, 40)}${hw.description.length > 40 ? '...' : ''}" ödevinin teslim süresi doldu.`;
+            if (!notifiedMessages.has(msg)) {
+                await createNotification({
+                    userId: user.id,
+                    title: 'Ödev Süresi Doldu ⏰',
+                    message: msg,
+                    type: 'warning',
+                });
+            }
+        }
+    } catch {
+        // sessizce devam et
+    }
+}
+
+// Sınıfa göre öğrencileri getir
+export async function getStudentsByClass(classId: string) {
+    try {
+        const { supabase, error } = await getAuthContext();
+        if (error) return { data: [], error };
+
+        const { data, error: dbError } = await supabase
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .eq('class_id', classId)
+            .order('full_name', { ascending: true });
+
+        if (dbError) return { data: [], error: dbError.message };
+        return { data: data || [] };
+    } catch {
+        return { data: [], error: 'Beklenmedik hata' };
+    }
+}
 
 // Define the validation schema
 const CreateHomeworkSchema = z.object({
@@ -137,6 +200,16 @@ export async function createHomework(prevState: CreateHomeworkState, formData: F
                 // Non-fatal? Or should we rollback? 
                 // For now log it. Next.js creates don't easily rollback unless transaction used (RPC).
             }
+
+            // Öğrencilere bildirim gönder
+            const dueDateStr = new Date(due_date).toLocaleDateString('tr-TR');
+            const notifications = targetStudentIds.map(studentId => ({
+                userId: studentId,
+                title: 'Yeni Ödev 📝',
+                message: `Yeni bir ödev tanımlandı: ${description.substring(0, 50)}${description.length > 50 ? '...' : ''} (Teslim: ${dueDateStr})`,
+                type: 'info' as const,
+            }));
+            await createBulkNotifications(notifications);
         }
 
 

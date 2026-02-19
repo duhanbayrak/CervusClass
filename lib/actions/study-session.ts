@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { type SupabaseClient } from '@supabase/supabase-js'
 import { getAuthContext } from '@/lib/auth-context'
 import { handleError } from '@/lib/utils/error'
+import { createNotification } from '@/lib/actions/notifications'
 
 // Status ID helper
 async function getStatusId(supabase: SupabaseClient, name: string) {
@@ -173,6 +174,14 @@ export async function requestSession(sessionId: string, topic: string) {
         const pendingId = await getStatusId(supabaseAdmin, 'pending');
         const availableId = await getStatusId(supabaseAdmin, 'available');
 
+        // Önce session'ın teacher_id'sini al
+        const { data: sessionData } = await supabase
+            .from('study_sessions')
+            .select('teacher_id')
+            .eq('id', sessionId)
+            .eq('status_id', availableId)
+            .single();
+
         const { error: dbError } = await supabase
             .from('study_sessions')
             .update({
@@ -184,6 +193,23 @@ export async function requestSession(sessionId: string, topic: string) {
             .eq('status_id', availableId);
 
         if (dbError) throw dbError;
+
+        // Öğretmene bildirim gönder
+        if (sessionData?.teacher_id) {
+            const { data: studentProfile } = await supabaseAdmin
+                .from('profiles')
+                .select('full_name')
+                .eq('id', user.id)
+                .single();
+
+            const studentName = studentProfile?.full_name || 'Bir öğrenci';
+            await createNotification({
+                userId: sessionData.teacher_id,
+                title: 'Yeni Etüt Talebi 📚',
+                message: `${studentName} etüt talebinde bulundu${topic ? `: ${topic}` : ''}.`,
+                type: 'info',
+            });
+        }
     } catch (e: unknown) {
         return { error: handleError(e) };
     }
@@ -204,7 +230,7 @@ export async function approveSession(sessionId: string) {
         // Oturumu ve öğretmenini kontrol et
         const { data: session, error: sessionError } = await supabase
             .from('study_sessions')
-            .select('teacher_id')
+            .select('teacher_id, student_id')
             .eq('id', sessionId)
             .single();
 
@@ -223,6 +249,16 @@ export async function approveSession(sessionId: string) {
             .eq('id', sessionId);
 
         if (dbError) throw dbError;
+
+        // Öğrenciye bildirim gönder
+        if (session.student_id) {
+            await createNotification({
+                userId: session.student_id,
+                title: 'Etüt Talebi Onaylandı ✅',
+                message: 'Etüt talebiniz onaylandı. Takviminizdeki detayları kontrol edin.',
+                type: 'success',
+            });
+        }
     } catch (e: unknown) {
         return { error: handleError(e) };
     }
@@ -240,7 +276,7 @@ export async function rejectSession(sessionId: string, reason?: string) {
         // Oturumu ve öğretmenini kontrol et
         const { data: session, error: sessionError } = await supabase
             .from('study_sessions')
-            .select('teacher_id')
+            .select('teacher_id, student_id')
             .eq('id', sessionId)
             .single();
 
@@ -263,6 +299,16 @@ export async function rejectSession(sessionId: string, reason?: string) {
             .eq('id', sessionId);
 
         if (dbError) throw dbError;
+
+        // Öğrenciye bildirim gönder
+        if (session.student_id) {
+            await createNotification({
+                userId: session.student_id,
+                title: 'Etüt Talebi Reddedildi ❌',
+                message: reason ? `Etüt talebiniz reddedildi. Sebep: ${reason}` : 'Etüt talebiniz reddedildi.',
+                type: 'warning',
+            });
+        }
     } catch (e: unknown) {
         return { error: handleError(e) };
     }
