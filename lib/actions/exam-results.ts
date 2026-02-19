@@ -37,6 +37,11 @@ export async function uploadExamResult(prevState: any, formData: FormData) {
         return { success: false, message: 'Sınav ismi girmelisiniz.' }
     }
 
+    const examType = formData.get('exam_type') as string
+    if (!examType || (examType !== 'TYT' && examType !== 'AYT')) {
+        return { success: false, message: 'Geçerli bir sınav türü seçmelisiniz (TYT veya AYT).' }
+    }
+
     const file = formData.get('file') as File
     if (!file) {
         return { success: false, message: 'Dosya seçilmedi.' }
@@ -77,7 +82,6 @@ export async function uploadExamResult(prevState: any, formData: FormData) {
     const fileUrl = signedUrlData.signedUrl
 
     // 5. Trigger n8n Webhook
-    // TODO: Replace with actual n8n webhook URL from env or user input
     const webhookUrl = process.env.N8N_EXAM_WEBHOOK_URL
 
     if (webhookUrl) {
@@ -90,6 +94,7 @@ export async function uploadExamResult(prevState: any, formData: FormData) {
                 body: JSON.stringify({
                     file_url: fileUrl,
                     exam_name: examName,
+                    exam_type: examType, // Include exam_type in payload
                     admin_id: user.id,
                     organization_id: organizationId,
                     uploaded_at: new Date().toISOString(),

@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/table"
 import Link from 'next/link'
 import { getTeacherExamDetailData } from '@/lib/actions/exam-stats'
+import { flattenExamDetails } from '@/lib/utils'
 import { TeacherExamCharts } from '@/components/teacher/exams/teacher-exam-charts'
 
 
@@ -57,6 +58,7 @@ async function getClassExamResults(examName: string, classId: string) {
         .select(`
             id,
             exam_name,
+            exam_type,
             exam_date,
             total_net,
             scores,
@@ -85,14 +87,7 @@ async function getClassExamResults(examName: string, classId: string) {
 
     // Parse and rank students
     const students: StudentExamData[] = results.map((result: any, index: number) => {
-        let scoresData = result.scores
-        if (typeof scoresData === 'string') {
-            try {
-                scoresData = JSON.parse(scoresData)
-            } catch (e) {
-                scoresData = {}
-            }
-        }
+        const scoresData = flattenExamDetails(result.scores, result.exam_type)
 
         return {
             studentId: result.student_id,

@@ -43,12 +43,26 @@ export function usePaginatedData<T>(data: T[], pageSize: number = 5) {
     const totalPages = Math.ceil(data.length / pageSize)
     const defaultPage = Math.max(0, totalPages - 1) // son sayfa
 
+    // İlk sayfada gösterilecek eleman sayısı
+    // Eğer tam bölünüyorsa pageSize kadar, değilse kalan kadar
+    const remainder = data.length % pageSize
+    const firstPageSize = remainder === 0 ? pageSize : remainder
+
     return {
         totalPages,
         defaultPage,
         getPageData: (page: number) => {
-            const start = page * pageSize
-            return data.slice(start, start + pageSize)
+            if (data.length === 0) return []
+
+            // İlk sayfa için özel hesaplama
+            if (page === 0) {
+                return data.slice(0, firstPageSize)
+            }
+
+            // Diğer sayfalar için ofset hesaplama
+            // İlk sayfadaki elemanları geç, sonraki her sayfa için pageSize kadar ilerle
+            const offset = firstPageSize + (page - 1) * pageSize
+            return data.slice(offset, offset + pageSize)
         },
     }
 }

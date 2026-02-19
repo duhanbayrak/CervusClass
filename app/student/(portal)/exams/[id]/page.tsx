@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table"
 import Link from 'next/link'
 import { getExamDetailData } from '@/lib/actions/exam-stats'
+import { flattenExamDetails } from '@/lib/utils'
 import { ExamDetailCharts } from '@/components/student/exams/exam-detail-charts'
 
 async function getExamDetails(examId: string, userId: string) {
@@ -86,18 +87,8 @@ export default async function ExamDetailPage({
     // Detay verileri (sınıf/okul ortalamaları)
     const detailData = await getExamDetailData(id)
 
-    // Parse scores - handle both string and object format
-    let scoresData: any = exam.scores
-
-    // If scores is a string, parse it
-    if (typeof scoresData === 'string') {
-        try {
-            scoresData = JSON.parse(scoresData)
-        } catch (e) {
-            console.error('Failed to parse scores:', e)
-            scoresData = null
-        }
-    }
+    // Parse scores using helper to handle nested structures (AYT)
+    const scoresData = flattenExamDetails(exam.scores, exam.exam_type)
 
     // Calculate scores with bos (empty) for each subject
     const questionCounts: Record<string, number> = {
@@ -111,29 +102,27 @@ export default async function ExamDetailPage({
         'Social': 20
     }
 
-    const scores = scoresData && typeof scoresData === 'object'
-        ? Object.entries(scoresData).map(([subject, data]: [string, any]) => {
-            // If data is just a number (old format), return minimal info
-            if (typeof data === 'number') {
-                return { subject, dogru: '-', yanlis: '-', bos: '-', net: data }
-            }
+    const scores = Object.entries(scoresData).map(([subject, data]: [string, any]) => {
+        // If data is just a number (old format), return minimal info
+        if (typeof data === 'number') {
+            return { subject, dogru: '-', yanlis: '-', bos: '-', net: data }
+        }
 
-            // New format with dogru, yanlis, net
-            const dogru = data.dogru ?? 0
-            const yanlis = data.yanlis ?? 0
-            const net = data.net ?? 0
-            const totalQuestions = questionCounts[subject] ?? 40
-            const bos = totalQuestions - dogru - yanlis
+        // New format with dogru, yanlis, net
+        const dogru = data.dogru ?? 0
+        const yanlis = data.yanlis ?? 0
+        const net = data.net ?? 0
+        const totalQuestions = questionCounts[subject] ?? 40
+        const bos = totalQuestions - dogru - yanlis
 
-            return {
-                subject,
-                dogru,
-                yanlis,
-                bos: bos >= 0 ? bos : 0,
-                net
-            }
-        })
-        : []
+        return {
+            subject,
+            dogru,
+            yanlis,
+            bos: bos >= 0 ? bos : 0,
+            net
+        }
+    })
 
     return (
         <div className="container py-8 max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500">
@@ -281,6 +270,7 @@ export default async function ExamDetailPage({
             {detailData && (
                 <ExamDetailCharts
                     scores={exam.scores}
+                    examType={exam.exam_type}
                     totalNet={exam.total_net}
                     classSubjectAverages={detailData.classSubjectAverages}
                     classTotalAvg={detailData.classTotalAvg}

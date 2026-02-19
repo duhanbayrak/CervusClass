@@ -11,10 +11,27 @@ import {
     Legend,
     ResponsiveContainer,
 } from 'recharts'
+import { flattenExamScores } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import { Eye } from 'lucide-react'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import { ChartModal, ExpandableChartWrapper } from './chart-modal'
 
 interface ExamDetailChartsProps {
     scores: Record<string, any>
+    examType: 'TYT' | 'AYT'
     totalNet: number | null
     classSubjectAverages: Record<string, number>
     classTotalAvg: number
@@ -27,6 +44,14 @@ const COLORS = {
     class: '#f59e0b',
     school: '#10b981',
 }
+
+// Study Tracks Configuration
+const TRACKS = {
+    SAYISAL: ['Matematik', 'Fizik', 'Kimya', 'Biyoloji'],
+    ESIT_AGIRLIK: ['Matematik', 'Edebiyat', 'Tarih-1', 'Coğrafya-1'],
+    SOZEL: ['Edebiyat', 'Tarih-1', 'Coğrafya-1', 'Tarih-2', 'Coğrafya-2', 'Felsefe', 'Din Kültürü'],
+    ALL: [] as string[]
+};
 
 const tooltipStyle = {
     backgroundColor: 'hsl(var(--card))',
@@ -43,6 +68,7 @@ const tooltipFormatter = (value?: number | string) => {
 
 export function ExamDetailCharts({
     scores,
+    examType,
     totalNet,
     classSubjectAverages,
     classTotalAvg,
@@ -53,22 +79,34 @@ export function ExamDetailCharts({
     const [expandedSubject, setExpandedSubject] = useState<string | null>(null)
     const [totalModalOpen, setTotalModalOpen] = useState(false)
 
-    // Parse scores
-    let parsedScores = scores
-    if (typeof parsedScores === 'string') {
-        try { parsedScores = JSON.parse(parsedScores) } catch { parsedScores = {} }
-    }
-    if (!parsedScores || typeof parsedScores !== 'object') parsedScores = {}
+    // UI States
+    const [selectedTrack, setSelectedTrack] = useState<string>('ALL')
+    const [visibleSeries, setVisibleSeries] = useState({
+        student: true,
+        class: true,
+        school: true
+    })
+
+    // Parse scores using the robust utility
+    const parsedScores = flattenExamScores(scores, examType)
 
     // Ders bazlı karşılaştırma verileri
-    const subjectData = Object.entries(parsedScores).map(([subject, data]: [string, any]) => {
-        const studentNet = typeof data === 'number' ? data : (data?.net ?? 0)
+    const allSubjectData = Object.entries(parsedScores).map(([subject, net]) => {
+        const studentNet = typeof net === 'number' ? net : 0
         return {
             subject,
             'Benim Netim': studentNet,
             'Sınıf Ortalaması': classSubjectAverages[subject] ?? 0,
             'Okul Ortalaması': schoolSubjectAverages[subject] ?? 0,
         }
+    })
+
+    // Filter based on Selected Track (for AYT)
+    const subjectData = allSubjectData.filter(item => {
+        if (examType === 'TYT' || selectedTrack === 'ALL') return true
+
+        const allowed = TRACKS[selectedTrack as keyof typeof TRACKS] || []
+        return allowed.some(s => s.toLowerCase() === item.subject.toLowerCase())
     })
 
     // Toplam net karşılaştırma
@@ -96,11 +134,71 @@ export function ExamDetailCharts({
             <div className="space-y-6">
                 {/* Ders bazlı ana grafik */}
                 <div className="border rounded-xl bg-card overflow-hidden shadow-sm">
-                    <div className="p-6 border-b bg-muted/50">
-                        <h2 className="text-xl font-semibold">Ders Bazlı Karşılaştırma</h2>
-                        <p className="text-sm text-muted-foreground mt-1">
-                            Her ders için netinizi sınıf ve okul ortalamasıyla karşılaştırın
-                        </p>
+                    <div className="p-6 border-b bg-muted/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 className="text-xl font-semibold">Ders Bazlı Karşılaştırma</h2>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Her ders için netinizi sınıf ve okul ortalamasıyla karşılaştırın
+                            </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            {/* Track Selector for AYT */}
+                            {examType === 'AYT' && (
+                                <Select value={selectedTrack} onValueChange={setSelectedTrack}>
+                                    <SelectTrigger className="w-[140px] h-9">
+                                        <SelectValue placeholder="Alan Seç" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ALL">Tüm Dersler</SelectItem>
+                                        <SelectItem value="SAYISAL">Sayısal</SelectItem>
+                                        <SelectItem value="ESIT_AGIRLIK">Eşit Ağırlık</SelectItem>
+                                        <SelectItem value="SOZEL">Sözel</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            )}
+
+                            {/* Visibility Toggle */}
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" size="sm" className="h-9 gap-2">
+                                        <Eye className="w-4 h-4" />
+                                        <span className="hidden sm:inline">Görünüm</span>
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48 p-4" align="end">
+                                    <div className="space-y-4">
+                                        <h4 className="font-medium text-sm leading-none mb-2">Grafik Verileri</h4>
+                                        <div className="flex flex-col gap-3">
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="show-student"
+                                                    checked={visibleSeries.student}
+                                                    onCheckedChange={(c) => setVisibleSeries(prev => ({ ...prev, student: !!c }))}
+                                                />
+                                                <label htmlFor="show-student" className="text-sm cursor-pointer">Benim Netim</label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="show-class"
+                                                    checked={visibleSeries.class}
+                                                    onCheckedChange={(c) => setVisibleSeries(prev => ({ ...prev, class: !!c }))}
+                                                />
+                                                <label htmlFor="show-class" className="text-sm cursor-pointer">Sınıf Ort.</label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="show-school"
+                                                    checked={visibleSeries.school}
+                                                    onCheckedChange={(c) => setVisibleSeries(prev => ({ ...prev, school: !!c }))}
+                                                />
+                                                <label htmlFor="show-school" className="text-sm cursor-pointer">Okul Ort.</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
                     </div>
                     <div className="p-6">
                         <ExpandableChartWrapper onClick={() => setMainModalOpen(true)}>
@@ -115,9 +213,9 @@ export function ExamDetailCharts({
                                             verticalAlign="top" align="right" iconType="circle"
                                             wrapperStyle={{ fontSize: '13px', paddingBottom: '16px' }}
                                         />
-                                        <Bar dataKey="Benim Netim" fill={COLORS.student} radius={[6, 6, 0, 0]} barSize={32} />
-                                        <Bar dataKey="Sınıf Ortalaması" fill={COLORS.class} radius={[6, 6, 0, 0]} barSize={32} />
-                                        <Bar dataKey="Okul Ortalaması" fill={COLORS.school} radius={[6, 6, 0, 0]} barSize={32} />
+                                        {visibleSeries.student && <Bar dataKey="Benim Netim" fill={COLORS.student} radius={[6, 6, 0, 0]} barSize={32} />}
+                                        {visibleSeries.class && <Bar dataKey="Sınıf Ortalaması" fill={COLORS.class} radius={[6, 6, 0, 0]} barSize={32} />}
+                                        {visibleSeries.school && <Bar dataKey="Okul Ortalaması" fill={COLORS.school} radius={[6, 6, 0, 0]} barSize={32} />}
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -146,8 +244,13 @@ export function ExamDetailCharts({
                                             <YAxis tick={{ fontSize: 11 }} />
                                             <Tooltip contentStyle={tooltipStyle} formatter={tooltipFormatter} />
                                             <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>
-                                                {[COLORS.student, COLORS.class, COLORS.school].map((color, i) => (
-                                                    <rect key={i} fill={color} />
+                                                {[
+                                                    { key: 'student', color: COLORS.student },
+                                                    { key: 'class', color: COLORS.class },
+                                                    { key: 'school', color: COLORS.school }
+                                                ].map((s, i) => (
+                                                    // Only render if visible, effectively hiding/showing bars
+                                                    <rect key={i} fill={s.color} className={visibleSeries[s.key as keyof typeof visibleSeries] ? 'opacity-100' : 'opacity-0'} />
                                                 ))}
                                             </Bar>
                                         </BarChart>
@@ -238,62 +341,64 @@ export function ExamDetailCharts({
                                 verticalAlign="top" align="right" iconType="circle"
                                 wrapperStyle={{ fontSize: '14px', paddingBottom: '16px' }}
                             />
-                            <Bar dataKey="Benim Netim" fill={COLORS.student} radius={[8, 8, 0, 0]} barSize={48} />
-                            <Bar dataKey="Sınıf Ortalaması" fill={COLORS.class} radius={[8, 8, 0, 0]} barSize={48} />
-                            <Bar dataKey="Okul Ortalaması" fill={COLORS.school} radius={[8, 8, 0, 0]} barSize={48} />
+                            {visibleSeries.student && <Bar dataKey="Benim Netim" fill={COLORS.student} radius={[8, 8, 0, 0]} barSize={48} />}
+                            {visibleSeries.class && <Bar dataKey="Sınıf Ortalaması" fill={COLORS.class} radius={[8, 8, 0, 0]} barSize={48} />}
+                            {visibleSeries.school && <Bar dataKey="Okul Ortalaması" fill={COLORS.school} radius={[8, 8, 0, 0]} barSize={48} />}
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
-            </ChartModal>
+            </ChartModal >
 
             {/* Ders bazlı detay modalı */}
-            {expandedItem && (
-                <ChartModal
-                    isOpen={!!expandedSubject}
-                    onClose={() => setExpandedSubject(null)}
-                    title={expandedItem.subject}
-                    subtitle="Net karşılaştırması"
-                >
-                    <div className="w-full h-full flex flex-col">
-                        <div className="flex items-center justify-center gap-8 mb-4 shrink-0">
-                            <div className="flex items-center gap-2 text-sm">
-                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.student }} />
-                                <span>Sen: <strong>{expandedItem['Benim Netim']}</strong></span>
+            {
+                expandedItem && (
+                    <ChartModal
+                        isOpen={!!expandedSubject}
+                        onClose={() => setExpandedSubject(null)}
+                        title={expandedItem.subject}
+                        subtitle="Net karşılaştırması"
+                    >
+                        <div className="w-full h-full flex flex-col">
+                            <div className="flex items-center justify-center gap-8 mb-4 shrink-0">
+                                <div className="flex items-center gap-2 text-sm">
+                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.student }} />
+                                    <span>Sen: <strong>{expandedItem['Benim Netim']}</strong></span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.class }} />
+                                    <span>Sınıf: <strong>{expandedItem['Sınıf Ortalaması']}</strong></span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.school }} />
+                                    <span>Okul: <strong>{expandedItem['Okul Ortalaması']}</strong></span>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2 text-sm">
-                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.class }} />
-                                <span>Sınıf: <strong>{expandedItem['Sınıf Ortalaması']}</strong></span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm">
-                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.school }} />
-                                <span>Okul: <strong>{expandedItem['Okul Ortalaması']}</strong></span>
+                            <div className="flex-1 min-h-0">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart
+                                        data={[
+                                            { name: 'Ben', value: expandedItem['Benim Netim'], fill: COLORS.student },
+                                            { name: 'Sınıf', value: expandedItem['Sınıf Ortalaması'], fill: COLORS.class },
+                                            { name: 'Okul', value: expandedItem['Okul Ortalaması'], fill: COLORS.school },
+                                        ]}
+                                        margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                                        <XAxis dataKey="name" tick={{ fontSize: 14 }} />
+                                        <YAxis tick={{ fontSize: 14 }} />
+                                        <Tooltip contentStyle={tooltipStyle} formatter={tooltipFormatter} />
+                                        <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={80}>
+                                            {[COLORS.student, COLORS.class, COLORS.school].map((color, i) => (
+                                                <rect key={i} fill={color} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
                             </div>
                         </div>
-                        <div className="flex-1 min-h-0">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart
-                                    data={[
-                                        { name: 'Ben', value: expandedItem['Benim Netim'], fill: COLORS.student },
-                                        { name: 'Sınıf', value: expandedItem['Sınıf Ortalaması'], fill: COLORS.class },
-                                        { name: 'Okul', value: expandedItem['Okul Ortalaması'], fill: COLORS.school },
-                                    ]}
-                                    margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
-                                >
-                                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                                    <XAxis dataKey="name" tick={{ fontSize: 14 }} />
-                                    <YAxis tick={{ fontSize: 14 }} />
-                                    <Tooltip contentStyle={tooltipStyle} formatter={tooltipFormatter} />
-                                    <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={80}>
-                                        {[COLORS.student, COLORS.class, COLORS.school].map((color, i) => (
-                                            <rect key={i} fill={color} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                </ChartModal>
-            )}
+                    </ChartModal>
+                )
+            }
 
             {/* Toplam net modalı */}
             <ChartModal

@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table"
 import Link from 'next/link'
 import { getExamDetailData } from '@/lib/actions/exam-stats'
+import { flattenExamDetails } from '@/lib/utils'
 import { ExamDetailCharts } from '@/components/student/exams/exam-detail-charts'
 
 async function getStudentExamDetails(examName: string, studentId: string) {
@@ -45,7 +46,9 @@ async function getStudentExamDetails(examName: string, studentId: string) {
         .select(`
             id,
             exam_name,
+            exam_name,
             exam_date,
+            exam_type,
             total_net,
             scores,
             profiles!inner (
@@ -102,14 +105,7 @@ async function getStudentExamDetails(examName: string, studentId: string) {
     }
 
     // Parse scores
-    let scoresData = result.scores
-    if (typeof scoresData === 'string') {
-        try {
-            scoresData = JSON.parse(scoresData)
-        } catch (e) {
-            scoresData = {}
-        }
-    }
+    const scoresData = flattenExamDetails(result.scores, result.exam_type)
 
     const questionCounts: Record<string, number> = {
         'Turkce': 40,
@@ -122,27 +118,25 @@ async function getStudentExamDetails(examName: string, studentId: string) {
         'Social': 20
     }
 
-    const scores = scoresData && typeof scoresData === 'object'
-        ? Object.entries(scoresData).map(([subject, data]: [string, any]) => {
-            if (typeof data === 'number') {
-                return { subject, dogru: '-', yanlis: '-', bos: '-', net: data }
-            }
+    const scores = Object.entries(scoresData).map(([subject, data]: [string, any]) => {
+        if (typeof data === 'number') {
+            return { subject, dogru: '-', yanlis: '-', bos: '-', net: data }
+        }
 
-            const dogru = data.dogru ?? 0
-            const yanlis = data.yanlis ?? 0
-            const net = data.net ?? 0
-            const totalQuestions = questionCounts[subject] ?? 40
-            const bos = totalQuestions - dogru - yanlis
+        const dogru = data.dogru ?? 0
+        const yanlis = data.yanlis ?? 0
+        const net = data.net ?? 0
+        const totalQuestions = questionCounts[subject] ?? 40
+        const bos = totalQuestions - dogru - yanlis
 
-            return {
-                subject,
-                dogru,
-                yanlis,
-                bos: bos >= 0 ? bos : 0,
-                net
-            }
-        })
-        : []
+        return {
+            subject,
+            dogru,
+            yanlis,
+            bos: bos >= 0 ? bos : 0,
+            net
+        }
+    })
 
     return {
         student: {
@@ -153,7 +147,8 @@ async function getStudentExamDetails(examName: string, studentId: string) {
         },
         exam: {
             name: result.exam_name,
-            date: result.exam_date
+            date: result.exam_date,
+            type: result.exam_type
         },
         scores,
         rawScores: scoresData,
@@ -337,6 +332,7 @@ export default async function StudentExamDetailPage({
             {statsData && (
                 <ExamDetailCharts
                     scores={data.rawScores}
+                    examType={data.exam.type}
                     totalNet={data.totalNet}
                     classSubjectAverages={statsData.classSubjectAverages}
                     classTotalAvg={statsData.classTotalAvg}

@@ -3,6 +3,10 @@
 import { createClient } from '@/lib/supabase-server'
 
 // Öğrencinin tüm sınavları + sınıf ortalaması + okul ortalaması
+import { flattenExamScores } from '@/lib/utils'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+
+// Öğrencinin tüm sınavları + sınıf ortalaması + okul ortalaması
 export async function getExamOverviewData(studentId?: string) {
     const supabase = await createClient()
 
@@ -20,30 +24,122 @@ export async function getExamOverviewData(studentId?: string) {
 
     if (!profile) return null
 
-    // 2. RPC ile veritabanında hesaplanmış istatistikleri çek
-    // 'get_exam_stats' is a new function, avoiding type errors until types are regenerated
-    const { data, error } = await supabase
-        .rpc('get_exam_stats' as any, {
-            p_organization_id: profile.organization_id,
-            p_student_id: targetStudentId,
-            p_class_id: profile.class_id || null
-        });
+    // 2. Öğrencinin sınavlarını çek
+    const { data: studentExams, error } = await supabase
+        .from('exam_results')
+        .select('*')
+        .eq('student_id', targetStudentId)
+        .order('exam_date', { ascending: false })
 
-    if (error) {
-        console.error('Error fetching exam stats:', error);
-        return { studentExams: [], classAverages: [], schoolAverages: [] };
+    if (error || !studentExams || studentExams.length === 0) {
+        console.error('Error fetching student exams:', error);
+        return {
+            studentExams: [],
+            classAverages: [],
+            schoolAverages: [],
+            classSubjectOverview: [],
+            schoolSubjectOverview: []
+        };
     }
 
-    // RPC'den dönen veriyi uygun formata dönüştür (JSON olarak geliyor)
-    const stats = data as any;
-    const result = stats || {};
+    // 3. Bu sınavlar için sınıf ve okul verilerini çek
+    // Sadece öğrencinin girdiği sınavların isimlerini alıyoruz
+    const examNames = studentExams.map(e => e.exam_name)
+
+    // Okuldaki bu sınavlara ait tüm sonuçları çek (sınıf filtresini JS tarafında veya ayrı sorguda yapabiliriz ama
+    // tek sorguda çekip memory'de ayırmak daha verimli olabilir)
+    const { data: allPeerResults } = await supabaseAdmin
+        .from('exam_results')
+        .select(`
+            exam_name,
+            exam_date,
+            scores,
+            total_net,
+            student_id,
+            profiles!inner (
+                class_id
+            )
+        `)
+        .eq('organization_id', profile.organization_id)
+        .in('exam_name', examNames)
+
+    // Verileri grupla ve ortalamaları hesapla
+    const classStats: Record<string, { totalNet: number, count: number, subjects: Record<string, { total: number, count: number }> }> = {}
+    const schoolStats: Record<string, { totalNet: number, count: number, subjects: Record<string, { total: number, count: number }> }> = {}
+
+    const processResult = (result: any, statsMap: Record<string, any>, examType: string) => {
+        // Key: examName + examDate
+        const key = `${result.exam_name}_${result.exam_date || ''}`
+
+        if (!statsMap[key]) {
+            statsMap[key] = {
+                exam_name: result.exam_name,
+                exam_date: result.exam_date, // Keep original date
+                totalNet: 0,
+                count: 0,
+                subjects: {}
+            }
+        }
+
+        const entry = statsMap[key]
+        entry.totalNet += (result.total_net || 0)
+        entry.count += 1
+
+        const flatScores = flattenExamScores(result.scores, examType)
+        Object.entries(flatScores).forEach(([sub, net]) => {
+            if (net !== null && typeof net === 'number') {
+                if (!entry.subjects[sub]) entry.subjects[sub] = { total: 0, count: 0 }
+                entry.subjects[sub].total += net
+                entry.subjects[sub].count += 1
+            }
+        })
+    }
+
+    // Öğrenci sınavlarının tiplerini (TYT/AYT) hızlı erişim için map'le
+    const examTypes = new Map(studentExams.map(e => [e.exam_name, e.exam_type]))
+
+    allPeerResults?.forEach((result: any) => {
+        const type = examTypes.get(result.exam_name) || 'TYT'
+
+        // School Stats (Herkes dahil)
+        processResult(result, schoolStats, type)
+
+        // Class Stats (Sadece aynı sınıftakiler)
+        if (profile.class_id && result.profiles.class_id === profile.class_id) {
+            processResult(result, classStats, type)
+        }
+    })
+
+    // Format results for frontend
+    const formatStats = (statsMap: Record<string, any>) => {
+        return Object.values(statsMap).map(stat => {
+            const subjectsAvg: Record<string, number> = {}
+            Object.entries(stat.subjects).forEach(([sub, val]: [string, any]) => {
+                subjectsAvg[sub] = Number((val.total / val.count).toFixed(2))
+            })
+
+            return {
+                exam_name: stat.exam_name,
+                exam_date: stat.exam_date,
+                avg_net: Number((stat.totalNet / stat.count).toFixed(2)),
+                subjects: subjectsAvg
+            }
+        })
+    }
+
+    const classAverages = formatStats(classStats)
+    const schoolAverages = formatStats(schoolStats)
+
+    // Averages array structure (net averages per exam)
+    const classAvgSimple = classAverages.map(c => ({ exam_name: c.exam_name, exam_date: c.exam_date, avg_net: c.avg_net }))
+    const schoolAvgSimple = schoolAverages.map(s => ({ exam_name: s.exam_name, exam_date: s.exam_date, avg_net: s.avg_net }))
 
     return {
-        studentExams: result.studentExams || [],
-        classAverages: result.classAverages || [],
-        schoolAverages: result.schoolAverages || [],
-        classSubjectOverview: result.classSubjectOverview || [],
-        schoolSubjectOverview: result.schoolSubjectOverview || []
+        studentExams,
+        classAverages: classAvgSimple,
+        schoolAverages: schoolAvgSimple,
+        classSubjectOverview: classAverages,
+        schoolSubjectOverview: schoolAverages
     }
 }
 
@@ -91,7 +187,7 @@ export async function getExamDetailData(examId: string, studentId?: string) {
             const classmateIds = classmates.map(c => c.id)
 
             // Sınıf arkadaşlarının bu sınava ait sonuçlarını çek
-            const { data: classExams } = await supabase
+            const { data: classExams } = await supabaseAdmin
                 .from('exam_results')
                 .select('scores, total_net, student_id')
                 .eq('exam_name', exam.exam_name)
@@ -106,18 +202,14 @@ export async function getExamDetailData(examId: string, studentId?: string) {
                 // Ders bazlı ortalamalar
                 const subjectTotals: Record<string, { total: number; count: number }> = {}
                 classExams.forEach(e => {
-                    let scores = e.scores
-                    if (typeof scores === 'string') {
-                        try { scores = JSON.parse(scores) } catch { scores = null }
-                    }
-                    if (scores && typeof scores === 'object') {
-                        Object.entries(scores as Record<string, any>).forEach(([subject, data]) => {
-                            const net = typeof data === 'number' ? data : (data?.net ?? 0)
+                    const flatScores = flattenExamScores(e.scores, exam.exam_type)
+                    Object.entries(flatScores).forEach(([subject, net]) => {
+                        if (net !== null) {
                             if (!subjectTotals[subject]) subjectTotals[subject] = { total: 0, count: 0 }
                             subjectTotals[subject].total += net
                             subjectTotals[subject].count += 1
-                        })
-                    }
+                        }
+                    })
                 })
                 Object.entries(subjectTotals).forEach(([subject, v]) => {
                     classSubjectAverages[subject] = Math.round((v.total / v.count) * 100) / 100
@@ -127,7 +219,7 @@ export async function getExamDetailData(examId: string, studentId?: string) {
     }
 
     // 4. Okul ortalamaları
-    const { data: schoolExams } = await supabase
+    const { data: schoolExams } = await supabaseAdmin
         .from('exam_results')
         .select('scores, total_net')
         .eq('organization_id', profile.organization_id)
@@ -144,18 +236,14 @@ export async function getExamDetailData(examId: string, studentId?: string) {
 
         const subjectTotals: Record<string, { total: number; count: number }> = {}
         schoolExams.forEach(e => {
-            let scores = e.scores
-            if (typeof scores === 'string') {
-                try { scores = JSON.parse(scores) } catch { scores = null }
-            }
-            if (scores && typeof scores === 'object') {
-                Object.entries(scores as Record<string, any>).forEach(([subject, data]) => {
-                    const net = typeof data === 'number' ? data : (data?.net ?? 0)
+            const flatScores = flattenExamScores(e.scores, exam.exam_type)
+            Object.entries(flatScores).forEach(([subject, net]) => {
+                if (net !== null) {
                     if (!subjectTotals[subject]) subjectTotals[subject] = { total: 0, count: 0 }
                     subjectTotals[subject].total += net
                     subjectTotals[subject].count += 1
-                })
-            }
+                }
+            })
         })
         Object.entries(subjectTotals).forEach(([subject, v]) => {
             schoolSubjectAverages[subject] = Math.round((v.total / v.count) * 100) / 100
@@ -210,18 +298,14 @@ export async function getTeacherExamDetailData(examName: string, classId: string
 
         const subjectTotals: Record<string, { total: number; count: number }> = {}
         classExams.forEach(e => {
-            let scores = e.scores
-            if (typeof scores === 'string') {
-                try { scores = JSON.parse(scores) } catch { scores = null }
-            }
-            if (scores && typeof scores === 'object') {
-                Object.entries(scores as Record<string, any>).forEach(([subject, data]) => {
-                    const net = typeof data === 'number' ? data : (data?.net ?? 0)
+            const flatScores = flattenExamScores(e.scores)
+            Object.entries(flatScores).forEach(([subject, net]) => {
+                if (net !== null) {
                     if (!subjectTotals[subject]) subjectTotals[subject] = { total: 0, count: 0 }
                     subjectTotals[subject].total += net
                     subjectTotals[subject].count += 1
-                })
-            }
+                }
+            })
         })
         Object.entries(subjectTotals).forEach(([subject, v]) => {
             classSubjectAverages[subject] = Math.round((v.total / v.count) * 100) / 100
@@ -245,18 +329,14 @@ export async function getTeacherExamDetailData(examName: string, classId: string
 
         const subjectTotals: Record<string, { total: number; count: number }> = {}
         schoolExams.forEach(e => {
-            let scores = e.scores
-            if (typeof scores === 'string') {
-                try { scores = JSON.parse(scores) } catch { scores = null }
-            }
-            if (scores && typeof scores === 'object') {
-                Object.entries(scores as Record<string, any>).forEach(([subject, data]) => {
-                    const net = typeof data === 'number' ? data : (data?.net ?? 0)
+            const flatScores = flattenExamScores(e.scores)
+            Object.entries(flatScores).forEach(([subject, net]) => {
+                if (net !== null) {
                     if (!subjectTotals[subject]) subjectTotals[subject] = { total: 0, count: 0 }
                     subjectTotals[subject].total += net
                     subjectTotals[subject].count += 1
-                })
-            }
+                }
+            })
         })
         Object.entries(subjectTotals).forEach(([subject, v]) => {
             schoolSubjectAverages[subject] = Math.round((v.total / v.count) * 100) / 100
