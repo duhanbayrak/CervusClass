@@ -18,8 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
-import { createHomework } from '@/app/teacher/(portal)/homework/actions';
-import { createClient } from '@/lib/supabase';
+import { createHomework, getStudentsByClass } from '@/app/teacher/(portal)/homework/actions';
 
 interface ClassItem {
     id: string;
@@ -72,21 +71,16 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
     useEffect(() => {
         if (selectedClassId) {
             setLoadingStudents(true);
-            const supabase = createClient();
-            supabase
-                .from('profiles')
-                .select('id, full_name, avatar_url')
-                .eq('class_id', selectedClassId)
-                .order('full_name', { ascending: true })
-                .then(({ data, error }) => {
-                    if (error) {
+            getStudentsByClass(selectedClassId)
+                .then((result) => {
+                    if (result.error) {
                         toast({
                             variant: "destructive",
                             title: "Hata",
                             description: "Öğrenciler yüklenirken bir hata oluştu."
                         });
                     } else {
-                        setStudents(data as StudentItem[] || []);
+                        setStudents(result.data as StudentItem[] || []);
                     }
                     setLoadingStudents(false);
                 });

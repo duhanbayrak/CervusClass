@@ -54,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         let mounted = true;
+        const controller = new AbortController();
 
         // Güvenlik timeout
         const safetyTimeout = setTimeout(() => {
@@ -70,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         'Authorization': `Bearer ${accessToken}`,
                         'Accept': 'application/json',
                     },
+                    signal: controller.signal,
                 });
 
                 if (!res.ok) return null;
@@ -113,6 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         return () => {
             mounted = false;
+            controller.abort();
             clearTimeout(safetyTimeout);
             subscription.unsubscribe();
         };

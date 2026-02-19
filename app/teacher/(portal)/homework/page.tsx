@@ -4,12 +4,16 @@ import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import HomeworkListTable from '@/components/dashboard/teacher/homework-list-table';
 import { getAuthContext } from '@/lib/auth-context';
+import { checkExpiredHomework } from './actions';
 
 const STUDENT_ROLE_ID = '380914a0-783e-4300-8fb7-b55c81f575b7';
 
 export default async function TeacherHomeworkPage() {
     // Merkezi auth context — tek supabase client
     const { supabase, user } = await getAuthContext();
+
+    // Süresi dolmuş ödevler için bildirim kontrolü
+    await checkExpiredHomework();
 
     // Ödevleri çek
     let assignments: any[] = [];

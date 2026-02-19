@@ -12,8 +12,13 @@ export default function Error({
     reset: () => void
 }) {
     useEffect(() => {
+        // AbortError navigasyon sırasında normal — yok say ve sayfayı sıfırla
+        if (error.name === 'AbortError' || error.message === 'The operation was aborted.') {
+            reset();
+            return;
+        }
         console.error(error)
-    }, [error])
+    }, [error, reset])
 
     return (
         <div className="flex h-[80vh] w-full flex-col items-center justify-center p-4 text-center animate-in fade-in zoom-in duration-300">

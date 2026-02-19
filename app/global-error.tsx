@@ -13,9 +13,13 @@ export default function GlobalError({
     reset: () => void
 }) {
     useEffect(() => {
-        // Log the error to an error reporting service
+        // AbortError navigasyon sırasında normal — yok say ve sayfayı sıfırla
+        if (error.name === 'AbortError' || error.message === 'The operation was aborted.') {
+            reset();
+            return;
+        }
         console.error(error)
-    }, [error])
+    }, [error, reset])
 
     return (
         <html>

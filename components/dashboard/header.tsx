@@ -1,8 +1,9 @@
 'use client';
 
-import { Bell, Search, PlusCircle } from 'lucide-react';
+import { Search, PlusCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { NotificationDropdown } from './notification-dropdown';
 
 interface DashboardHeaderProps {
     title: string;
@@ -40,10 +41,7 @@ export default function DashboardHeader({ title, description, actionButtonText, 
                 </div>
 
                 {/* Notifications */}
-                <button className="h-10 w-10 flex items-center justify-center rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-[#135bec] hover:border-[#135bec]/50 transition-colors relative">
-                    <Bell className="w-5 h-5" />
-                    <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-800"></span>
-                </button>
+                <NotificationDropdown />
 
                 {/* Optional Action Button */}
                 {actionButtonText && (
@@ -59,3 +57,4 @@ export default function DashboardHeader({ title, description, actionButtonText, 
         </header>
     );
 }
+

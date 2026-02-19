@@ -9,7 +9,7 @@ export const ROLES = {
 
 export const PROTECTED_PATHS = {
     '/student': ['student'],
-    '/teacher': ['teacher'],
-    '/admin': ['admin'],
+    '/teacher': ['teacher', 'admin', 'super_admin'],
+    '/admin': ['admin', 'super_admin'],
     '/super-admin': ['super_admin']
 };
