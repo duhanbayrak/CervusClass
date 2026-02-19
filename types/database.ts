@@ -104,6 +104,7 @@ export interface ExamResult {
     student_id: string;
     student?: { full_name: string | null } | null;
     exam_name: string;
+    exam_type: 'TYT' | 'AYT';
     exam_date: string | null; // Date string like "2023-10-25"
     scores: Record<string, number>; // JSONB: {"mat": 20, "fiz": 5}
     total_net: number | null;

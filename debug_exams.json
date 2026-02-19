@@ -1,0 +1,448 @@
+[
+  {
+    "id": "c353cf51-fde9-4518-ad04-8d6c1f75f234",
+    "organization_id": "283442f5-d8c2-45da-94be-0c3770c96870",
+    "student_id": "f6060fdb-247a-4b18-9b32-bb3d145eb6d4",
+    "exam_name": "Özdebir Ayt Denemesi",
+    "exam_date": "2026-02-18",
+    "scores": {
+      "sosyal2": {
+        "din": {
+          "net": 0,
+          "dogru": 0
+        },
+        "tarih2": {
+          "net": 0,
+          "dogru": 0
+        },
+        "felsefe": {
+          "net": 0,
+          "dogru": 0
+        },
+        "cografya2": {
+          "net": 0,
+          "dogru": 0
+        },
+        "toplam_net": 0
+      },
+      "matematik": {
+        "bos": 0,
+        "net": 0,
+        "dogru": 0,
+        "yanlis": 0
+      },
+      "fen_bilimleri": {
+        "fizik": {
+          "net": 0,
+          "dogru": 0,
+          "yanlis": 0
+        },
+        "kimya": {
+          "net": 0,
+          "dogru": 0,
+          "yanlis": 0
+        },
+        "biyoloji": {
+          "net": 0,
+          "dogru": 0,
+          "yanlis": 0
+        },
+        "toplam_net": 0
+      },
+      "td_edebiyat_sos1": {
+        "tarih1": {
+          "net": 0,
+          "dogru": 0,
+          "yanlis": 0
+        },
+        "edebiyat": {
+          "net": 0,
+          "dogru": 0,
+          "yanlis": 0
+        },
+        "cografya1": {
+          "net": 0,
+          "dogru": 0,
+          "yanlis": 0
+        },
+        "toplam_net": 0
+      }
+    },
+    "total_net": 0,
+    "created_at": "2026-02-18T22:16:50.155088+00:00",
+    "details": {},
+    "deleted_at": null,
+    "exam_type": "AYT"
+  },
+  {
+    "id": "bc9ba416-73f8-4031-86dd-b1ba543abe2f",
+    "organization_id": "283442f5-d8c2-45da-94be-0c3770c96870",
+    "student_id": "f6060fdb-247a-4b18-9b32-bb3d145eb6d4",
+    "exam_name": "Özdebir Ayt Denemesi",
+    "exam_date": "2026-02-18",
+    "scores": {
+      "fen": {
+        "bos": 0,
+        "net": 21,
+        "dogru": 0,
+        "yanlis": 0
+      },
+      "sosyal": {
+        "bos": 0,
+        "net": 7.25,
+        "dogru": 0,
+        "yanlis": 0
+      },
+      "turkce": {
+        "bos": 0,
+        "net": 0,
+        "dogru": 0,
+        "yanlis": 0
+      },
+      "matematik": {
+        "bos": 0,
+        "net": 25.5,
+        "dogru": 0,
+        "yanlis": 0
+      }
+    },
+    "total_net": 21,
+    "created_at": "2026-02-18T22:41:21.97299+00:00",
+    "details": {},
+    "deleted_at": null,
+    "exam_type": "TYT"
+  },
+  {
+    "id": "fe4b595d-9c0a-4fc9-b2e9-22653393caff",
+    "organization_id": "283442f5-d8c2-45da-94be-0c3770c96870",
+    "student_id": "f6060fdb-247a-4b18-9b32-bb3d145eb6d4",
+    "exam_name": "DAYZ Yayınları Ayt Deneme",
+    "exam_date": "2026-02-18",
+    "scores": {
+      "sosyal2": {
+        "din": {
+          "net": 1.25,
+          "dogru": 2
+        },
+        "tarih2": {
+          "net": 11,
+          "dogru": 0
+        },
+        "felsefe": {
+          "net": 4,
+          "dogru": 5
+        },
+        "cografya2": {
+          "net": 11,
+          "dogru": 0
+        },
+        "toplam_net": 27.25
+      },
+      "matematik": {
+        "bos": 0,
+        "net": 0,
+        "dogru": 8,
+        "yanlis": 32
+      },
+      "fen_bilimleri": {
+        "fizik": {
+          "net": 13,
+          "dogru": 13,
+          "yanlis": 0
+        },
+        "kimya": {
+          "net": 10.75,
+          "dogru": 11,
+          "yanlis": 1
+        },
+        "biyoloji": {
+          "net": 7,
+          "dogru": 7,
+          "yanlis": 0
+        },
+        "toplam_net": 30.75
+      },
+      "td_edebiyat_sos1": {
+        "tarih1": {
+          "net": 7.5,
+          "dogru": 0,
+          "yanlis": 0
+        },
+        "edebiyat": {
+          "net": 18.25,
+          "dogru": 19,
+          "yanlis": 3
+        },
+        "cografya1": {
+          "net": 1,
+          "dogru": 0,
+          "yanlis": 0
+        },
+        "toplam_net": 26.75
+      }
+    },
+    "total_net": 84.75,
+    "created_at": "2026-02-18T23:02:22.851746+00:00",
+    "details": {},
+    "deleted_at": null,
+    "exam_type": "AYT"
+  },
+  {
+    "id": "eec5c71c-552f-4186-9844-2c2f748d4366",
+    "organization_id": "283442f5-d8c2-45da-94be-0c3770c96870",
+    "student_id": "f6060fdb-247a-4b18-9b32-bb3d145eb6d4",
+    "exam_name": "AYT DENEME",
+    "exam_date": "2026-02-18",
+    "scores": {
+      "sosyal2": {
+        "din": {
+          "bos": 0,
+          "net": 6,
+          "dogru": 6,
+          "yanlis": 0
+        },
+        "tarih2": {
+          "bos": 3,
+          "net": 6.75,
+          "dogru": 7,
+          "yanlis": 1
+        },
+        "felsefe": {
+          "bos": 7,
+          "net": 1.25,
+          "dogru": 2,
+          "yanlis": 3
+        },
+        "cografya2": {
+          "bos": 0,
+          "net": 3.5,
+          "dogru": 5,
+          "yanlis": 6
+        },
+        "toplam_net": 17.5
+      },
+      "matematik": {
+        "bos": 14,
+        "net": 23.5,
+        "dogru": 24,
+        "yanlis": 2
+      },
+      "fen_bilimleri": {
+        "fizik": {
+          "bos": 1,
+          "net": 10.5,
+          "dogru": 11,
+          "yanlis": 2
+        },
+        "kimya": {
+          "bos": 2,
+          "net": 1,
+          "dogru": 3,
+          "yanlis": 8
+        },
+        "biyoloji": {
+          "bos": 5,
+          "net": 5.5,
+          "dogru": 6,
+          "yanlis": 2
+        },
+        "toplam_net": 17
+      },
+      "td_edebiyat_sos1": {
+        "tarih1": {
+          "bos": 6,
+          "net": 1.5,
+          "dogru": 2,
+          "yanlis": 2
+        },
+        "edebiyat": {
+          "bos": 2,
+          "net": 10.75,
+          "dogru": 13,
+          "yanlis": 9
+        },
+        "cografya1": {
+          "bos": 2,
+          "net": 1.5,
+          "dogru": 2,
+          "yanlis": 2
+        },
+        "toplam_net": 13.75
+      }
+    },
+    "total_net": 71.75,
+    "created_at": "2026-02-18T23:10:33.71024+00:00",
+    "details": {},
+    "deleted_at": null,
+    "exam_type": "AYT"
+  },
+  {
+    "id": "88775148-a847-40e3-ad6b-9478ab36f26c",
+    "organization_id": "283442f5-d8c2-45da-94be-0c3770c96870",
+    "student_id": "f6060fdb-247a-4b18-9b32-bb3d145eb6d4",
+    "exam_name": "mock_exam_2026-02-15 (1).xlsx",
+    "exam_date": "2026-02-12",
+    "scores": "{\n  \"Turkce\": {\n    \"dogru\": 24,\n    \"yanlis\": 3,\n    \"net\": 23.25\n  },\n  \"Matematik\": {\n    \"dogru\": 22,\n    \"yanlis\": 16,\n    \"net\": 18\n  },\n  \"Fen\": {\n    \"dogru\": 15,\n    \"yanlis\": 0,\n    \"net\": 15\n  },\n  \"Sosyal\": {\n    \"dogru\": 20,\n    \"yanlis\": 0,\n    \"net\": 20\n  }\n}\n",
+    "total_net": 76.25,
+    "created_at": "2026-02-15T20:30:42.285732+00:00",
+    "details": {},
+    "deleted_at": null,
+    "exam_type": "TYT"
+  },
+  {
+    "id": "ec644147-5ab4-4c69-9648-984ac4fb2bba",
+    "organization_id": "283442f5-d8c2-45da-94be-0c3770c96870",
+    "student_id": "f6060fdb-247a-4b18-9b32-bb3d145eb6d4",
+    "exam_name": "mock_exam_2026-02-15 (2).xlsx",
+    "exam_date": "2026-02-12",
+    "scores": "{\n  \"Turkce\": {\n    \"dogru\": 28,\n    \"yanlis\": 2,\n    \"net\": 27.5\n  },\n  \"Matematik\": {\n    \"dogru\": 34,\n    \"yanlis\": 6,\n    \"net\": 32.5\n  },\n  \"Fen\": {\n    \"dogru\": 13,\n    \"yanlis\": 3,\n    \"net\": 12.25\n  },\n  \"Sosyal\": {\n    \"dogru\": 11,\n    \"yanlis\": 2,\n    \"net\": 10.5\n  }\n}\n",
+    "total_net": 82.75,
+    "created_at": "2026-02-15T20:31:04.243078+00:00",
+    "details": {},
+    "deleted_at": null,
+    "exam_type": "TYT"
+  },
+  {
+    "id": "7e01d624-7a30-4336-b551-747465e4d24c",
+    "organization_id": "283442f5-d8c2-45da-94be-0c3770c96870",
+    "student_id": "f6060fdb-247a-4b18-9b32-bb3d145eb6d4",
+    "exam_name": "mock_exam_2026-02-15 (3).xlsx",
+    "exam_date": "2026-02-12",
+    "scores": "{\n  \"Turkce\": {\n    \"dogru\": 21,\n    \"yanlis\": 4,\n    \"net\": 20\n  },\n  \"Matematik\": {\n    \"dogru\": 21,\n    \"yanlis\": 19,\n    \"net\": 16.25\n  },\n  \"Fen\": {\n    \"dogru\": 19,\n    \"yanlis\": 0,\n    \"net\": 19\n  },\n  \"Sosyal\": {\n    \"dogru\": 10,\n    \"yanlis\": 3,\n    \"net\": 9.25\n  }\n}\n",
+    "total_net": 64.5,
+    "created_at": "2026-02-15T20:36:33.581238+00:00",
+    "details": {},
+    "deleted_at": null,
+    "exam_type": "TYT"
+  },
+  {
+    "id": "2d09b4c5-749f-4823-95e7-7818e4d29627",
+    "organization_id": "283442f5-d8c2-45da-94be-0c3770c96870",
+    "student_id": "f6060fdb-247a-4b18-9b32-bb3d145eb6d4",
+    "exam_name": "mock_exam_2026-02-15 (4).xlsx",
+    "exam_date": "2026-02-12",
+    "scores": "{\n  \"Turkce\": {\n    \"dogru\": 30,\n    \"yanlis\": 3,\n    \"net\": 29.25\n  },\n  \"Matematik\": {\n    \"dogru\": 35,\n    \"yanlis\": 1,\n    \"net\": 34.75\n  },\n  \"Fen\": {\n    \"dogru\": 16,\n    \"yanlis\": 1,\n    \"net\": 15.75\n  },\n  \"Sosyal\": {\n    \"dogru\": 16,\n    \"yanlis\": 3,\n    \"net\": 15.25\n  }\n}\n",
+    "total_net": 95,
+    "created_at": "2026-02-15T20:36:57.049555+00:00",
+    "details": {},
+    "deleted_at": null,
+    "exam_type": "TYT"
+  },
+  {
+    "id": "e7ac9640-17de-41cf-a9e0-c142a190c4ce",
+    "organization_id": "283442f5-d8c2-45da-94be-0c3770c96870",
+    "student_id": "f6060fdb-247a-4b18-9b32-bb3d145eb6d4",
+    "exam_name": "mock_exam_2026-02-12 (2).xlsx",
+    "exam_date": "2026-02-12",
+    "scores": "{\n  \"Turkce\": {\n    \"dogru\": 35,\n    \"yanlis\": 1,\n    \"net\": 34.75\n  },\n  \"Matematik\": {\n    \"dogru\": 20,\n    \"yanlis\": 17,\n    \"net\": 15.75\n  },\n  \"Fen\": {\n    \"dogru\": 18,\n    \"yanlis\": 0,\n    \"net\": 18\n  },\n  \"Sosyal\": {\n    \"dogru\": 15,\n    \"yanlis\": 4,\n    \"net\": 14\n  }\n}\n",
+    "total_net": 82.5,
+    "created_at": "2026-02-12T17:20:46.858129+00:00",
+    "details": {},
+    "deleted_at": null,
+    "exam_type": "TYT"
+  },
+  {
+    "id": "79c62952-ee1e-46d8-9096-d26e89d5dbdf",
+    "organization_id": "283442f5-d8c2-45da-94be-0c3770c96870",
+    "student_id": "f6060fdb-247a-4b18-9b32-bb3d145eb6d4",
+    "exam_name": "mock_exam_2026-02-15 (6).xlsx",
+    "exam_date": "2026-02-12",
+    "scores": "{\n  \"Turkce\": {\n    \"dogru\": 30,\n    \"yanlis\": 10,\n    \"net\": 27.5\n  },\n  \"Matematik\": {\n    \"dogru\": 20,\n    \"yanlis\": 6,\n    \"net\": 18.5\n  },\n  \"Fen\": {\n    \"dogru\": 12,\n    \"yanlis\": 7,\n    \"net\": 10.25\n  },\n  \"Sosyal\": {\n    \"dogru\": 12,\n    \"yanlis\": 3,\n    \"net\": 11.25\n  }\n}\n",
+    "total_net": 67.5,
+    "created_at": "2026-02-15T20:38:05.075119+00:00",
+    "details": {},
+    "deleted_at": null,
+    "exam_type": "TYT"
+  },
+  {
+    "id": "3e13ca27-6bdc-449f-934d-38526a95f4b4",
+    "organization_id": "283442f5-d8c2-45da-94be-0c3770c96870",
+    "student_id": "f6060fdb-247a-4b18-9b32-bb3d145eb6d4",
+    "exam_name": "mock_exam_2026-02-15 (7).xlsx",
+    "exam_date": "2026-02-12",
+    "scores": "{\n  \"Turkce\": {\n    \"dogru\": 22,\n    \"yanlis\": 1,\n    \"net\": 21.75\n  },\n  \"Matematik\": {\n    \"dogru\": 29,\n    \"yanlis\": 4,\n    \"net\": 28\n  },\n  \"Fen\": {\n    \"dogru\": 17,\n    \"yanlis\": 2,\n    \"net\": 16.5\n  },\n  \"Sosyal\": {\n    \"dogru\": 19,\n    \"yanlis\": 0,\n    \"net\": 19\n  }\n}\n",
+    "total_net": 85.25,
+    "created_at": "2026-02-15T21:59:57.690656+00:00",
+    "details": {},
+    "deleted_at": null,
+    "exam_type": "TYT"
+  },
+  {
+    "id": "f64f418a-c968-4069-a3fc-0620d3dcf9a9",
+    "organization_id": "283442f5-d8c2-45da-94be-0c3770c96870",
+    "student_id": "f6060fdb-247a-4b18-9b32-bb3d145eb6d4",
+    "exam_name": "Test Deneme",
+    "exam_date": "2026-02-12",
+    "scores": "{\n  \"Turkce\": {\n    \"dogru\": 36,\n    \"yanlis\": 2,\n    \"net\": 35.5\n  },\n  \"Matematik\": {\n    \"dogru\": 17,\n    \"yanlis\": 19,\n    \"net\": 12.25\n  },\n  \"Fen\": {\n    \"dogru\": 17,\n    \"yanlis\": 2,\n    \"net\": 16.5\n  },\n  \"Sosyal\": {\n    \"dogru\": 11,\n    \"yanlis\": 8,\n    \"net\": 9\n  }\n}\n",
+    "total_net": 73.25,
+    "created_at": "2026-02-15T22:03:59.720844+00:00",
+    "details": {},
+    "deleted_at": null,
+    "exam_type": "TYT"
+  },
+  {
+    "id": "4004907a-8dcc-4e02-84d0-f1080eb8f576",
+    "organization_id": "283442f5-d8c2-45da-94be-0c3770c96870",
+    "student_id": "f6060fdb-247a-4b18-9b32-bb3d145eb6d4",
+    "exam_name": "Ayt Deneme",
+    "exam_date": "2026-02-12",
+    "scores": "{\n  \"Turkce\": {\n    \"dogru\": 31,\n    \"yanlis\": 9,\n    \"net\": 28.75\n  },\n  \"Matematik\": {\n    \"dogru\": 27,\n    \"yanlis\": 3,\n    \"net\": 26.25\n  },\n  \"Fen\": {\n    \"dogru\": 11,\n    \"yanlis\": 9,\n    \"net\": 8.75\n  },\n  \"Sosyal\": {\n    \"dogru\": 11,\n    \"yanlis\": 5,\n    \"net\": 9.75\n  }\n}\n",
+    "total_net": 73.5,
+    "created_at": "2026-02-17T14:21:54.651733+00:00",
+    "details": {},
+    "deleted_at": null,
+    "exam_type": "TYT"
+  },
+  {
+    "id": "5bf5c89c-4372-4519-b3cb-e743b8dbe415",
+    "organization_id": "283442f5-d8c2-45da-94be-0c3770c96870",
+    "student_id": "f6060fdb-247a-4b18-9b32-bb3d145eb6d4",
+    "exam_name": "mock_exam_2026-02-15 (5).xlsx",
+    "exam_date": "2026-02-12",
+    "scores": "{\n  \"Turkce\": {\n    \"dogru\": 16,\n    \"yanlis\": 0,\n    \"net\": 16\n  },\n  \"Matematik\": {\n    \"dogru\": 14,\n    \"yanlis\": 7,\n    \"net\": 12.25\n  },\n  \"Fen\": {\n    \"dogru\": 20,\n    \"yanlis\": 0,\n    \"net\": 20\n  },\n  \"Sosyal\": {\n    \"dogru\": 14,\n    \"yanlis\": 5,\n    \"net\": 12.75\n  }\n}\n",
+    "total_net": 61,
+    "created_at": "2026-02-15T20:37:24.459651+00:00",
+    "details": {},
+    "deleted_at": null,
+    "exam_type": "TYT"
+  },
+  {
+    "id": "428c1b0d-c5dd-42b1-99f6-3bc406e7aa08",
+    "organization_id": "283442f5-d8c2-45da-94be-0c3770c96870",
+    "student_id": "f6060fdb-247a-4b18-9b32-bb3d145eb6d4",
+    "exam_name": "mock_exam_2026-02-12 (3).xlsx",
+    "exam_date": "2026-02-12",
+    "scores": "{\n  \"Turkce\": {\n    \"dogru\": 12,\n    \"yanlis\": 18,\n    \"net\": 7.5\n  },\n  \"Matematik\": {\n    \"dogru\": 38,\n    \"yanlis\": 2,\n    \"net\": 37.5\n  },\n  \"Fen\": {\n    \"dogru\": 10,\n    \"yanlis\": 10,\n    \"net\": 7.5\n  },\n  \"Sosyal\": {\n    \"dogru\": 18,\n    \"yanlis\": 2,\n    \"net\": 17.5\n  }\n}\n",
+    "total_net": 70,
+    "created_at": "2026-02-12T17:53:26.519701+00:00",
+    "details": {},
+    "deleted_at": null,
+    "exam_type": "TYT"
+  },
+  {
+    "id": "2ba7ffcc-6b4b-4a56-8bb6-bae65c31b407",
+    "organization_id": "283442f5-d8c2-45da-94be-0c3770c96870",
+    "student_id": "f6060fdb-247a-4b18-9b32-bb3d145eb6d4",
+    "exam_name": "mock_exam_2026-02-12 (4).xlsx",
+    "exam_date": "2026-02-12",
+    "scores": "{\n  \"Turkce\": {\n    \"dogru\": 38,\n    \"yanlis\": 0,\n    \"net\": 38\n  },\n  \"Matematik\": {\n    \"dogru\": 30,\n    \"yanlis\": 9,\n    \"net\": 27.75\n  },\n  \"Fen\": {\n    \"dogru\": 18,\n    \"yanlis\": 1,\n    \"net\": 17.75\n  },\n  \"Sosyal\": {\n    \"dogru\": 18,\n    \"yanlis\": 0,\n    \"net\": 18\n  }\n}\n",
+    "total_net": 101.5,
+    "created_at": "2026-02-12T20:17:25.285657+00:00",
+    "details": {},
+    "deleted_at": null,
+    "exam_type": "TYT"
+  },
+  {
+    "id": "27f050dd-1103-464f-b1a2-0e17f9047432",
+    "organization_id": "283442f5-d8c2-45da-94be-0c3770c96870",
+    "student_id": "f6060fdb-247a-4b18-9b32-bb3d145eb6d4",
+    "exam_name": "mock_exam_2026-02-15.xlsx",
+    "exam_date": "2026-02-12",
+    "scores": "{\n  \"Turkce\": {\n    \"dogru\": 38,\n    \"yanlis\": 0,\n    \"net\": 38\n  },\n  \"Matematik\": {\n    \"dogru\": 19,\n    \"yanlis\": 10,\n    \"net\": 16.5\n  },\n  \"Fen\": {\n    \"dogru\": 13,\n    \"yanlis\": 0,\n    \"net\": 13\n  },\n  \"Sosyal\": {\n    \"dogru\": 20,\n    \"yanlis\": 0,\n    \"net\": 20\n  }\n}\n",
+    "total_net": 87.5,
+    "created_at": "2026-02-15T19:30:34.168914+00:00",
+    "details": {},
+    "deleted_at": null,
+    "exam_type": "TYT"
+  }
+]

@@ -196,7 +196,19 @@ export default async function StudentDashboardPage() {
                                             <TrendingUp className="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-slate-900 dark:text-white">{exam.exam_name}</h4>
+                                            <div className="flex items-center gap-2">
+                                                <h4 className="font-bold text-slate-900 dark:text-white">{exam.exam_name}</h4>
+                                                {exam.exam_type === 'TYT' && (
+                                                    <Badge className="h-5 px-1.5 text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                                                        TYT
+                                                    </Badge>
+                                                )}
+                                                {exam.exam_type === 'AYT' && (
+                                                    <Badge className="h-5 px-1.5 text-[10px] bg-purple-100 text-purple-700 hover:bg-purple-100 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800">
+                                                        AYT
+                                                    </Badge>
+                                                )}
+                                            </div>
                                             <p className="text-xs text-slate-500">{exam.exam_date ? new Date(exam.exam_date).toLocaleDateString('tr-TR') : '-'}</p>
                                         </div>
                                     </div>

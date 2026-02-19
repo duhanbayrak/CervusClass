@@ -180,6 +180,7 @@ export type Database = {
           created_at: string
           exam_date: string | null
           exam_name: string
+          exam_type: Database["public"]["Enums"]["exam_type_enum"]
           id: string
           organization_id: string
           scores: Json | null
@@ -191,6 +192,7 @@ export type Database = {
           created_at?: string
           exam_date?: string | null
           exam_name: string
+          exam_type?: Database["public"]["Enums"]["exam_type_enum"]
           id?: string
           organization_id: string
           scores?: Json | null
@@ -202,6 +204,7 @@ export type Database = {
           created_at?: string
           exam_date?: string | null
           exam_name?: string
+          exam_type?: Database["public"]["Enums"]["exam_type_enum"]
           id?: string
           organization_id?: string
           scores?: Json | null
@@ -665,6 +668,7 @@ export type Database = {
     }
     Enums: {
       submission_status: "pending" | "submitted" | "approved" | "rejected"
+      exam_type_enum: "TYT" | "AYT"
     }
     CompositeTypes: {
       [_ in never]: never

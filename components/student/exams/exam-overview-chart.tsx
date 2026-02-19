@@ -13,16 +13,24 @@ import {
     Legend,
     Brush,
     ResponsiveContainer,
+    TooltipProps,
 } from 'recharts'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
+import { formatXAxisTick } from '@/lib/utils'
 import { ChartToggle } from './chart-toggle'
 import { ChartModal, ExpandableChartWrapper } from './chart-modal'
 import { ChartPagination, usePaginatedData } from './chart-pagination'
+import { ExpandedExamChart } from './expanded-exam-chart'
+import { CustomTooltip } from './custom-tooltip'
+import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface ExamResult {
     id: string
+    created_at: string
     exam_name: string
+    exam_type: 'TYT' | 'AYT'
     exam_date: string | null
     total_net: number | null
     scores: any
@@ -46,30 +54,20 @@ const COLORS = {
     school: '#10b981',
 }
 
-const tooltipStyle = {
-    backgroundColor: 'hsl(var(--card))',
-    border: '1px solid hsl(var(--border))',
-    borderRadius: '0.75rem',
-    padding: '12px 16px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-}
 
-const tooltipFormatter = (value?: number | string) => {
-    const num = typeof value === 'number' ? value : parseFloat(String(value ?? '0'))
-    return isNaN(num) ? '-' : num.toFixed(2)
-}
 
 function renderChart(chartData: any[], isBarChart: boolean, fontSize: number = 10) {
     if (isBarChart) {
         return (
             <BarChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="label" tick={{ fontSize }} interval={0} height={70} angle={-20} textAnchor="end" />
+                <XAxis dataKey="label" tick={{ fontSize }} interval="preserveStartEnd" height={70} angle={-20} textAnchor="end" tickFormatter={formatXAxisTick} />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip
-                    contentStyle={tooltipStyle}
-                    labelFormatter={(_, payload) => payload?.[0]?.payload?.fullDate || ''}
-                    formatter={tooltipFormatter}
+                    content={<CustomTooltip />}
+                    cursor={{ fill: 'transparent' }}
+                    isAnimationActive={false}
+                    allowEscapeViewBox={{ x: false, y: false }}
                 />
                 <Legend
                     verticalAlign="top" align="right" iconType="circle"
@@ -84,12 +82,12 @@ function renderChart(chartData: any[], isBarChart: boolean, fontSize: number = 1
     return (
         <LineChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 60 }}>
             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-            <XAxis dataKey="label" tick={{ fontSize }} interval={0} height={70} angle={-20} textAnchor="end" className="text-muted-foreground" />
+            <XAxis dataKey="label" tick={{ fontSize }} interval="preserveStartEnd" height={70} angle={-20} textAnchor="end" className="text-muted-foreground" tickFormatter={formatXAxisTick} />
             <YAxis tick={{ fontSize: 12 }} className="text-muted-foreground" />
             <Tooltip
-                contentStyle={tooltipStyle}
-                labelFormatter={(_, payload) => payload?.[0]?.payload?.fullDate || ''}
-                formatter={tooltipFormatter}
+                content={<CustomTooltip />}
+                isAnimationActive={false}
+                allowEscapeViewBox={{ x: false, y: false }}
             />
             <Legend
                 verticalAlign="top" align="right" iconType="circle"
@@ -118,92 +116,30 @@ function renderChart(chartData: any[], isBarChart: boolean, fontSize: number = 1
     )
 }
 
-function renderModalChart(chartData: any[], isBarChart: boolean) {
-    const startIndex = Math.max(0, chartData.length - 10)
-
-    if (isBarChart) {
-        return (
-            <BarChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="label" tick={{ fontSize: 12 }} interval={0} height={70} angle={-20} textAnchor="end" />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip
-                    contentStyle={tooltipStyle}
-                    labelFormatter={(_, payload) => payload?.[0]?.payload?.fullDate || ''}
-                    formatter={tooltipFormatter}
-                />
-                <Legend
-                    verticalAlign="top" align="right" iconType="circle"
-                    wrapperStyle={{ fontSize: '14px', paddingBottom: '16px' }}
-                />
-                <Bar dataKey="Benim Netim" fill={COLORS.student} radius={[6, 6, 0, 0]} barSize={32} />
-                <Bar dataKey="Sınıf Ortalaması" fill={COLORS.class} radius={[6, 6, 0, 0]} barSize={32} />
-                <Bar dataKey="Okul Ortalaması" fill={COLORS.school} radius={[6, 6, 0, 0]} barSize={32} />
-                <Brush
-                    dataKey="label"
-                    height={30}
-                    stroke="hsl(var(--primary))"
-                    startIndex={startIndex}
-                    endIndex={chartData.length - 1}
-                    travellerWidth={10}
-                    fill="hsl(var(--muted))"
-                />
-            </BarChart>
-        )
-    }
-    return (
-        <LineChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 60 }}>
-            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-            <XAxis dataKey="label" tick={{ fontSize: 12 }} interval={0} height={70} angle={-20} textAnchor="end" />
-            <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip
-                contentStyle={tooltipStyle}
-                labelFormatter={(_, payload) => payload?.[0]?.payload?.fullDate || ''}
-                formatter={tooltipFormatter}
-            />
-            <Legend
-                verticalAlign="top" align="right" iconType="circle"
-                wrapperStyle={{ fontSize: '14px', paddingBottom: '16px' }}
-            />
-            <Line
-                type="monotone" dataKey="Benim Netim" stroke={COLORS.student}
-                strokeWidth={3}
-                dot={{ r: 5, fill: COLORS.student, strokeWidth: 2, stroke: '#fff' }}
-                activeDot={{ r: 7, stroke: COLORS.student, strokeWidth: 2 }}
-                connectNulls
-            />
-            <Line
-                type="monotone" dataKey="Sınıf Ortalaması" stroke={COLORS.class}
-                strokeWidth={2} strokeDasharray="6 3"
-                dot={{ r: 4, fill: COLORS.class, strokeWidth: 2, stroke: '#fff' }}
-                connectNulls
-            />
-            <Line
-                type="monotone" dataKey="Okul Ortalaması" stroke={COLORS.school}
-                strokeWidth={2} strokeDasharray="3 3"
-                dot={{ r: 4, fill: COLORS.school, strokeWidth: 2, stroke: '#fff' }}
-                connectNulls
-            />
-            <Brush
-                dataKey="label"
-                height={30}
-                stroke="hsl(var(--primary))"
-                startIndex={startIndex}
-                endIndex={chartData.length - 1}
-                travellerWidth={10}
-                fill="hsl(var(--muted))"
-            />
-        </LineChart>
-    )
-}
-
 export function ExamOverviewChart({ studentExams, classAverages, schoolAverages }: ExamOverviewChartProps) {
     const [isBarChart, setIsBarChart] = useState(false)
     const [isModalOpen, setIsModalOpen] = useState(false)
+    const [activeTab, setActiveTab] = useState<'TYT' | 'AYT'>('TYT')
 
-    const chartData = useMemo(() => studentExams
+    // 1. Separate data streams
+    const tytExams = useMemo(() => studentExams.filter(e => e.exam_type === 'TYT'), [studentExams])
+    const aytExams = useMemo(() => studentExams.filter(e => e.exam_type === 'AYT'), [studentExams])
+
+    // 2. Select current data
+    const currentExams = activeTab === 'TYT' ? tytExams : aytExams
+
+    const chartData = useMemo(() => currentExams
         .filter(e => e.exam_date)
-        .sort((a, b) => new Date(a.exam_date!).getTime() - new Date(b.exam_date!).getTime())
+        .sort((a, b) => {
+            const dateA = new Date(a.exam_date!).getTime()
+            const dateB = new Date(b.exam_date!).getTime()
+            if (dateA !== dateB) return dateA - dateB
+
+            // Secondary sort: created_at (oldest first)
+            const createdA = new Date(a.created_at).getTime()
+            const createdB = new Date(b.created_at).getTime()
+            return createdA - createdB
+        })
         .map(exam => {
             const key = `${exam.exam_name}_${exam.exam_date}`
             const classAvg = classAverages.find(c => `${c.exam_name}_${c.exam_date}` === key)
@@ -224,63 +160,78 @@ export function ExamOverviewChart({ studentExams, classAverages, schoolAverages 
                 fullDate: exam.exam_date
                     ? format(new Date(exam.exam_date), 'd MMMM yyyy', { locale: tr })
                     : '',
+                originalDate: exam.exam_date ? new Date(exam.exam_date) : null,
+                created_at: exam.created_at, // Pass created_at for secondary sorting in modal
                 'Benim Netim': exam.total_net ?? 0,
                 'Sınıf Ortalaması': classAvg?.avg_net ?? null,
                 'Okul Ortalaması': schoolAvg?.avg_net ?? null,
             }
-        }), [studentExams, classAverages, schoolAverages])
+        }), [currentExams, classAverages, schoolAverages])
 
     const { totalPages, defaultPage, getPageData } = usePaginatedData(chartData, 5)
+    // When using pagination/slice directly, we might not need separate state for pages if only showing chart.
+    // But ExamOverviewChart shows a paginated chart on dashboard.
+    // ExpandedExamChart will show filtered data.
     const [currentPage, setCurrentPage] = useState(defaultPage)
 
     const pagedData = getPageData(currentPage)
 
-    if (chartData.length === 0) return null
+    // Removed the early return for empty data to allow showing empty state within tabs if needed? 
+    // Actually, if we have NO exams for a category, chartData is empty. We should handle empty state gracefully.
+    // However, if we return null, the whole component disappears. 
+    // Better to show the Toggles and "No Data" message.
 
     return (
         <>
             <div className="border rounded-xl bg-card p-6 shadow-sm">
-                <div className="mb-6 flex items-start justify-between">
+                <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
                         <h2 className="text-xl font-semibold tracking-tight">Toplam Net Gelişimi</h2>
                         <p className="text-sm text-muted-foreground mt-1">
                             Sınav netlerinizi sınıf ve okul ortalamasıyla karşılaştırın
                         </p>
                     </div>
-                    <ChartToggle isBarChart={isBarChart} onChange={setIsBarChart} />
+                    <div className="flex items-center gap-4">
+                        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'TYT' | 'AYT')}>
+                            <TabsList>
+                                <TabsTrigger value="TYT">TYT</TabsTrigger>
+                                <TabsTrigger value="AYT">AYT</TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                        <ChartToggle isBarChart={isBarChart} onChange={setIsBarChart} />
+                    </div>
                 </div>
 
-                <ExpandableChartWrapper onClick={() => setIsModalOpen(true)}>
-                    <div className="w-full h-[450px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            {renderChart(pagedData, isBarChart)}
-                        </ResponsiveContainer>
-                    </div>
-                </ExpandableChartWrapper>
+                {chartData.length > 0 ? (
+                    <>
+                        <ExpandableChartWrapper onClick={() => setIsModalOpen(true)}>
+                            <div className="w-full h-[450px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    {renderChart(pagedData, isBarChart)}
+                                </ResponsiveContainer>
+                            </div>
+                        </ExpandableChartWrapper>
 
-                <ChartPagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={setCurrentPage}
-                />
+                        <ChartPagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={setCurrentPage}
+                        />
+                    </>
+                ) : (
+                    <div className="h-[300px] flex items-center justify-center border-2 border-dashed rounded-xl bg-muted/10">
+                        <p className="text-muted-foreground">Bu kategoride henüz sınav verisi bulunmuyor.</p>
+                    </div>
+                )}
             </div>
 
             <ChartModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                title="Toplam Net Gelişimi"
-                subtitle="Sınav netlerinizi sınıf ve okul ortalamasıyla karşılaştırın"
+                title={`Toplam Net Gelişimi (${activeTab})`}
+                subtitle="Sınav netlerinizi detaylı inceleyin ve karşılaştırın"
             >
-                <div className="w-full h-full flex flex-col">
-                    <div className="flex justify-end mb-4 shrink-0">
-                        <ChartToggle isBarChart={isBarChart} onChange={setIsBarChart} />
-                    </div>
-                    <div className="flex-1 min-h-0">
-                        <ResponsiveContainer width="100%" height="100%">
-                            {renderModalChart(chartData, isBarChart)}
-                        </ResponsiveContainer>
-                    </div>
-                </div>
+                <ExpandedExamChart data={chartData} />
             </ChartModal>
         </>
     )
