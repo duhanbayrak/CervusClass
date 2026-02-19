@@ -146,7 +146,8 @@ async function getStudentExamDetails(examName: string, studentId: string) {
         },
         exam: {
             name: result.exam_name,
-            date: result.exam_date
+            date: result.exam_date,
+            type: result.exam_type
         },
         scores,
         rawScores: scoresData,
@@ -325,6 +326,7 @@ export default async function AdminStudentExamDetailPage({
             {statsData && (
                 <ExamDetailCharts
                     scores={data.rawScores}
+                    examType={data.exam.type}
                     totalNet={data.totalNet}
                     classSubjectAverages={statsData.classSubjectAverages}
                     classTotalAvg={statsData.classTotalAvg}
