@@ -13,7 +13,8 @@ import {
     Building,
     Settings,
     CalendarCheck,
-    Wallet
+    Wallet,
+    UserPlus
 } from 'lucide-react';
 
 export interface NavItem {
@@ -47,6 +48,7 @@ export const ADMIN_NAV: NavItem[] = [
     { title: 'Ders Programı', href: '/admin/schedule', icon: Calendar },
     { title: 'Öğretmenler', href: '/admin/teachers', icon: GraduationCap },
     { title: 'Öğrenciler', href: '/admin/students', icon: Users },
+    { title: 'Yeni Kayıt', href: '/admin/registrations/new', icon: UserPlus },
     { title: 'Sınavlar', href: '/admin/exams', icon: FileText },
     { title: 'Sınıflar', href: '/admin/classes', icon: School },
     { title: 'Muhasebe', href: '/admin/accounting', icon: Wallet },
