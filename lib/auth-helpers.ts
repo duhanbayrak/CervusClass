@@ -8,11 +8,12 @@ import { Profile, ProfileRole } from '@/types/database';
  * @returns ProfileRole ('student', 'teacher', 'admin', 'super_admin') veya null
  */
 export function getUserRole(profile: Partial<Profile> | null): ProfileRole | null {
-    if (!profile || !profile.roles) {
+    const profileAny = profile as Record<string, any> | null;
+    if (!profileAny || !profileAny.roles) {
         return null; // Rol bilgisi yok
     }
 
-    const rolesData = profile.roles as any;
+    const rolesData = profileAny.roles as any;
 
     // Array gelirse ilk elemanı al
     if (Array.isArray(rolesData)) {

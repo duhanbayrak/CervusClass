@@ -1,0 +1,200 @@
+'use client';
+
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { X, Loader2 } from 'lucide-react';
+import type { FinanceCategory, FinanceAccount } from '@/types/accounting';
+import { createTransaction } from '@/lib/actions/accounting';
+
+interface TransactionFormDialogProps {
+    type: 'income' | 'expense';
+    categories: FinanceCategory[];
+    accounts: FinanceAccount[];
+    onClose: () => void;
+}
+
+export function TransactionFormDialog({
+    type,
+    categories,
+    accounts,
+    onClose,
+}: TransactionFormDialogProps) {
+    const router = useRouter();
+    const [isPending, startTransition] = useTransition();
+    const [message, setMessage] = useState('');
+
+    // Form state
+    const [accountId, setAccountId] = useState(accounts[0]?.id || '');
+    const [categoryId, setCategoryId] = useState('');
+    const [amount, setAmount] = useState('');
+    const [description, setDescription] = useState('');
+    const [referenceNo, setReferenceNo] = useState('');
+    const [transactionDate, setTransactionDate] = useState(new Date().toISOString().split('T')[0]);
+
+    // Kaydet
+    const handleSubmit = () => {
+        if (!accountId || !categoryId || !amount) {
+            setMessage('Hata: Hesap, kategori ve tutar zorunludur.');
+            return;
+        }
+
+        startTransition(async () => {
+            const result = await createTransaction({
+                account_id: accountId,
+                category_id: categoryId,
+                amount: parseFloat(amount),
+                type,
+                transaction_date: transactionDate,
+                description: description || '',
+                reference_no: referenceNo || undefined,
+            });
+
+            if (result.success) {
+                router.refresh();
+                onClose();
+            } else {
+                setMessage(`Hata: ${result.error}`);
+            }
+        });
+    };
+
+    const inputClass = 'w-full rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors';
+    const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5';
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-white/10">
+                {/* Başlık */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/5">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {type === 'income' ? 'Gelir Ekle' : 'Gider Ekle'}
+                    </h3>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                    {/* Hesap */}
+                    <div>
+                        <label htmlFor="txAccount" className={labelClass}>Kasa / Hesap *</label>
+                        <select
+                            id="txAccount"
+                            value={accountId}
+                            onChange={e => setAccountId(e.target.value)}
+                            className={inputClass}
+                        >
+                            <option value="">Hesap seçin...</option>
+                            {accounts.map(a => (
+                                <option key={a.id} value={a.id}>{a.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Kategori */}
+                    <div>
+                        <label htmlFor="txCategory" className={labelClass}>Kategori *</label>
+                        <select
+                            id="txCategory"
+                            value={categoryId}
+                            onChange={e => setCategoryId(e.target.value)}
+                            className={inputClass}
+                        >
+                            <option value="">Kategori seçin...</option>
+                            {categories.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Tutar */}
+                    <div>
+                        <label htmlFor="txAmount" className={labelClass}>Tutar *</label>
+                        <div className="relative">
+                            <input
+                                id="txAmount"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={amount}
+                                onChange={e => setAmount(e.target.value)}
+                                className={`${inputClass} pr-12`}
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">TRY</span>
+                        </div>
+                    </div>
+
+                    {/* Tarih */}
+                    <div>
+                        <label htmlFor="txDate" className={labelClass}>Tarih</label>
+                        <input
+                            id="txDate"
+                            type="date"
+                            value={transactionDate}
+                            onChange={e => setTransactionDate(e.target.value)}
+                            className={inputClass}
+                        />
+                    </div>
+
+                    {/* Açıklama */}
+                    <div>
+                        <label htmlFor="txDesc" className={labelClass}>Açıklama</label>
+                        <input
+                            id="txDesc"
+                            type="text"
+                            placeholder={type === 'income' ? 'Gelir açıklaması...' : 'Gider açıklaması...'}
+                            value={description}
+                            onChange={e => setDescription(e.target.value)}
+                            className={inputClass}
+                        />
+                    </div>
+
+                    {/* Referans */}
+                    <div>
+                        <label htmlFor="txRef" className={labelClass}>Referans / Fiş No</label>
+                        <input
+                            id="txRef"
+                            type="text"
+                            placeholder="Opsiyonel"
+                            value={referenceNo}
+                            onChange={e => setReferenceNo(e.target.value)}
+                            className={inputClass}
+                        />
+                    </div>
+
+                    {/* Mesaj */}
+                    {message && (
+                        <p className={`text-sm ${message.startsWith('Hata') ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
+                            {message}
+                        </p>
+                    )}
+                </div>
+
+                {/* Butonlar */}
+                <div className="flex gap-3 px-6 py-4 border-t border-gray-100 dark:border-white/5">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 rounded-xl border border-gray-200 dark:border-white/10 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                    >
+                        İptal
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={isPending}
+                        className={`flex-1 flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50 transition-colors cursor-pointer ${type === 'income'
+                            ? 'bg-green-600 hover:bg-green-700'
+                            : 'bg-red-600 hover:bg-red-700'
+                            }`}
+                    >
+                        {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {isPending ? 'Kaydediliyor...' : type === 'income' ? 'Gelir Kaydet' : 'Gider Kaydet'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}

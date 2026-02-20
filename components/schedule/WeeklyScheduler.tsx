@@ -225,7 +225,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                         // Optimized Filtering
                         const potentialEvents = eventsByDay.get(dayNumber) || [];
                         const dayEvents = potentialEvents.filter(e => {
-                            const eventCreated = new Date(e.created_at);
+                            const eventCreated = new Date(e.created_at || 0);
                             eventCreated.setHours(0, 0, 0, 0);
                             const currentViewDate = new Date(date);
                             currentViewDate.setHours(0, 0, 0, 0);

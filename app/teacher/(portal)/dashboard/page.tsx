@@ -123,7 +123,7 @@ export default async function TeacherDashboardPage() {
     const profile = profileResult.data;
     if (!profile) return <div>Yükleniyor...</div>;
 
-    const schedule = (scheduleResult.data || []) as unknown as Schedule[];
+    const schedule = (scheduleResult.data || []) as any[];
     const pendingRequests = (pendingRequestsResult.data || []) as unknown as StudySession[];
     const homeworkCount = homeworkCountResult.count || 0;
     const pendingApprovalCount = pendingHomeworksResult.count || 0;

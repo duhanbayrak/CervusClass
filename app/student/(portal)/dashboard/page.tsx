@@ -69,11 +69,11 @@ export default async function StudentDashboardPage() {
             .order('scheduled_at', { ascending: true })
     ]);
 
-    const schedule = (scheduleResult.data || []) as unknown as Schedule[];
-    const homework = (homeworkResult.data || []) as unknown as Homework[];
+    const schedule = (scheduleResult.data || []) as any[];
+    const homework = (homeworkResult.data || []) as any[];
     const exams = (examsResult.data || []) as unknown as ExamResult[];
 
-    const etuts = (etutsResult.data || []) as unknown as StudySession[];
+    const etuts = (etutsResult.data || []) as any[];
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

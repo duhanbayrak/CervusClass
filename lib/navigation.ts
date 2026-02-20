@@ -12,7 +12,8 @@ import {
     BarChart,
     Building,
     Settings,
-    CalendarCheck
+    CalendarCheck,
+    Wallet
 } from 'lucide-react';
 
 export interface NavItem {
@@ -29,6 +30,7 @@ export const STUDENT_NAV: NavItem[] = [
     { title: 'Notlarım', href: '/student/grades', icon: Award },
     { title: 'Sınavlar', href: '/student/exams', icon: FileText },
     { title: 'Ödevler', href: '/student/homework', icon: ClipboardList },
+    { title: 'Ödeme Durumum', href: '/student/payments', icon: Wallet },
 ];
 
 export const TEACHER_NAV: NavItem[] = [
@@ -47,6 +49,7 @@ export const ADMIN_NAV: NavItem[] = [
     { title: 'Öğrenciler', href: '/admin/students', icon: Users },
     { title: 'Sınavlar', href: '/admin/exams', icon: FileText },
     { title: 'Sınıflar', href: '/admin/classes', icon: School },
+    { title: 'Muhasebe', href: '/admin/accounting', icon: Wallet },
     { title: 'Raporlar', href: '/admin/reports', icon: BarChart },
 ];
 

@@ -20,10 +20,18 @@ import { Textarea } from "@/components/ui/textarea"; // Assuming this exists, ot
 import { Badge } from "@/components/ui/badge";
 import { approveSession, rejectSession } from "@/lib/actions/study-session";
 
-import { StudySession } from "@/types/database";
+// StudySession tipi yerine any[] kullanılıyor — Supabase join sonucunda
+// student ilişkisi (profiles!student_id) veritabanı tipinde tanımlı değil
+interface StudyRequest {
+    id: string;
+    topic: string | null;
+    scheduled_at: string;
+    student?: { full_name: string; classes?: { name: string } };
+    [key: string]: any;
+}
 
 interface PendingStudyRequestsListProps {
-    requests: StudySession[];
+    requests: StudyRequest[];
 }
 
 export function PendingStudyRequestsList({ requests }: PendingStudyRequestsListProps) {

@@ -43,7 +43,9 @@ function profileFromJwt(authUser: User): Profile {
         bio: null,
         title: null,
         start_date: null,
-    } as Profile;
+        deleted_at: null,
+        search_vector: null,
+    } as unknown as Profile;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -137,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     // Rol bilgisini profil verisinden çıkar
-    const rolesData = profile?.roles as { name: string } | { name: string }[] | null;
+    const rolesData = (profile as any)?.roles as { name: string } | { name: string }[] | null;
     const roleName = Array.isArray(rolesData) ? rolesData[0]?.name : rolesData?.name;
 
     const value = useMemo(() => ({
