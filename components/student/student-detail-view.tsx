@@ -19,6 +19,7 @@ import { CopyableInfoRow, StatMiniCard } from './detail/info-cards';
 import { StudentAcademicTab } from './detail/academic-tab';
 import { StudentAttendanceTab } from './detail/attendance-tab';
 import { StudentNotesTab } from './detail/notes-tab';
+import { StudentFinancialTab } from './detail/financial-tab';
 
 interface StudentDetailViewProps {
     profile: any;
@@ -49,9 +50,14 @@ interface StudentDetailViewProps {
         averageGrade: number;
     };
     role: 'admin' | 'teacher';
+    financialData?: {
+        fee: any | null;
+        installments: any[];
+        payments: any[];
+    };
 }
 
-export function StudentDetailView({ profile, examResults, stats, role }: StudentDetailViewProps) {
+export function StudentDetailView({ profile, examResults, stats, role, financialData }: StudentDetailViewProps) {
     const router = useRouter();
     const { toast } = useToast();
     const backLink = role === 'admin' ? '/admin/students' : '/teacher/students';
@@ -261,7 +267,10 @@ export function StudentDetailView({ profile, examResults, stats, role }: Student
                 {/* Sağ Kolon: Sekmeler */}
                 <div className="lg:col-span-2">
                     <Tabs defaultValue="academic" className="space-y-4">
-                        <TabsList className="grid w-full grid-cols-3 lg:w-[400px] bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl">
+                        <TabsList className={cn(
+                            "grid w-full bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl",
+                            role === 'admin' ? "grid-cols-4 lg:w-[500px]" : "grid-cols-3 lg:w-[400px]"
+                        )}>
                             <TabsTrigger value="academic" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
                                 Akademik
                             </TabsTrigger>
@@ -271,6 +280,11 @@ export function StudentDetailView({ profile, examResults, stats, role }: Student
                             <TabsTrigger value="notes" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
                                 Notlar
                             </TabsTrigger>
+                            {role === 'admin' && (
+                                <TabsTrigger value="financial" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
+                                    Finansal
+                                </TabsTrigger>
+                            )}
                         </TabsList>
 
                         <TabsContent value="academic" className="space-y-4">
@@ -288,6 +302,12 @@ export function StudentDetailView({ profile, examResults, stats, role }: Student
                         <TabsContent value="notes">
                             <StudentNotesTab role={role} />
                         </TabsContent>
+
+                        {role === 'admin' && financialData && (
+                            <TabsContent value="financial" className="space-y-4 mt-6">
+                                <StudentFinancialTab data={financialData} />
+                            </TabsContent>
+                        )}
                     </Tabs>
                 </div>
             </div>
