@@ -3,6 +3,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { getAuthContext } from "@/lib/auth-context";
+import { format } from "date-fns";
 
 // Admin client - Auth API (kullanıcı oluşturma) ve Rol bypass için gerekli
 const supabaseAdmin = createClient(
@@ -21,8 +22,8 @@ export type RegistrationFormData = {
     firstName: string;
     lastName: string;
     email: string;
+    tcNo: string;
     phone?: string;
-    studentNumber?: string;
     birthDate?: string;
 
     // Veli Bilgileri
@@ -31,6 +32,7 @@ export type RegistrationFormData = {
 
     // 2. Akademik Yerleştirme
     classId: string;
+    className?: string; // Görüntüleme için
 
     // 3. Finansal Bilgiler
     academicPeriod: string;
@@ -73,11 +75,31 @@ export async function registerStudent(data: RegistrationFormData) {
         if (!role) throw new Error("Öğrenci rolü (student) sistemde tanımlı değil.");
 
         // ==========================================
-        // 1. KULLANICI OLUŞTURMA (Auth)
+        // 1. KULLANICI OLUŞTURMA VE 0'DAN ÖĞRENCİ NO ATAMA (Auth)
         // ==========================================
+
+        // Öğrenci numarasını hesapla (Örn: 2026 -> 26xxx, max'i bul +1 artır)
+        const currentYear = new Date().getFullYear();
+        const yearPrefix = currentYear.toString().slice(-2); //"26"
+
+        const { data: latestStudent } = await supabaseAdmin
+            .from('profiles')
+            .select('student_number')
+            .eq('organization_id', organizationId)
+            .ilike('student_number', `${yearPrefix}%`)
+            .order('student_number', { ascending: false })
+            .limit(1)
+            .single();
+
+        let generatedStudentNumber = await getNextStudentNumber(organizationId);
+
+        if (!generatedStudentNumber) {
+            generatedStudentNumber = `${yearPrefix}001`; // Fallback
+        }
+
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
             email: data.email,
-            password: data.studentNumber || 'cervus123', // Default parola öğrenci no veya standart parola
+            password: data.tcNo, // Varsayılan parola TC Kimlik No
             email_confirm: true,
             user_metadata: {
                 full_name: fullName,
@@ -112,8 +134,9 @@ export async function registerStudent(data: RegistrationFormData) {
                 full_name: fullName,
                 email: data.email,
                 class_id: data.classId,
+                tc_no: data.tcNo,
                 phone: data.phone || null,
-                student_number: data.studentNumber || null,
+                student_number: generatedStudentNumber,
                 parent_name: data.parentName || null,
                 parent_phone: data.parentPhone || null,
                 birth_date: data.birthDate || null,
@@ -191,7 +214,7 @@ export async function registerStudent(data: RegistrationFormData) {
                 organization_id: organizationId,
                 installment_number: currentInstallmentNumber,
                 amount: data.downPayment,
-                due_date: new Date().toISOString().split('T')[0], // Bugün
+                due_date: format(new Date(), 'yyyy-MM-dd'), // Bugün
                 status: 'paid', // Peşinat doğrudan ödendi sayılır
                 paid_amount: data.downPayment,
                 paid_at: new Date().toISOString()
@@ -281,6 +304,47 @@ export async function registerStudent(data: RegistrationFormData) {
                             .update({ balance: Number(account.balance) + Number(data.downPayment) })
                             .eq('id', data.downPaymentAccountId);
                     }
+
+                    // Muhasebe kaydı — "Öğrenci Ücreti" kategorisini bul veya oluştur
+                    const { data: existingCat } = await supabaseAdmin
+                        .from('finance_categories')
+                        .select('id')
+                        .eq('organization_id', organizationId)
+                        .eq('name', 'Öğrenci Ücreti')
+                        .eq('type', 'income')
+                        .maybeSingle();
+
+                    let catId = existingCat?.id;
+
+                    if (!catId) {
+                        const { data: newCat } = await supabaseAdmin
+                            .from('finance_categories')
+                            .insert({
+                                organization_id: organizationId,
+                                name: 'Öğrenci Ücreti',
+                                type: 'income',
+                                icon: '🎓',
+                            })
+                            .select('id')
+                            .single();
+                        catId = newCat?.id;
+                    }
+
+                    // finance_transactions tablosuna gelir kaydı ekle
+                    if (catId) {
+                        await supabaseAdmin
+                            .from('finance_transactions')
+                            .insert({
+                                organization_id: organizationId,
+                                account_id: data.downPaymentAccountId,
+                                category_id: catId,
+                                type: 'income',
+                                amount: data.downPayment,
+                                description: `${data.firstName} ${data.lastName} - Kayıt Peşinatı`,
+                                transaction_date: new Date().toISOString(),
+                                created_by: user.id,
+                            });
+                    }
                 }
             }
         }
@@ -303,4 +367,42 @@ export async function registerStudent(data: RegistrationFormData) {
 
         return { success: false, error: err.message || "Kayıt sırasında beklenmeyen bir hata oluştu." };
     }
+}
+
+// Bir sonraki öğrenci numarasını tahmin eden/öğrenen client-side için server action
+export async function getNextStudentNumber(orgId?: string) {
+    let organizationId = orgId;
+    if (!organizationId) {
+        const auth = await getAuthContext();
+        organizationId = auth.organizationId;
+    }
+
+    if (!organizationId) return null;
+
+    const currentYear = new Date().getFullYear();
+    const yearPrefix = currentYear.toString().slice(-2); //"26"
+
+    const { data: latestStudent } = await supabaseAdmin
+        .from('profiles')
+        .select('student_number')
+        .eq('organization_id', organizationId)
+        .ilike('student_number', `${yearPrefix}%`)
+        .order('student_number', { ascending: false })
+        .limit(1)
+        .single();
+
+    let generatedStudentNumber = `${yearPrefix}001`;
+
+    if (latestStudent && latestStudent.student_number) {
+        const currentNumberStr = latestStudent.student_number;
+        // 26001 formatını kontrol et
+        if (currentNumberStr.length === 5 && currentNumberStr.startsWith(yearPrefix)) {
+            const numPart = parseInt(currentNumberStr.slice(2), 10);
+            if (!isNaN(numPart)) {
+                generatedStudentNumber = `${yearPrefix}${String(numPart + 1).padStart(3, '0')}`;
+            }
+        }
+    }
+
+    return generatedStudentNumber;
 }

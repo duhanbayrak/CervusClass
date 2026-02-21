@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { FinanceCategory, FinanceTransaction, TransactionType } from '@/types/accounting';
 import { getFinanceTransactions } from '@/lib/actions/accounting';
+import { format } from 'date-fns';
 
 // =============================================
 // Props
@@ -65,7 +66,7 @@ function exportToCSV(transactions: FinanceTransaction[]) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `rapor_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `rapor_${format(new Date(), 'yyyy-MM-dd')}.csv`;
     link.click();
     URL.revokeObjectURL(url);
 }
@@ -256,8 +257,8 @@ export default function ReportsContent({ categories }: ReportsContentProps) {
                     <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900 p-4">
                         <p className="text-xs text-gray-500 dark:text-gray-400">Net</p>
                         <p className={`text-xl font-bold mt-1 ${netAmount >= 0
-                                ? 'text-blue-600 dark:text-blue-400'
-                                : 'text-red-500 dark:text-red-400'
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-red-500 dark:text-red-400'
                             }`}>
                             {formatCurrency(netAmount)}
                         </p>
@@ -294,8 +295,8 @@ export default function ReportsContent({ categories }: ReportsContentProps) {
                                             </td>
                                             <td className="px-5 py-3">
                                                 <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md ${tx.type === 'income'
-                                                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
-                                                        : 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400'
+                                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
+                                                    : 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400'
                                                     }`}>
                                                     {tx.type === 'income'
                                                         ? <><ArrowUpRight className="w-3 h-3" /> Gelir</>
@@ -314,8 +315,8 @@ export default function ReportsContent({ categories }: ReportsContentProps) {
                                                 {tx.description || '-'}
                                             </td>
                                             <td className={`px-5 py-3 text-sm font-semibold text-right whitespace-nowrap ${tx.type === 'income'
-                                                    ? 'text-emerald-600 dark:text-emerald-400'
-                                                    : 'text-red-500 dark:text-red-400'
+                                                ? 'text-emerald-600 dark:text-emerald-400'
+                                                : 'text-red-500 dark:text-red-400'
                                                 }`}>
                                                 {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                                             </td>

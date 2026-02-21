@@ -3,15 +3,39 @@
 import { useRegistration } from '../RegistrationContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { registerStudent, RegistrationFormData } from '@/lib/actions/student-registration';
+import { registerStudent, RegistrationFormData, getNextStudentNumber } from '@/lib/actions/student-registration';
+import { getClassById } from '@/lib/actions/class';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Loader2, ArrowLeft, CheckCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export function Step4Summary() {
     const { formData, setStep, isSubmitting, setIsSubmitting } = useRegistration();
     const { toast } = useToast();
     const router = useRouter();
+    const [nextStudentNumber, setNextStudentNumber] = useState<string | null>(null);
+    const [fetchedClassName, setFetchedClassName] = useState<string | null>(null);
+
+    useEffect(() => {
+        async function fetchNextNumber() {
+            const num = await getNextStudentNumber();
+            if (num) {
+                setNextStudentNumber(num);
+            }
+        }
+        async function fetchClassInfo() {
+            if (!formData.className && formData.classId) {
+                const res = await getClassById(formData.classId);
+                if (res.success && res.data) {
+                    setFetchedClassName(res.data.name);
+                }
+            }
+        }
+        fetchNextNumber();
+        fetchClassInfo();
+    }, [formData.classId, formData.className]);
 
     const handleSubmit = async () => {
         setIsSubmitting(true);
@@ -85,8 +109,14 @@ export function Step4Summary() {
                                 <span>{formData.firstName} {formData.lastName}</span>
                             </div>
                             <div className="grid grid-cols-2">
-                                <span className="font-medium text-muted-foreground">TC/Öğrenci No:</span>
-                                <span>{formData.studentNumber || '-'}</span>
+                                <span className="font-medium text-muted-foreground">TC Kimlik No:</span>
+                                <span>{formData.tcNo || '-'}</span>
+                            </div>
+                            <div className="grid grid-cols-2">
+                                <span className="font-medium text-muted-foreground">Öğrenci No (Tahmini):</span>
+                                <span className="text-xs mt-0.5 text-blue-600 bg-blue-50/50 px-1 py-0.5 rounded border border-blue-100 dark:border-blue-900 flex items-center w-fit">
+                                    {nextStudentNumber ? nextStudentNumber : 'Hesaplanıyor...'}
+                                </span>
                             </div>
                             <div className="grid grid-cols-2">
                                 <span className="font-medium text-muted-foreground">E-posta:</span>
@@ -106,8 +136,10 @@ export function Step4Summary() {
                                 <span>{formData.academicPeriod}</span>
                             </div>
                             <div className="grid grid-cols-2">
-                                <span className="font-medium text-muted-foreground">Sınıf ID (Seçilen):</span>
-                                <span className="truncate" title={formData.classId}>{formData.classId}</span>
+                                <span className="font-medium text-muted-foreground">Sınıf Seçimi:</span>
+                                <span className="truncate" title={formData.classId}>
+                                    {formData.className || fetchedClassName || formData.classId}
+                                </span>
                             </div>
                         </CardContent>
                     </Card>
@@ -155,28 +187,36 @@ export function Step4Summary() {
                 </div>
 
                 <div className="flex justify-between pt-6 border-t">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setStep(3)}
-                        disabled={isSubmitting}
-                    >
-                        Geri: Finansal Bilgiler
-                    </Button>
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={isSubmitting}
-                        className="bg-green-600 hover:bg-green-700 text-white min-w-[150px]"
-                    >
-                        {isSubmitting ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Kayıt Ediliyor...
-                            </>
-                        ) : (
-                            "Kaydı Tamamla"
-                        )}
-                    </Button>
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }}>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setStep(3)}
+                            disabled={isSubmitting}
+                        >
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Geri: Finansal Bilgiler
+                        </Button>
+                    </motion.div>
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }}>
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={isSubmitting}
+                            className="bg-green-600 hover:bg-green-700 text-white min-w-[150px]"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Kayıt Ediliyor...
+                                </>
+                            ) : (
+                                <>
+                                    <CheckCircle className="mr-2 h-4 w-4" />
+                                    Kaydı Tamamla
+                                </>
+                            )}
+                        </Button>
+                    </motion.div>
                 </div>
             </div>
         </div>

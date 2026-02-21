@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { X, Loader2 } from 'lucide-react';
 import type { FinanceCategory, FinanceAccount } from '@/types/accounting';
 import { createTransaction } from '@/lib/actions/accounting';
+import { format } from 'date-fns';
 
 interface TransactionFormDialogProps {
     type: 'income' | 'expense';
@@ -29,7 +30,7 @@ export function TransactionFormDialog({
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
     const [referenceNo, setReferenceNo] = useState('');
-    const [transactionDate, setTransactionDate] = useState(new Date().toISOString().split('T')[0]);
+    const [transactionDate, setTransactionDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
     // Kaydet
     const handleSubmit = () => {

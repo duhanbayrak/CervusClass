@@ -13,11 +13,18 @@ interface Props {
  */
 export default async function StudentFeeDetailPage({ params }: Props) {
     const { id } = await params;
-    const [feeDetail, paymentsResult, settings] = await Promise.all([
+
+    // Önce fee detayını çek — student_id'yi buradan alacağız
+    const [feeDetail, settings] = await Promise.all([
         getStudentFeeDetail(id),
-        getFeePayments({ student_id: id }),
         getFinanceSettings(),
     ]);
+
+    // Fee'nin student_id'si ile ödemeleri çek
+    const studentId = feeDetail.fee?.student_id;
+    const paymentsResult = studentId
+        ? await getFeePayments({ student_id: studentId })
+        : { data: [] };
 
     return (
         <div className="space-y-6">

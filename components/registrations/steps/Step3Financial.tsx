@@ -12,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getFinanceAccounts } from '@/lib/actions/finance-accounts';
 import { FinanceAccount } from '@/types/accounting';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const financialSchema = z.object({
     totalAmount: z.coerce.number().min(1, 'Toplam tutar 0 dan büyük olmalıdır'),
@@ -187,10 +189,18 @@ export function Step3Financial() {
                 </Card>
 
                 <div className="flex justify-between pt-4">
-                    <Button type="button" variant="outline" onClick={() => setStep(2)}>
-                        Geri: Akademik Bilgiler
-                    </Button>
-                    <Button type="submit">İleri: Onay ve Özet</Button>
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }}>
+                        <Button type="button" variant="outline" onClick={() => setStep(2)}>
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Geri: Akademik Bilgiler
+                        </Button>
+                    </motion.div>
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }}>
+                        <Button type="submit">
+                            İleri: Onay ve Özet
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                    </motion.div>
                 </div>
             </form>
         </div>

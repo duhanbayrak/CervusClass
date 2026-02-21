@@ -2,6 +2,7 @@
 
 import { getAuthContext } from '@/lib/auth-context';
 import type { StudentFee, FeeInstallment } from '@/types/accounting';
+import { format } from 'date-fns';
 
 /**
  * Öğrenci ücretlerini getirir (filtreli).
@@ -134,7 +135,7 @@ export async function createStudentFee(feeData: {
             organization_id: organizationId,
             installment_number: i + 1,
             amount,
-            due_date: dueDate.toISOString().split('T')[0],
+            due_date: format(dueDate, 'yyyy-MM-dd'),
             status: 'pending' as const,
             paid_amount: 0,
         };
@@ -199,19 +200,136 @@ export async function bulkAssignFees(data: {
 
     return { success: true, assigned_count: assignedCount };
 }
-
 /**
  * Öğrenci ücretini iptal eder.
+ * - Bekleyen taksitleri iptal eder
+ * - Opsiyonel: Ödenen tutarı kasa/banka hesabından düşer ve muhasebe iade kaydı oluşturur
  */
-export async function cancelStudentFee(feeId: string): Promise<{ success: boolean; error?: string }> {
-    const { supabase, error } = await getAuthContext();
-    if (error) return { success: false, error };
+export async function cancelStudentFee(
+    feeId: string,
+    options?: {
+        refund?: boolean;
+        refundAccountId?: string;
+        reason?: string;
+    }
+): Promise<{ success: boolean; error?: string; refundedAmount?: number }> {
+    const { supabase, organizationId, user, error } = await getAuthContext();
+    if (error || !organizationId || !user) return { success: false, error: error || 'Yetkilendirme hatası' };
 
+    // 1. Fee kaydını kontrol et
+    const { data: fee } = await supabase
+        .from('student_fees')
+        .select('id, status, student_id')
+        .eq('id', feeId)
+        .single();
+
+    if (!fee) return { success: false, error: 'Ücret kaydı bulunamadı.' };
+    if (fee.status === 'cancelled') return { success: false, error: 'Bu ücret zaten iptal edilmiş.' };
+
+    // 2. Tüm taksitleri çek
+    const { data: installments } = await supabase
+        .from('fee_installments')
+        .select('id, status')
+        .eq('fee_id', feeId);
+
+    // 3. Bekleyen taksitleri "cancelled" yap
+    if (installments && installments.length > 0) {
+        const pendingIds = installments
+            .filter(i => i.status !== 'paid')
+            .map(i => i.id);
+
+        if (pendingIds.length > 0) {
+            await supabase
+                .from('fee_installments')
+                .update({ status: 'cancelled' })
+                .in('id', pendingIds);
+        }
+    }
+
+    // 4. İade işlemi (opsiyonel)
+    let refundedAmount = 0;
+
+    if (options?.refund) {
+        // Bu fee'ye ait tüm ödemeleri çek
+        const installmentIds = (installments || []).map(i => i.id);
+
+        if (installmentIds.length > 0) {
+            const { data: payments } = await supabase
+                .from('fee_payments')
+                .select('id, amount, account_id')
+                .in('installment_id', installmentIds);
+
+            if (payments && payments.length > 0) {
+                // Toplam ödenen tutarı hesapla
+                refundedAmount = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+
+                if (refundedAmount > 0) {
+                    // İade yapılacak hesap: parametre verilmişse o, yoksa ilk ödemenin hesabı
+                    const refundAccountId = options.refundAccountId || payments[0].account_id;
+
+                    // a) Kasa/banka bakiyesinden düş
+                    const { data: account } = await supabase
+                        .from('finance_accounts')
+                        .select('balance')
+                        .eq('id', refundAccountId)
+                        .single();
+
+                    if (account) {
+                        await supabase
+                            .from('finance_accounts')
+                            .update({ balance: Number(account.balance) - refundedAmount })
+                            .eq('id', refundAccountId);
+                    }
+
+                    // b) Öğrenci adını çek
+                    const { data: student } = await supabase
+                        .from('profiles')
+                        .select('full_name')
+                        .eq('id', fee.student_id)
+                        .single();
+
+                    const studentName = student?.full_name || 'Öğrenci';
+                    const reasonText = options.reason ? ` (${options.reason})` : '';
+
+                    // c) "Öğrenci Ücreti" kategorisini bul
+                    const { data: category } = await supabase
+                        .from('finance_categories')
+                        .select('id')
+                        .eq('organization_id', organizationId)
+                        .eq('name', 'Öğrenci Ücreti')
+                        .eq('type', 'income')
+                        .maybeSingle();
+
+                    // d) Muhasebe iade kaydı oluştur (gider olarak)
+                    if (category) {
+                        await supabase
+                            .from('finance_transactions')
+                            .insert({
+                                organization_id: organizationId,
+                                account_id: refundAccountId,
+                                category_id: category.id,
+                                type: 'expense',
+                                amount: refundedAmount,
+                                description: `${studentName} - Ücret iptali iadesi${reasonText}`,
+                                transaction_date: new Date().toISOString(),
+                                created_by: user.id,
+                            });
+                    }
+                }
+            }
+        }
+    }
+
+    // 5. Fee durumunu "cancelled" yap
     const { error: updateError } = await supabase
         .from('student_fees')
-        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .update({
+            status: 'cancelled',
+            updated_at: new Date().toISOString(),
+            notes: options?.reason || undefined,
+        })
         .eq('id', feeId);
 
     if (updateError) return { success: false, error: updateError.message };
-    return { success: true };
+    return { success: true, refundedAmount };
 }

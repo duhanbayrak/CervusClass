@@ -19,10 +19,10 @@ export async function GET() {
         .single();
 
     // Öğrenci ve sınıfları paralel çek
-    const [studentsResult, classesResult] = await Promise.all([
+    const [studentsResult, classesResult, accountsResult] = await Promise.all([
         supabase
             .from('profiles')
-            .select('id, full_name, classes:classes!class_id(name)')
+            .select('id, full_name, class_id, classes:classes!class_id(name)')
             .eq('role_id', studentRole?.id || '')
             .is('deleted_at', null)
             .order('full_name'),
@@ -31,17 +31,24 @@ export async function GET() {
             .select('id, name')
             .is('deleted_at', null)
             .order('name'),
+        supabase
+            .from('finance_accounts')
+            .select('id, name')
+            .eq('is_active', true)
+            .order('name'),
     ]);
 
     // Öğrencileri formatla
-    const students = (studentsResult.data || []).map(s => ({
-        id: s.id,
-        full_name: s.full_name,
+    const students = (studentsResult.data || []).map((s: Record<string, unknown>) => ({
+        id: s.id as string,
+        full_name: s.full_name as string | null,
+        class_id: (s.class_id as string) || null,
         class_name: (s.classes as { name: string } | null)?.name || null,
     }));
 
     return NextResponse.json({
         students,
         classes: classesResult.data || [],
+        accounts: accountsResult.data || [],
     });
 }

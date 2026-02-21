@@ -14,6 +14,7 @@ interface FeeAssignmentDialogProps {
 interface StudentOption {
     id: string;
     full_name: string | null;
+    class_id?: string | null;
     class_name?: string | null;
 }
 
@@ -38,6 +39,7 @@ export function FeeAssignmentDialog({ onClose, currency }: FeeAssignmentDialogPr
     const [installmentCount, setInstallmentCount] = useState(1);
     const [academicPeriod, setAcademicPeriod] = useState('');
     const [notes, setNotes] = useState('');
+    const [studentSearch, setStudentSearch] = useState('');
 
     // Öğrenci ve sınıf listeleri (ayarlardan çek)
     const [students, setStudents] = useState<StudentOption[]>([]);
@@ -83,6 +85,17 @@ export function FeeAssignmentDialog({ onClose, currency }: FeeAssignmentDialogPr
         }
         return total - discount;
     };
+
+    // Öğrencileri sınıf ve arama kriterine göre filtrele
+    const filteredStudents = students.filter(s => {
+        // Sınıf filtresi
+        if (classId && s.class_id !== classId) return false;
+        // Ad araması
+        if (studentSearch) {
+            return s.full_name?.toLowerCase().includes(studentSearch.toLowerCase());
+        }
+        return true;
+    });
 
     // Formu gönder
     const handleSubmit = () => {
@@ -163,8 +176,8 @@ export function FeeAssignmentDialog({ onClose, currency }: FeeAssignmentDialogPr
                         <button
                             onClick={() => setMode('single')}
                             className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all cursor-pointer ${mode === 'single'
-                                    ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-white shadow-sm'
-                                    : 'text-gray-500 dark:text-gray-400'
+                                ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-white shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400'
                                 }`}
                         >
                             <User className="w-4 h-4" />
@@ -173,8 +186,8 @@ export function FeeAssignmentDialog({ onClose, currency }: FeeAssignmentDialogPr
                         <button
                             onClick={() => setMode('bulk')}
                             className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all cursor-pointer ${mode === 'bulk'
-                                    ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-white shadow-sm'
-                                    : 'text-gray-500 dark:text-gray-400'
+                                ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-white shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400'
                                 }`}
                         >
                             <Users className="w-4 h-4" />
@@ -182,43 +195,84 @@ export function FeeAssignmentDialog({ onClose, currency }: FeeAssignmentDialogPr
                         </button>
                     </div>
 
-                    {/* Öğrenci seçimi (tekli mod) */}
+                    {/* Öğrenci seçimi (tekli mod) — sınıf filtresi + arama */}
                     {mode === 'single' && (
+                        <div className="space-y-3">
+                            {/* Sınıf filtresi */}
+                            <div>
+                                <label htmlFor="classFilter" className={labelClass}>Sınıfa Göre Filtrele</label>
+                                <select
+                                    id="classFilter"
+                                    value={classId}
+                                    onChange={e => {
+                                        setClassId(e.target.value);
+                                        setStudentId(''); // Sınıf değişince öğrenci seçimini sıfırla
+                                    }}
+                                    className={inputClass}
+                                >
+                                    <option value="">Tüm Sınıflar</option>
+                                    {classes.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Öğrenci arama + seçim */}
+                            <div>
+                                <label htmlFor="studentSearch" className={labelClass}>Öğrenci *</label>
+                                <input
+                                    id="studentSearch"
+                                    type="text"
+                                    placeholder="Öğrenci adı ara..."
+                                    value={studentSearch}
+                                    onChange={e => setStudentSearch(e.target.value)}
+                                    className={`${inputClass} mb-2`}
+                                />
+                                <div className="max-h-40 overflow-y-auto rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5">
+                                    {filteredStudents.length > 0 ? (
+                                        filteredStudents.map(s => (
+                                            <button
+                                                key={s.id}
+                                                type="button"
+                                                onClick={() => setStudentId(s.id)}
+                                                className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors cursor-pointer ${studentId === s.id
+                                                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-medium'
+                                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'
+                                                    }`}
+                                            >
+                                                <span>{s.full_name}</span>
+                                                {s.class_name && (
+                                                    <span className="text-xs text-gray-400 dark:text-gray-500">{s.class_name}</span>
+                                                )}
+                                            </button>
+                                        ))
+                                    ) : (
+                                        <p className="text-center text-sm text-gray-400 py-4">
+                                            Öğrenci bulunamadı
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Sınıf seçimi (toplu mod) */}
+                    {mode === 'bulk' && (
                         <div>
-                            <label htmlFor="student" className={labelClass}>Öğrenci *</label>
+                            <label htmlFor="classSelect" className={labelClass}>Sınıf *</label>
                             <select
-                                id="student"
-                                value={studentId}
-                                onChange={e => setStudentId(e.target.value)}
+                                id="classSelect"
+                                value={classId}
+                                onChange={e => setClassId(e.target.value)}
                                 className={inputClass}
                             >
-                                <option value="">Öğrenci seçin...</option>
-                                {students.map(s => (
-                                    <option key={s.id} value={s.id}>
-                                        {s.full_name} {s.class_name ? `(${s.class_name})` : ''}
-                                    </option>
+                                <option value="">Sınıf seçin...</option>
+                                {classes.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
                             </select>
                         </div>
                     )}
-
-                    {/* Sınıf seçimi */}
-                    <div>
-                        <label htmlFor="classSelect" className={labelClass}>
-                            Sınıf {mode === 'bulk' ? '*' : '(opsiyonel)'}
-                        </label>
-                        <select
-                            id="classSelect"
-                            value={classId}
-                            onChange={e => setClassId(e.target.value)}
-                            className={inputClass}
-                        >
-                            <option value="">Sınıf seçin...</option>
-                            {classes.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                        </select>
-                    </div>
 
                     {/* Tutar */}
                     <div>

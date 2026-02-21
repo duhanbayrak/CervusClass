@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { X, Loader2 } from 'lucide-react';
 import { createFeePayment } from '@/lib/actions/fee-payments';
 import type { PaymentMethod } from '@/types/accounting';
+import { format } from 'date-fns';
 
 interface PaymentRecordDialogProps {
     studentId: string;
@@ -35,7 +36,7 @@ export function PaymentRecordDialog({
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
     const [referenceNo, setReferenceNo] = useState('');
     const [notes, setNotes] = useState('');
-    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+    const [paymentDate, setPaymentDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
     // Hesap listesi
     const [accounts, setAccounts] = useState<AccountOption[]>([]);

@@ -55,7 +55,9 @@ export function StudentFeeList({ fees, currency }: StudentFeeListProps) {
     // Özet istatistikler
     const activeFees = fees.filter(f => f.status === 'active').length;
     const totalNet = fees.reduce((sum, f) => sum + Number(f.net_amount), 0);
-    const totalDiscount = fees.reduce((sum, f) => sum + Number(f.discount_amount), 0);
+    // Gerçek TL karşılığı: brüt - net fark
+    const totalBrut = fees.reduce((sum, f) => sum + Number(f.total_amount), 0);
+    const totalDiscountTL = totalBrut - totalNet;
 
     const cardClass = 'rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5';
 
@@ -74,9 +76,9 @@ export function StudentFeeList({ fees, currency }: StudentFeeListProps) {
                 <div className={`${cardClass} p-4`}>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Toplam Net Tutar</p>
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">{formatCurrency(totalNet, currency)}</p>
-                    {totalDiscount > 0 && (
+                    {totalDiscountTL > 0 && (
                         <p className="text-xs text-orange-500 mt-0.5">
-                            İndirim: {formatCurrency(totalDiscount, currency)}
+                            İndirim: {formatCurrency(totalDiscountTL, currency)}
                         </p>
                     )}
                 </div>
@@ -183,7 +185,10 @@ export function StudentFeeList({ fees, currency }: StudentFeeListProps) {
                                             <td className="px-6 py-4 text-sm text-right">
                                                 {Number(fee.discount_amount) > 0 ? (
                                                     <span className="text-orange-600 dark:text-orange-400">
-                                                        -{formatCurrency(Number(fee.discount_amount), currency)}
+                                                        -{fee.discount_type === 'percentage'
+                                                            ? `%${fee.discount_amount}`
+                                                            : formatCurrency(Number(fee.discount_amount), currency)
+                                                        }
                                                     </span>
                                                 ) : (
                                                     <span className="text-gray-400">—</span>

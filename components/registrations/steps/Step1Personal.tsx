@@ -8,12 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const personalSchema = z.object({
     firstName: z.string().min(2, 'Ad en az 2 karakter olmalıdır'),
     lastName: z.string().min(2, 'Soyad en az 2 karakter olmalıdır'),
     email: z.string().email('Geçerli bir e-posta adresi giriniz'),
-    studentNumber: z.string().optional(),
+    tcNo: z.string().length(11, 'TC Kimlik No tam 11 haneli olmalıdır').regex(/^[0-9]+$/, 'Sadece rakam giriniz'),
     phone: z.string().optional(),
     birthDate: z.string().optional(),
     parentName: z.string().optional(),
@@ -31,7 +33,7 @@ export function Step1Personal() {
             firstName: formData.firstName || '',
             lastName: formData.lastName || '',
             email: formData.email || '',
-            studentNumber: formData.studentNumber || '',
+            tcNo: formData.tcNo || '',
             phone: formData.phone || '',
             birthDate: formData.birthDate || '',
             parentName: formData.parentName || '',
@@ -75,8 +77,9 @@ export function Step1Personal() {
                                 {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="studentNumber">TC Kimlik / Öğrenci No</Label>
-                                <Input id="studentNumber" {...register('studentNumber')} placeholder="Kimlik no veya okul no" />
+                                <Label htmlFor="tcNo">TC Kimlik No <span className="text-red-500">*</span></Label>
+                                <Input id="tcNo" maxLength={11} {...register('tcNo')} placeholder="11 haneli TC kimlik numarası" />
+                                {errors.tcNo && <p className="text-sm text-red-500">{errors.tcNo.message}</p>}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="phone">Telefon</Label>
@@ -108,7 +111,12 @@ export function Step1Personal() {
                 </div>
 
                 <div className="flex justify-end pt-4">
-                    <Button type="submit">İleri: Akademik Bilgiler</Button>
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }}>
+                        <Button type="submit">
+                            İleri: Akademik Bilgiler
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                    </motion.div>
                 </div>
             </form>
         </div>

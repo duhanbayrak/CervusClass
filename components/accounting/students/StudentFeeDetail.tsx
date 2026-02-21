@@ -7,7 +7,7 @@ import {
     AlertTriangle, XCircle, Loader2, Receipt,
 } from 'lucide-react';
 import type { StudentFee, FeeInstallment, FeePayment } from '@/types/accounting';
-import { cancelStudentFee } from '@/lib/actions/student-fees';
+import { CancelFeeDialog } from './CancelFeeDialog';
 import { PaymentRecordDialog } from './PaymentRecordDialog';
 
 interface StudentFeeDetailProps {
@@ -53,6 +53,7 @@ export function StudentFeeDetail({ fee, installments, payments, currency }: Stud
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+    const [showCancelDialog, setShowCancelDialog] = useState(false);
     const [selectedInstallmentId, setSelectedInstallmentId] = useState<string | null>(null);
 
     if (!fee) {
@@ -80,13 +81,9 @@ export function StudentFeeDetail({ fee, installments, payments, currency }: Stud
     const remaining = Number(fee.net_amount) - totalPaid;
     const progressPercent = Number(fee.net_amount) > 0 ? Math.min((totalPaid / Number(fee.net_amount)) * 100, 100) : 0;
 
-    // Ücret iptal
+    // Ücret iptal — modal aç
     const handleCancel = () => {
-        if (!confirm('Bu ücreti iptal etmek istediğinize emin misiniz?')) return;
-        startTransition(async () => {
-            await cancelStudentFee(fee.id);
-            router.refresh();
-        });
+        setShowCancelDialog(true);
     };
 
     // Ödeme kaydet
@@ -143,7 +140,10 @@ export function StudentFeeDetail({ fee, installments, payments, currency }: Stud
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">İndirim</p>
                             <p className="text-lg font-semibold text-orange-600 dark:text-orange-400">
-                                -{formatCurrency(Number(fee.discount_amount), currency)}
+                                -{fee.discount_type === 'percentage'
+                                    ? `%${fee.discount_amount}`
+                                    : formatCurrency(Number(fee.discount_amount), currency)
+                                }
                             </p>
                             {fee.discount_reason && (
                                 <p className="text-xs text-gray-400 mt-0.5">{fee.discount_reason}</p>
@@ -303,6 +303,16 @@ export function StudentFeeDetail({ fee, installments, payments, currency }: Stud
                         setShowPaymentDialog(false);
                         setSelectedInstallmentId(null);
                     }}
+                />
+            )}
+
+            {/* Ücret iptal dialog */}
+            {showCancelDialog && (
+                <CancelFeeDialog
+                    fee={fee}
+                    installments={installments}
+                    currency={currency}
+                    onClose={() => setShowCancelDialog(false)}
                 />
             )}
         </div>

@@ -2,6 +2,7 @@
 
 import { getAuthContext } from '@/lib/auth-context';
 import type { FinanceCategory, FinanceTransaction, TransactionType } from '@/types/accounting';
+import { getDateRange } from '@/lib/utils/date';
 
 // =============================================
 // Kategori İşlemleri
@@ -250,7 +251,8 @@ export const createTransaction = createFinanceTransaction;
 /**
  * Dashboard için son N işlemi getirir.
  */
-export async function getRecentTransactions(limit = 10): Promise<FinanceTransaction[]> {
-    const result = await getFinanceTransactions({ limit });
+export async function getRecentTransactions(limit = 10, period: string = 'yearly'): Promise<FinanceTransaction[]> {
+    const { startDate, endDate } = getDateRange(period);
+    const result = await getFinanceTransactions({ limit, start_date: startDate, end_date: endDate });
     return result.data;
 }

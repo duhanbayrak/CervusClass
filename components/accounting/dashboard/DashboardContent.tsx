@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { motion } from 'framer-motion';
 import {
     TrendingUp,
     TrendingDown,
@@ -93,7 +95,19 @@ export default function DashboardContent({
     overdueInstallments,
     recentTransactions,
 }: DashboardContentProps) {
-    const [distributionTab, setDistributionTab] = useState<'income' | 'expense'>('expense');
+    const [distributionTab, setDistributionTab] = useState<'income' | 'expense'>('income');
+
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
+    const currentPeriod = searchParams.get('period') || 'yearly';
+
+    const handlePeriodChange = (period: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('period', period);
+        router.push(`${pathname}?${params.toString()}`);
+    };
 
     // Trend grafiği için max değer hesapla
     const maxTrendValue = Math.max(
@@ -106,14 +120,49 @@ export default function DashboardContent({
 
     return (
         <div className="space-y-6">
-            {/* Sayfa Başlığı */}
-            <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    Finansal Dashboard
-                </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {new Date().getFullYear()} yılı finansal özet
-                </p>
+            {/* Sayfa Başlığı ve Filtreler */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        Finansal Dashboard
+                    </h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        {new Date().getFullYear()} yılı finansal özet
+                    </p>
+                </div>
+
+                {/* Periyot Seçici */}
+                <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg self-start sm:self-auto overflow-x-auto">
+                    {[
+                        { value: 'daily', label: 'Günlük' },
+                        { value: 'weekly', label: 'Haftalık' },
+                        { value: 'monthly', label: 'Bu Ay' },
+                        { value: 'last_month', label: 'Geçen Ay' },
+                        { value: 'yearly', label: 'Yıllık' },
+                    ].map(p => {
+                        const isActive = currentPeriod === p.value;
+                        return (
+                            <button
+                                key={p.value}
+                                onClick={() => handlePeriodChange(p.value)}
+                                className={`relative px-4 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer z-0 ${isActive
+                                    ? 'text-indigo-600 dark:text-indigo-400'
+                                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                            >
+                                {isActive && (
+                                    <motion.div
+                                        layoutId="activePeriodTab"
+                                        className="absolute inset-0 bg-white dark:bg-gray-700 shadow-sm rounded-md -z-10"
+                                        initial={false}
+                                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                    />
+                                )}
+                                <span className="relative z-10">{p.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
 
             {/* ==================== ÖZET KARTLAR ==================== */}
@@ -228,25 +277,32 @@ export default function DashboardContent({
                             Kategori Dağılımı
                         </h2>
                         {/* Toggle */}
-                        <div className="flex rounded-lg bg-gray-100 dark:bg-white/5 p-0.5">
-                            <button
-                                onClick={() => setDistributionTab('income')}
-                                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${distributionTab === 'income'
-                                        ? 'bg-white dark:bg-gray-800 text-emerald-600 shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                                    }`}
-                            >
-                                Gelir
-                            </button>
-                            <button
-                                onClick={() => setDistributionTab('expense')}
-                                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${distributionTab === 'expense'
-                                        ? 'bg-white dark:bg-gray-800 text-red-500 shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                                    }`}
-                            >
-                                Gider
-                            </button>
+                        <div className="flex rounded-lg bg-gray-100 dark:bg-gray-800 p-1">
+                            {['income', 'expense'].map((tabKey) => {
+                                const isIncome = tabKey === 'income';
+                                const isActive = distributionTab === tabKey;
+
+                                return (
+                                    <button
+                                        key={tabKey}
+                                        onClick={() => setDistributionTab(tabKey as 'income' | 'expense')}
+                                        className={`relative px-4 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer z-0 ${isActive
+                                            ? isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'
+                                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                                            }`}
+                                    >
+                                        {isActive && (
+                                            <motion.div
+                                                layoutId="activeDistributionTab"
+                                                className="absolute inset-0 bg-white dark:bg-gray-700 shadow-sm rounded-md -z-10"
+                                                initial={false}
+                                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                            />
+                                        )}
+                                        <span className="relative z-10">{isIncome ? 'Gelir' : 'Gider'}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 
@@ -347,8 +403,8 @@ export default function DashboardContent({
                                 >
                                     {/* Gelir/Gider ikonu */}
                                     <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${tx.type === 'income'
-                                            ? 'bg-emerald-50 dark:bg-emerald-500/10'
-                                            : 'bg-red-50 dark:bg-red-500/10'
+                                        ? 'bg-emerald-50 dark:bg-emerald-500/10'
+                                        : 'bg-red-50 dark:bg-red-500/10'
                                         }`}>
                                         {tx.type === 'income'
                                             ? <ArrowUpRight className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -368,8 +424,8 @@ export default function DashboardContent({
 
                                     {/* Tutar */}
                                     <span className={`text-sm font-semibold shrink-0 ${tx.type === 'income'
-                                            ? 'text-emerald-600 dark:text-emerald-400'
-                                            : 'text-red-500 dark:text-red-400'
+                                        ? 'text-emerald-600 dark:text-emerald-400'
+                                        : 'text-red-500 dark:text-red-400'
                                         }`}>
                                         {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                                     </span>
@@ -427,8 +483,8 @@ function SummaryCard({ title, value, icon, color, highlight }: SummaryCardProps)
     const c = colorMap[color];
     return (
         <div className={`relative overflow-hidden rounded-2xl border p-4 transition-shadow hover:shadow-md ${highlight
-                ? 'border-red-200 dark:border-red-500/20 bg-red-50/50 dark:bg-red-500/5'
-                : 'border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900'
+            ? 'border-red-200 dark:border-red-500/20 bg-red-50/50 dark:bg-red-500/5'
+            : 'border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900'
             }`}>
             {/* İkon */}
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${c.bg}`}>
