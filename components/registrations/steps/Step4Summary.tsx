@@ -153,7 +153,7 @@ export function Step4Summary() {
                             </div>
                             <div className="grid grid-cols-2">
                                 <span className="font-medium text-muted-foreground">Adres:</span>
-                                <span className="truncate" title={formData.parentAddress}>{formData.parentAddress || '-'}</span>
+                                <span>{formData.parentAddress || '-'}</span>
                             </div>
                             <div className="h-px bg-border my-2" />
                             <div className="grid grid-cols-2">
