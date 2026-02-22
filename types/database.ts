@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -459,6 +459,63 @@ export type Database = {
           },
         ]
       }
+      finance_services: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string
+          type: string
+          unit_price: number
+          updated_at: string
+          vat_rate: number
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id: string
+          type: string
+          unit_price?: number
+          updated_at?: string
+          vat_rate?: number
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string
+          type?: string
+          unit_price?: number
+          updated_at?: string
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_services_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_services_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_settings: {
         Row: {
           academic_periods: Json
@@ -516,9 +573,13 @@ export type Database = {
           recurring_period: string | null
           reference_no: string | null
           related_payment_id: string | null
+          service_id: string | null
+          subtotal: number | null
           transaction_date: string
           transfer_to_account_id: string | null
           type: string
+          vat_amount: number | null
+          vat_rate: number | null
         }
         Insert: {
           account_id: string
@@ -535,9 +596,13 @@ export type Database = {
           recurring_period?: string | null
           reference_no?: string | null
           related_payment_id?: string | null
+          service_id?: string | null
+          subtotal?: number | null
           transaction_date?: string
           transfer_to_account_id?: string | null
           type: string
+          vat_amount?: number | null
+          vat_rate?: number | null
         }
         Update: {
           account_id?: string
@@ -554,9 +619,13 @@ export type Database = {
           recurring_period?: string | null
           reference_no?: string | null
           related_payment_id?: string | null
+          service_id?: string | null
+          subtotal?: number | null
           transaction_date?: string
           transfer_to_account_id?: string | null
           type?: string
+          vat_amount?: number | null
+          vat_rate?: number | null
         }
         Relationships: [
           {
@@ -592,6 +661,13 @@ export type Database = {
             columns: ["related_payment_id"]
             isOneToOne: false
             referencedRelation: "fee_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_transactions_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "finance_services"
             referencedColumns: ["id"]
           },
           {
@@ -725,6 +801,44 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          title: string
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          title: string
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          title?: string
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string
@@ -772,6 +886,7 @@ export type Database = {
           search_vector: unknown
           start_date: string | null
           student_number: string | null
+          tc_no: string | null
           title: string | null
         }
         Insert: {
@@ -793,6 +908,7 @@ export type Database = {
           search_vector?: unknown
           start_date?: string | null
           student_number?: string | null
+          tc_no?: string | null
           title?: string | null
         }
         Update: {
@@ -814,6 +930,7 @@ export type Database = {
           search_vector?: unknown
           start_date?: string | null
           student_number?: string | null
+          tc_no?: string | null
           title?: string | null
         }
         Relationships: [
@@ -952,10 +1069,13 @@ export type Database = {
           net_amount: number
           notes: string | null
           organization_id: string
+          service_id: string | null
           status: string
           student_id: string
           total_amount: number
           updated_at: string
+          vat_amount: number | null
+          vat_rate: number | null
         }
         Insert: {
           academic_period: string
@@ -969,10 +1089,13 @@ export type Database = {
           net_amount: number
           notes?: string | null
           organization_id: string
+          service_id?: string | null
           status?: string
           student_id: string
           total_amount: number
           updated_at?: string
+          vat_amount?: number | null
+          vat_rate?: number | null
         }
         Update: {
           academic_period?: string
@@ -986,10 +1109,13 @@ export type Database = {
           net_amount?: number
           notes?: string | null
           organization_id?: string
+          service_id?: string | null
           status?: string
           student_id?: string
           total_amount?: number
           updated_at?: string
+          vat_amount?: number | null
+          vat_rate?: number | null
         }
         Relationships: [
           {
@@ -1004,6 +1130,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_fees_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "finance_services"
             referencedColumns: ["id"]
           },
           {
@@ -1113,6 +1246,7 @@ export type Database = {
       }
       get_auth_org_id: { Args: never; Returns: string }
       get_auth_org_id_safe: { Args: never; Returns: string }
+      get_auth_role: { Args: never; Returns: string }
       get_exam_stats: {
         Args: {
           p_class_id?: string
@@ -1178,116 +1312,116 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-    ? R
-    : never
+  ? R
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
+    DefaultSchema["Views"])
+  ? (DefaultSchema["Tables"] &
+    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+      Row: infer R
+    }
+  ? R
+  : never
+  : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
+    Insert: infer I
+  }
+  ? I
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Insert: infer I
+  }
+  ? I
+  : never
+  : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
+    Update: infer U
+  }
+  ? U
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Update: infer U
+  }
+  ? U
+  : never
+  : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Enums"]
+  | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+  : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
+  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+  : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["CompositeTypes"]
+  | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+  : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  : never
 
 export const Constants = {
   public: {
@@ -1298,28 +1432,16 @@ export const Constants = {
   },
 } as const
 
-// ============================================
-// Projeye özel tip alias'ları
-// ============================================
-
-/** Profil satır tipi */
+// --- Custom helper type aliases ---
 export type Profile = Tables<'profiles'>;
-/** Profil rolü */
 export type ProfileRole = 'student' | 'teacher' | 'admin' | 'superadmin' | 'super_admin';
-/** Sınıf satır tipi */
+export type Schedule = Tables<'schedule'>;
+export type Homework = Tables<'homework'>;
+export type HomeworkSubmission = Tables<'homework_submissions'>;
+export type ExamResult = Tables<'exam_results'>;
+export type StudySession = Tables<'study_sessions'>;
 export type Class = Tables<'classes'>;
-/** Sınıf + öğrenci sayısı */
 export interface ClassWithCount extends Class {
   student_count?: number;
   profiles?: { count: number }[];
 }
-/** Ders programı satır tipi */
-export type Schedule = Tables<'schedule'>;
-/** Ödev satır tipi */
-export type Homework = Tables<'homework'>;
-/** Ödev teslimi satır tipi */
-export type HomeworkSubmission = Tables<'homework_submissions'>;
-/** Sınav sonucu satır tipi */
-export type ExamResult = Tables<'exam_results'>;
-/** Etüt oturumu satır tipi */
-export type StudySession = Tables<'study_sessions'>;

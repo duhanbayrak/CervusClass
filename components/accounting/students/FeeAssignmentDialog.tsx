@@ -2,9 +2,16 @@
 
 import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Loader2, Users, User } from 'lucide-react';
-import { createStudentFee, bulkAssignFees } from '@/lib/actions/student-fees';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { X, Loader2, Users, User, Plus, Trash2, Calculator, ReceiptText } from 'lucide-react';
+import { assignMultipleServicesToStudent, bulkAssignFees } from '@/lib/actions/student-fees';
 import { getFinanceSettings } from '@/lib/actions/finance-settings';
+import { getFinanceServices } from '@/lib/actions/finance-services';
+import { getFinanceAccounts } from '@/lib/actions/finance-accounts';
+import type { FinanceService, FinanceAccount } from '@/types/accounting';
+import { Button } from '@/components/ui/button';
 
 interface FeeAssignmentDialogProps {
     onClose: () => void;
@@ -23,423 +30,491 @@ interface ClassOption {
     name: string;
 }
 
+// Zod Schema
+const serviceItemSchema = z.object({
+    serviceId: z.string().min(1, 'Hizmet seçilmelidir'),
+    serviceName: z.string().optional(),
+    unitPrice: z.coerce.number().min(0),
+    vatRate: z.coerce.number().min(0).default(0),
+    discountAmount: z.coerce.number().min(0).default(0),
+    discountType: z.enum(['percentage', 'fixed']).optional().default('fixed'),
+    discountReason: z.string().optional(),
+    downPayment: z.coerce.number().min(0).default(0),
+    downPaymentAccountId: z.string().optional(),
+    installmentCount: z.coerce.number().min(1, 'Taksit sayısı en az 1 olmalıdır').default(1),
+    startMonth: z.string().optional(),
+    paymentDueDay: z.coerce.number().min(1).max(31).default(5),
+}).superRefine((data, ctx) => {
+    const netAmount = data.discountType === 'percentage'
+        ? data.unitPrice - (data.unitPrice * (data.discountAmount / 100))
+        : data.unitPrice - data.discountAmount;
+
+    const vatAmount = netAmount * (data.vatRate / 100);
+    const totalWithVat = netAmount + vatAmount;
+
+    if (data.downPayment > 0 && !data.downPaymentAccountId) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Hesap seçilmelidir", path: ["downPaymentAccountId"] });
+    }
+    if (data.downPayment > totalWithVat) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Peşinat KDV dahil net tutardan (" + totalWithVat.toFixed(2) + "₺) büyük olamaz", path: ["downPayment"] });
+    }
+});
+
+const formSchema = z.object({
+    studentId: z.string().optional(),
+    classId: z.string().optional(),
+    academicPeriod: z.string().min(1, 'Dönem gereklidir'),
+    services: z.array(serviceItemSchema).min(1, "En az bir hizmet / ürün eklemelisiniz.")
+}).superRefine((data, ctx) => {
+    // Single modunda student, bulk modunda class id check yapılır.
+    // Bunu component içinde handle edeceğiz, o yüzden basic doğrulama bırakıldı
+});
+
+type FormData = z.infer<typeof formSchema>;
+
 export function FeeAssignmentDialog({ onClose, currency }: FeeAssignmentDialogProps) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [mode, setMode] = useState<'single' | 'bulk'>('single');
     const [message, setMessage] = useState('');
 
-    // Form state
-    const [studentId, setStudentId] = useState('');
-    const [classId, setClassId] = useState('');
-    const [totalAmount, setTotalAmount] = useState('');
-    const [discountAmount, setDiscountAmount] = useState('');
-    const [discountType, setDiscountType] = useState<'fixed' | 'percentage'>('fixed');
-    const [discountReason, setDiscountReason] = useState('');
-    const [installmentCount, setInstallmentCount] = useState(1);
-    const [academicPeriod, setAcademicPeriod] = useState('');
-    const [notes, setNotes] = useState('');
     const [studentSearch, setStudentSearch] = useState('');
-
-    // Öğrenci ve sınıf listeleri (ayarlardan çek)
     const [students, setStudents] = useState<StudentOption[]>([]);
     const [classes, setClasses] = useState<ClassOption[]>([]);
-    const [paymentDueDay, setPaymentDueDay] = useState(1);
 
-    // Verileri yükle
+    // Yardımcı Veriler
+    const [servicesData, setServicesData] = useState<FinanceService[]>([]);
+    const [accountsData, setAccountsData] = useState<FinanceAccount[]>([]);
+    const [defaultDueDay, setDefaultDueDay] = useState(5);
+
+    const { register, handleSubmit, control, watch, setValue, formState: { errors } } = useForm<FormData>({
+        resolver: zodResolver(formSchema as any),
+        defaultValues: {
+            studentId: '',
+            classId: '',
+            academicPeriod: new Date().getFullYear().toString() + '-' + (new Date().getFullYear() + 1).toString(),
+            services: []
+        }
+    });
+
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: "services"
+    });
+
+    const watchServices = watch('services') || [];
+    const watchClassId = watch('classId');
+    const watchStudentId = watch('studentId');
+
+    // Verileri Yükle
     useEffect(() => {
         async function loadData() {
-            // Ayarları çek
-            const settings = await getFinanceSettings();
-            if (settings) {
-                setInstallmentCount(settings.default_installments || 1);
-                setPaymentDueDay(settings.payment_due_day || 1);
-                // Aktif akademik dönemi bul
-                const activePeriod = settings.academic_periods?.find(
-                    (p: { is_active: boolean; name: string }) => p.is_active
-                );
-                if (activePeriod) setAcademicPeriod(activePeriod.name);
-            }
-
-            // Öğrenci ve sınıfları çekmek için fetch kullan
             try {
+                const settings = await getFinanceSettings();
+                if (settings) {
+                    setDefaultDueDay(settings.payment_due_day || 5);
+                    const activePeriod = settings.academic_periods?.find(
+                        (p: { is_active: boolean; name: string }) => p.is_active
+                    );
+                    if (activePeriod) setValue('academicPeriod', activePeriod.name);
+                }
+
+                const srvs = await getFinanceServices({ type: 'income', is_active: true });
+                setServicesData(srvs || []);
+
+                const accs = await getFinanceAccounts();
+                setAccountsData(accs || []);
+
                 const res = await fetch('/api/admin/accounting/lookup');
                 if (res.ok) {
                     const data = await res.json();
                     setStudents(data.students || []);
                     setClasses(data.classes || []);
                 }
-            } catch {
-                // Lookup henüz yoksa boş bırak
+            } catch (err) {
+                console.error("Data load error:", err);
             }
         }
         loadData();
-    }, []);
+    }, [setValue]);
 
-    // Net tutar hesapla
-    const calculateNet = () => {
-        const total = parseFloat(totalAmount) || 0;
-        const discount = parseFloat(discountAmount) || 0;
-        if (discountType === 'percentage') {
-            return total * (1 - discount / 100);
-        }
-        return total - discount;
+    const handleAddService = () => {
+        append({
+            serviceId: '',
+            serviceName: '',
+            unitPrice: 0,
+            vatRate: 0,
+            discountAmount: 0,
+            discountType: 'fixed',
+            discountReason: '',
+            downPayment: 0,
+            downPaymentAccountId: '',
+            installmentCount: 1,
+            startMonth: '',
+            paymentDueDay: defaultDueDay
+        });
     };
 
-    // Öğrencileri sınıf ve arama kriterine göre filtrele
+    const handleServiceSelect = (index: number, serviceId: string) => {
+        const selected = servicesData.find(s => s.id === serviceId);
+        if (selected) {
+            setValue(`services.${index}.serviceId`, selected.id, { shouldValidate: true });
+            setValue(`services.${index}.serviceName`, selected.name);
+            setValue(`services.${index}.unitPrice`, selected.unit_price);
+            setValue(`services.${index}.vatRate`, selected.vat_rate);
+        }
+    };
+
     const filteredStudents = students.filter(s => {
-        // Sınıf filtresi
-        if (classId && s.class_id !== classId) return false;
-        // Ad araması
+        if (watchClassId && s.class_id !== watchClassId) return false;
         if (studentSearch) {
             return s.full_name?.toLowerCase().includes(studentSearch.toLowerCase());
         }
         return true;
     });
 
-    // Formu gönder
-    const handleSubmit = () => {
+    // Ana Gönderim (Submit)
+    const onSubmit = (data: FormData) => {
         startTransition(async () => {
-            if (mode === 'single') {
-                if (!studentId || !totalAmount) {
-                    setMessage('Hata: Öğrenci ve tutar zorunludur.');
-                    return;
-                }
+            setMessage('');
 
-                const result = await createStudentFee({
-                    student_id: studentId,
-                    class_id: classId || undefined,
-                    total_amount: parseFloat(totalAmount),
-                    discount_amount: parseFloat(discountAmount) || 0,
-                    discount_type: parseFloat(discountAmount) > 0 ? discountType : undefined,
-                    discount_reason: discountReason || undefined,
-                    installment_count: installmentCount,
-                    academic_period: academicPeriod || new Date().getFullYear().toString(),
-                    notes: notes || undefined,
-                    payment_due_day: paymentDueDay,
+            if (mode === 'single') {
+                if (!data.studentId) return setMessage("Hata: Öğrenci seçimi zorunludur.");
+
+                const res = await assignMultipleServicesToStudent({
+                    studentId: data.studentId,
+                    classId: data.classId || undefined,
+                    academicPeriod: data.academicPeriod,
+                    services: data.services
                 });
 
-                if (result.success) {
+                if (res.success) {
                     router.refresh();
                     onClose();
                 } else {
-                    setMessage(`Hata: ${result.error}`);
+                    setMessage(`Hata: ${res.error}`);
                 }
             } else {
-                // Toplu atama
-                if (!classId || !totalAmount) {
-                    setMessage('Hata: Sınıf ve tutar zorunludur.');
-                    return;
+                if (!data.classId) return setMessage("Hata: Sınıf seçimi zorunludur.");
+                // Bulk mod geçici adaptasyon: her öğrenciye loop atılacak
+                // Performanslı olması için bulkAssignFees benzeri bir yapıya ihtiyaç var ama 
+                // mevcut fonksiyonda loop yapılabilir
+
+                const classStudents = students.filter(s => s.class_id === data.classId);
+                if (classStudents.length === 0) return setMessage("Hata: Sınıfta kayıtlı öğrenci yok.");
+
+                let count = 0;
+                for (const s of classStudents) {
+                    await assignMultipleServicesToStudent({
+                        studentId: s.id,
+                        classId: data.classId,
+                        academicPeriod: data.academicPeriod,
+                        services: data.services
+                    });
+                    count++;
                 }
 
-                const result = await bulkAssignFees({
-                    class_id: classId,
-                    total_amount: parseFloat(totalAmount),
-                    installment_count: installmentCount,
-                    academic_period: academicPeriod || new Date().getFullYear().toString(),
-                    payment_due_day: paymentDueDay,
-                });
-
-                if (result.success) {
-                    setMessage(`${result.assigned_count} öğrenciye ücret atandı.`);
-                    setTimeout(() => {
-                        router.refresh();
-                        onClose();
-                    }, 1500);
-                } else {
-                    setMessage(`Hata: ${result.error}`);
-                }
+                setMessage(`${count} öğrenciye ücret atandı.`);
+                setTimeout(() => {
+                    router.refresh();
+                    onClose();
+                }, 1500);
             }
         });
     };
 
-    const inputClass = 'w-full rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors';
-    const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5';
+    // Fiyat Özeti
+    const calculateTotals = () => {
+        let totalNet = 0;
+        let totalVat = 0;
+        let totalFinal = 0;
+        let totalDownPayment = 0;
+
+        watchServices.forEach(item => {
+            const price = Number(item.unitPrice) || 0;
+            const discount = Number(item.discountAmount) || 0;
+            const isPercent = item.discountType === 'percentage';
+
+            const netPrice = isPercent ? price - (price * (discount / 100)) : price - discount;
+            const vat = netPrice * ((item.vatRate || 0) / 100);
+
+            totalNet += netPrice;
+            totalVat += vat;
+            totalFinal += (netPrice + vat);
+            totalDownPayment += Number(item.downPayment) || 0;
+        });
+
+        return { totalNet, totalVat, totalFinal, totalDownPayment, remaining: totalFinal - totalDownPayment };
+    };
+
+    const totals = calculateTotals();
+
+    // Classes
+    const inputClass = 'w-full rounded-md border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors';
+    const labelClass = 'block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1';
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-white/10 max-h-[90vh] overflow-y-auto">
-                {/* Başlık */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/5">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Ücret Ata</h3>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="w-full max-w-4xl bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-white/10 max-h-[95vh] flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/5 flex-shrink-0">
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Çoklu Hizmet Ata</h3>
+                        <p className="text-sm text-gray-500 mt-1">Öğrenciye (veya sınıfa) ait taksitli hizmet paketlerini konfigüre edin.</p>
+                    </div>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
                     >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                <div className="p-6 space-y-5">
-                    {/* Mod seçimi */}
-                    <div className="flex gap-1 rounded-lg bg-gray-100 dark:bg-white/5 p-1">
+                {/* Body */}
+                <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                    {/* Mod Seçimi */}
+                    <div className="flex gap-2 p-1 bg-gray-100 dark:bg-white/5 rounded-lg w-fit">
                         <button
-                            onClick={() => setMode('single')}
-                            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all cursor-pointer ${mode === 'single'
-                                ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-white shadow-sm'
-                                : 'text-gray-500 dark:text-gray-400'
-                                }`}
+                            onClick={() => { setMode('single'); setValue('classId', ''); setValue('studentId', ''); }}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${mode === 'single' ? 'bg-white dark:bg-gray-800 text-primary shadow-sm' : 'text-gray-500'}`}
                         >
-                            <User className="w-4 h-4" />
-                            Tekli Atama
+                            <User className="w-4 h-4" /> Tekli Atama
                         </button>
                         <button
-                            onClick={() => setMode('bulk')}
-                            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all cursor-pointer ${mode === 'bulk'
-                                ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-white shadow-sm'
-                                : 'text-gray-500 dark:text-gray-400'
-                                }`}
+                            onClick={() => { setMode('bulk'); setValue('studentId', ''); }}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${mode === 'bulk' ? 'bg-white dark:bg-gray-800 text-primary shadow-sm' : 'text-gray-500'}`}
                         >
-                            <Users className="w-4 h-4" />
-                            Toplu Atama
+                            <Users className="w-4 h-4" /> Toplu (Sınıf) Atama
                         </button>
                     </div>
 
-                    {/* Öğrenci seçimi (tekli mod) — sınıf filtresi + arama */}
-                    {mode === 'single' && (
-                        <div className="space-y-3">
-                            {/* Sınıf filtresi */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Öğrenci/Sınıf Seçim */}
+                        <div className="bg-gray-50 dark:bg-white/5 p-4 rounded-xl border border-gray-100 dark:border-white/5 space-y-4">
                             <div>
-                                <label htmlFor="classFilter" className={labelClass}>Sınıfa Göre Filtrele</label>
-                                <select
-                                    id="classFilter"
-                                    value={classId}
-                                    onChange={e => {
-                                        setClassId(e.target.value);
-                                        setStudentId(''); // Sınıf değişince öğrenci seçimini sıfırla
-                                    }}
-                                    className={inputClass}
-                                >
-                                    <option value="">Tüm Sınıflar</option>
-                                    {classes.map(c => (
-                                        <option key={c.id} value={c.id}>{c.name}</option>
-                                    ))}
-                                </select>
+                                <label className={labelClass}>Akademik Dönem</label>
+                                <input type="text" {...register('academicPeriod')} className={inputClass} />
                             </div>
 
-                            {/* Öğrenci arama + seçim */}
-                            <div>
-                                <label htmlFor="studentSearch" className={labelClass}>Öğrenci *</label>
-                                <input
-                                    id="studentSearch"
-                                    type="text"
-                                    placeholder="Öğrenci adı ara..."
-                                    value={studentSearch}
-                                    onChange={e => setStudentSearch(e.target.value)}
-                                    className={`${inputClass} mb-2`}
-                                />
-                                <div className="max-h-40 overflow-y-auto rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5">
-                                    {filteredStudents.length > 0 ? (
-                                        filteredStudents.map(s => (
-                                            <button
-                                                key={s.id}
-                                                type="button"
-                                                onClick={() => setStudentId(s.id)}
-                                                className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors cursor-pointer ${studentId === s.id
-                                                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-medium'
-                                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'
-                                                    }`}
-                                            >
-                                                <span>{s.full_name}</span>
-                                                {s.class_name && (
-                                                    <span className="text-xs text-gray-400 dark:text-gray-500">{s.class_name}</span>
-                                                )}
-                                            </button>
-                                        ))
-                                    ) : (
-                                        <p className="text-center text-sm text-gray-400 py-4">
-                                            Öğrenci bulunamadı
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Sınıf seçimi (toplu mod) */}
-                    {mode === 'bulk' && (
-                        <div>
-                            <label htmlFor="classSelect" className={labelClass}>Sınıf *</label>
-                            <select
-                                id="classSelect"
-                                value={classId}
-                                onChange={e => setClassId(e.target.value)}
-                                className={inputClass}
-                            >
-                                <option value="">Sınıf seçin...</option>
-                                {classes.map(c => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-
-                    {/* Tutar */}
-                    <div>
-                        <label htmlFor="totalAmount" className={labelClass}>Toplam Tutar *</label>
-                        <div className="relative">
-                            <input
-                                id="totalAmount"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder="0.00"
-                                value={totalAmount}
-                                onChange={e => setTotalAmount(e.target.value)}
-                                className={`${inputClass} pr-12`}
-                            />
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">
-                                {currency}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* İndirim (tekli mod) */}
-                    {mode === 'single' && (
-                        <div className="space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
+                            {mode === 'single' ? (
+                                <>
+                                    <div>
+                                        <label className={labelClass}>Sınıfa Göre Filtrele (Opsiyonel)</label>
+                                        <select {...register('classId')} className={inputClass} onChange={(e) => setValue('classId', e.target.value)}>
+                                            <option value="">Tüm Sınıflar</option>
+                                            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Öğrenci Ara / Seç *</label>
+                                        <input
+                                            type="text"
+                                            placeholder="İsim ara..."
+                                            value={studentSearch}
+                                            onChange={e => setStudentSearch(e.target.value)}
+                                            className={`${inputClass} mb-2`}
+                                        />
+                                        <div className="max-h-36 overflow-y-auto rounded-md border border-gray-200 dark:border-white/10 bg-white dark:bg-transparent">
+                                            {filteredStudents.map(s => (
+                                                <button
+                                                    key={s.id}
+                                                    type="button"
+                                                    onClick={() => setValue('studentId', s.id, { shouldValidate: true })}
+                                                    className={`w-full flex justify-between px-3 py-2 text-sm text-left transition-colors ${watchStudentId === s.id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'}`}
+                                                >
+                                                    <span>{s.full_name}</span>
+                                                    <span className="text-xs text-muted-foreground">{s.class_name}</span>
+                                                </button>
+                                            ))}
+                                            {filteredStudents.length === 0 && <p className="text-xs text-center py-3 text-muted-foreground">Kayıtlı öğrenci yok</p>}
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
                                 <div>
-                                    <label htmlFor="discountAmount" className={labelClass}>İndirim</label>
-                                    <input
-                                        id="discountAmount"
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        placeholder="0.00"
-                                        value={discountAmount}
-                                        onChange={e => setDiscountAmount(e.target.value)}
-                                        className={inputClass}
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="discountType" className={labelClass}>İndirim Tipi</label>
-                                    <select
-                                        id="discountType"
-                                        value={discountType}
-                                        onChange={e => setDiscountType(e.target.value as 'fixed' | 'percentage')}
-                                        className={inputClass}
-                                    >
-                                        <option value="fixed">Sabit ({currency})</option>
-                                        <option value="percentage">Yüzde (%)</option>
+                                    <label className={labelClass}>Sınıf Seç *</label>
+                                    <select {...register('classId')} className={inputClass}>
+                                        <option value="">Sınıf seçin...</option>
+                                        {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                     </select>
+                                    <p className="text-xs text-orange-500 mt-2">Bu sınıftaki tüm öğrencilere aşağıdaki sepet aynen kopyalanacaktır.</p>
                                 </div>
-                            </div>
-                            {parseFloat(discountAmount) > 0 && (
-                                <input
-                                    type="text"
-                                    placeholder="İndirim sebebi (opsiyonel)"
-                                    value={discountReason}
-                                    onChange={e => setDiscountReason(e.target.value)}
-                                    className={inputClass}
-                                />
                             )}
                         </div>
-                    )}
 
-                    {/* Taksit & Dönem */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label htmlFor="installmentCount" className={labelClass}>Taksit Sayısı</label>
-                            <select
-                                id="installmentCount"
-                                value={installmentCount}
-                                onChange={e => setInstallmentCount(Number(e.target.value))}
-                                className={inputClass}
-                            >
-                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
-                                    <option key={n} value={n}>
-                                        {n === 1 ? 'Peşin' : `${n} Taksit`}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label htmlFor="academicPeriod" className={labelClass}>Akademik Dönem</label>
-                            <input
-                                id="academicPeriod"
-                                type="text"
-                                placeholder="örn: 2025-2026"
-                                value={academicPeriod}
-                                onChange={e => setAcademicPeriod(e.target.value)}
-                                className={inputClass}
-                            />
+                        {/* Canlı Özet */}
+                        <div className="bg-primary/5 border border-primary/20 p-4 rounded-xl flex flex-col justify-center">
+                            <h4 className="font-semibold text-primary mb-3 flex items-center"><Calculator className="w-5 h-5 mr-2" /> Sepet Özeti</h4>
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between text-muted-foreground">
+                                    <span>Net (KDV Hariç):</span>
+                                    <span>{totals.totalNet.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currency}</span>
+                                </div>
+                                <div className="flex justify-between text-muted-foreground">
+                                    <span>KDV Toplam:</span>
+                                    <span>{totals.totalVat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currency}</span>
+                                </div>
+                                <div className="h-px bg-primary/20 my-1" />
+                                <div className="flex justify-between font-bold text-primary text-base">
+                                    <span>Genel Toplam:</span>
+                                    <span>{totals.totalFinal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currency}</span>
+                                </div>
+                                {totals.totalDownPayment > 0 && (
+                                    <div className="flex justify-between text-green-600 font-medium">
+                                        <span>Peşinat (Alındı):</span>
+                                        <span>-{totals.totalDownPayment.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currency}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between font-bold mt-2">
+                                    <span>Taksitlendirilecek:</span>
+                                    <span>{totals.remaining.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currency}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Notlar */}
-                    {mode === 'single' && (
-                        <div>
-                            <label htmlFor="notes" className={labelClass}>Not (opsiyonel)</label>
-                            <textarea
-                                id="notes"
-                                placeholder="Ücretle ilgili ekstra bilgiler..."
-                                value={notes}
-                                onChange={e => setNotes(e.target.value)}
-                                rows={2}
-                                className={inputClass}
-                            />
+                    {/* Hizmetler Sepeti */}
+                    <div>
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className="font-bold flex items-center"><ReceiptText className="w-5 h-5 mr-2" /> Eklenecek Hizmet Kalemleri</h4>
+                            <Button type="button" onClick={handleAddService} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                                <Plus className="w-4 h-4 mr-1" /> Hizmet Ekle
+                            </Button>
                         </div>
-                    )}
 
-                    {/* Hesaplama özeti (tekli mod) */}
-                    {mode === 'single' && parseFloat(totalAmount) > 0 && (
-                        <div className="rounded-lg bg-gray-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/5 p-4 space-y-1">
-                            <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300">
-                                <span>Brüt Tutar</span>
-                                <span>{new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(parseFloat(totalAmount))}</span>
-                            </div>
-                            {parseFloat(discountAmount) > 0 && (
-                                <div className="flex justify-between text-sm text-orange-600 dark:text-orange-400">
-                                    <span>İndirim</span>
-                                    <span>
-                                        -{discountType === 'percentage'
-                                            ? `%${discountAmount}`
-                                            : new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(parseFloat(discountAmount))
-                                        }
-                                    </span>
+                        <div className="space-y-4">
+                            {fields.map((field, index) => {
+                                const svcErrors = errors.services?.[index] as any;
+                                return (
+                                    <div key={field.id} className="p-4 border border-gray-200 dark:border-white/10 rounded-xl bg-gray-50/50 dark:bg-white/[0.02] shadow-sm relative">
+                                        <button
+                                            type="button"
+                                            onClick={() => remove(index)}
+                                            className="absolute -top-3 -right-3 bg-red-100 hover:bg-red-200 text-red-600 p-2 rounded-full transition-colors drop-shadow-sm"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                            {/* Hizmet & Fiyat */}
+                                            <div className="col-span-1 md:col-span-2 space-y-3">
+                                                <div>
+                                                    <label className={labelClass}>Hizmet/Ürün *</label>
+                                                    <select
+                                                        className={inputClass}
+                                                        value={watchServices[index]?.serviceId || ''}
+                                                        onChange={e => handleServiceSelect(index, e.target.value)}
+                                                    >
+                                                        <option value="">Seçiniz...</option>
+                                                        {servicesData.map(s => <option key={s.id} value={s.id}>{s.name} (₺{s.unit_price})</option>)}
+                                                    </select>
+                                                    {svcErrors?.serviceId && <p className="text-red-500 text-xs mt-1">{svcErrors.serviceId.message}</p>}
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div>
+                                                        <label className={labelClass}>Birim Fiyat</label>
+                                                        <div className="relative">
+                                                            <input type="number" step="0.01" {...register(`services.${index}.unitPrice`)} className={`${inputClass} pr-8`} />
+                                                            <span className="absolute right-3 top-2 text-xs text-muted-foreground">{currency}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label className={labelClass}>KDV Oranı (%)</label>
+                                                        <input type="number" step="1" {...register(`services.${index}.vatRate`)} className={inputClass} />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* İndirim */}
+                                            <div className="col-span-1 border-l border-gray-200 dark:border-white/10 pl-4 space-y-3">
+                                                <div>
+                                                    <label className={labelClass}>İndirim Tipi</label>
+                                                    <select {...register(`services.${index}.discountType`)} className={inputClass}>
+                                                        <option value="fixed">Tutar ({currency})</option>
+                                                        <option value="percentage">Yüzde (%)</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className={labelClass}>İndirim Miktarı</label>
+                                                    <input type="number" step="0.01" {...register(`services.${index}.discountAmount`)} className={inputClass} />
+                                                </div>
+                                                <div>
+                                                    <label className={labelClass}>İnd. Sebebi</label>
+                                                    <input type="text" placeholder="opsiyonel" {...register(`services.${index}.discountReason`)} className={inputClass} />
+                                                </div>
+                                            </div>
+
+                                            {/* Ödeme Planı (Peşinat/Taksit) */}
+                                            <div className="col-span-1 border-l border-gray-200 dark:border-white/10 pl-4 space-y-3">
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div className="col-span-2">
+                                                        <label className={labelClass}>Alınan Peşinat ({currency})</label>
+                                                        <input type="number" step="0.01" {...register(`services.${index}.downPayment`)} className={inputClass} />
+                                                        {svcErrors?.downPayment && <p className="text-red-500 text-[10px] mt-1 break-words">{svcErrors.downPayment.message}</p>}
+                                                    </div>
+
+                                                    {Number(watchServices[index]?.downPayment) > 0 && (
+                                                        <div className="col-span-2">
+                                                            <label className={labelClass}>Peşinat Kasası *</label>
+                                                            <select {...register(`services.${index}.downPaymentAccountId`)} className={inputClass}>
+                                                                <option value="">Seçiniz...</option>
+                                                                {accountsData.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                                            </select>
+                                                            {svcErrors?.downPaymentAccountId && <p className="text-red-500 text-xs mt-1">{svcErrors.downPaymentAccountId.message}</p>}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div>
+                                                        <label className={labelClass}>Taksit Sy.</label>
+                                                        <input type="number" min="1" {...register(`services.${index}.installmentCount`)} className={inputClass} />
+                                                    </div>
+                                                    <div>
+                                                        <label className={labelClass}>Vade Günü</label>
+                                                        <input type="number" min="1" max="31" {...register(`services.${index}.paymentDueDay`)} className={inputClass} />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className={labelClass}>Taksit Baş. Ayı (Opsiyonel)</label>
+                                                    <input type="month" {...register(`services.${index}.startMonth`)} className={inputClass} />
+                                                    <span className="text-[10px] text-muted-foreground leading-tight">Girilmezse form tarihi (bu ay) baz alınır.</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                            {fields.length === 0 && (
+                                <div className="text-center py-8 rounded-xl border border-dashed border-gray-300 dark:border-white/20">
+                                    <p className="text-sm text-gray-500">Henüz hizmet eklenmedi.</p>
+                                    <Button type="button" variant="outline" size="sm" onClick={handleAddService} className="mt-3">Şimdi Ekle</Button>
                                 </div>
                             )}
-                            <div className="flex justify-between text-sm font-bold text-gray-900 dark:text-white border-t border-gray-200 dark:border-white/10 pt-1">
-                                <span>Net Tutar</span>
-                                <span>{new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(calculateNet())}</span>
-                            </div>
-                            {installmentCount > 1 && (
-                                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                                    <span>{installmentCount} taksit</span>
-                                    <span>
-                                        Taksit başı ~{new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(calculateNet() / installmentCount)}
-                                    </span>
-                                </div>
-                            )}
                         </div>
-                    )}
+                    </div>
 
-                    {/* Mesaj */}
                     {message && (
-                        <p className={`text-sm ${message.startsWith('Hata') ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
+                        <div className={`p-3 rounded-lg text-sm font-medium border ${message.startsWith('Hata') ? 'bg-red-50 border-red-200 text-red-600' : 'bg-green-50 border-green-200 text-green-700'}`}>
                             {message}
-                        </p>
+                        </div>
                     )}
                 </div>
 
-                {/* Eylem butonları */}
-                <div className="flex gap-3 px-6 py-4 border-t border-gray-100 dark:border-white/5">
-                    <button
-                        onClick={onClose}
-                        className="flex-1 rounded-xl border border-gray-200 dark:border-white/10 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
-                    >
-                        İptal
-                    </button>
-                    <button
-                        onClick={handleSubmit}
-                        disabled={isPending}
-                        className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors cursor-pointer"
+                {/* Footer */}
+                <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/[0.02] flex-shrink-0">
+                    <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>İptal</Button>
+                    <Button
+                        type="button"
+                        onClick={handleSubmit(onSubmit)}
+                        disabled={isPending || fields.length === 0}
+                        className="bg-primary hover:bg-primary/90 min-w-[150px]"
                     >
                         {isPending ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : null}
-                        {isPending ? 'Kaydediliyor...' : mode === 'single' ? 'Ücret Ata' : 'Toplu Ata'}
-                    </button>
+                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Kaydediliyor...</>
+                        ) : 'Sepeti Onayla / Ata'}
+                    </Button>
                 </div>
             </div>
         </div>

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Pencil } from 'lucide-react';
 
 interface StudentNotesTabProps {
-    role: 'admin' | 'teacher';
+    role: 'admin' | 'teacher' | 'parent';
 }
 
 export function StudentNotesTab({ role }: StudentNotesTabProps) {

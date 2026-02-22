@@ -21,6 +21,7 @@ import type {
     OverdueInstallment,
     FinanceTransaction,
 } from '@/types/accounting';
+import { CategoryIcon } from '@/components/accounting/CategoryIcon';
 
 // =============================================
 // Props
@@ -43,8 +44,8 @@ function formatCurrency(amount: number): string {
     return new Intl.NumberFormat('tr-TR', {
         style: 'currency',
         currency: 'TRY',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
     }).format(amount);
 }
 
@@ -171,6 +172,7 @@ export default function DashboardContent({
                 <SummaryCard
                     title="Toplam Gelir"
                     value={formatCurrency(summary.total_income)}
+                    subtext={<span className="text-[10px] text-gray-500">KDV Hariç: {formatCurrency(summary.total_income - summary.total_income_vat)}</span>}
                     icon={<TrendingUp className="w-5 h-5" />}
                     color="emerald"
                 />
@@ -178,6 +180,7 @@ export default function DashboardContent({
                 <SummaryCard
                     title="Toplam Gider"
                     value={formatCurrency(summary.total_expense)}
+                    subtext={<span className="text-[10px] text-gray-500">KDV Hariç: {formatCurrency(summary.total_expense - summary.total_expense_vat)}</span>}
                     icon={<TrendingDown className="w-5 h-5" />}
                     color="red"
                 />
@@ -185,8 +188,17 @@ export default function DashboardContent({
                 <SummaryCard
                     title="Net Kâr"
                     value={formatCurrency(summary.net_profit)}
+                    subtext={<span className="text-[10px] text-gray-500">Kasamdaki Para (KDV Dahil)</span>}
                     icon={<Wallet className="w-5 h-5" />}
                     color={summary.net_profit >= 0 ? 'blue' : 'red'}
+                />
+                {/* Ödenecek / Devreden KDV */}
+                <SummaryCard
+                    title={summary.net_vat < 0 ? 'Devreden KDV (Alacak)' : 'Ödenecek KDV (Net)'}
+                    value={formatCurrency(Math.abs(summary.net_vat))}
+                    subtext={<span className="text-[10px] text-gray-500">{summary.net_vat < 0 ? 'Gelecek Aya KDV Alacağı' : 'Emanet Vergi Bakiyesi'}</span>}
+                    icon={<PieChart className="w-5 h-5" />}
+                    color={summary.net_vat < 0 ? 'emerald' : 'amber'}
                 />
                 {/* Tahsilat Oranı */}
                 <SummaryCard
@@ -316,7 +328,7 @@ export default function DashboardContent({
                                 <div key={cat.category_name} className="space-y-1">
                                     <div className="flex items-center justify-between text-sm">
                                         <span className="text-gray-700 dark:text-gray-300 truncate">
-                                            {cat.category_icon && <span className="mr-1">{cat.category_icon}</span>}
+                                            <CategoryIcon iconName={cat.category_icon} />
                                             {cat.category_name}
                                         </span>
                                         <span className="text-gray-500 dark:text-gray-400 font-medium ml-2 shrink-0">
@@ -449,6 +461,7 @@ interface SummaryCardProps {
     icon: React.ReactNode;
     color: 'emerald' | 'red' | 'blue' | 'amber' | 'violet';
     highlight?: boolean;
+    subtext?: React.ReactNode;
 }
 
 const colorMap: Record<string, { bg: string; icon: string; text: string }> = {
@@ -479,7 +492,7 @@ const colorMap: Record<string, { bg: string; icon: string; text: string }> = {
     },
 };
 
-function SummaryCard({ title, value, icon, color, highlight }: SummaryCardProps) {
+function SummaryCard({ title, value, icon, color, highlight, subtext }: SummaryCardProps) {
     const c = colorMap[color];
     return (
         <div className={`relative overflow-hidden rounded-2xl border p-4 transition-shadow hover:shadow-md ${highlight
@@ -496,8 +509,13 @@ function SummaryCard({ title, value, icon, color, highlight }: SummaryCardProps)
                 {value}
             </p>
 
+            {/* Alt metin (Hibrit KDV vb.) */}
+            {subtext && (
+                <div className="mt-0.5 mb-1">{subtext}</div>
+            )}
+
             {/* Başlık */}
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 {title}
             </p>
 

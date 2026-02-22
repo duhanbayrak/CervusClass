@@ -67,7 +67,7 @@ export function TransactionsContent({
             <div className="text-sm text-gray-500 dark:text-gray-400">
                 {filtered.length} kayıt • Toplam:{' '}
                 <span className="font-semibold text-gray-900 dark:text-white">
-                    {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(total)}
+                    {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(total)}
                 </span>
             </div>
 

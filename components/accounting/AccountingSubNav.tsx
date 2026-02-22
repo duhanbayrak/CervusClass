@@ -10,12 +10,14 @@ import {
     Landmark,
     FileBarChart,
     Settings,
+    Package,
 } from 'lucide-react';
 
 // Muhasebe modülü alt navigasyon sekmeleri
 const ACCOUNTING_TABS = [
     { title: 'Dashboard', href: '/admin/accounting', icon: LayoutDashboard },
     { title: 'Öğrenci Ücretleri', href: '/admin/accounting/students', icon: Users },
+    { title: 'Hizmetler', href: '/admin/accounting/services', icon: Package },
     { title: 'Gelirler', href: '/admin/accounting/income', icon: TrendingUp },
     { title: 'Giderler', href: '/admin/accounting/expenses', icon: TrendingDown },
     { title: 'Hesaplar', href: '/admin/accounting/accounts', icon: Landmark },

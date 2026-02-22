@@ -19,7 +19,7 @@ export async function GET() {
         .single();
 
     // Öğrenci ve sınıfları paralel çek
-    const [studentsResult, classesResult, accountsResult] = await Promise.all([
+    const [studentsResult, classesResult, accountsResult, categoriesResult, servicesResult] = await Promise.all([
         supabase
             .from('profiles')
             .select('id, full_name, class_id, classes:classes!class_id(name)')
@@ -36,6 +36,15 @@ export async function GET() {
             .select('id, name')
             .eq('is_active', true)
             .order('name'),
+        supabase
+            .from('finance_categories')
+            .select('id, name, type')
+            .order('name'),
+        supabase
+            .from('finance_services')
+            .select('id, name, type, unit_price, vat_rate, category_id')
+            .eq('is_active', true)
+            .order('name'),
     ]);
 
     // Öğrencileri formatla
@@ -50,5 +59,7 @@ export async function GET() {
         students,
         classes: classesResult.data || [],
         accounts: accountsResult.data || [],
+        categories: categoriesResult.data || [],
+        services: servicesResult.data || [],
     });
 }

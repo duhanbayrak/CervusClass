@@ -28,20 +28,20 @@ export default async function StudentDetailPage(props: { params: Promise<{ id: s
         notFound();
     }
 
-    // Finansal Verilerin Çekilmesi
+    // Finansal Verilerin Çekilmesi (Çoklu Hizmet Desteği)
     const fees = await getStudentFees({ student_id: id });
-    const latestFee = fees.length > 0 ? fees[0] : null;
+    const installments: any[] = [];
 
-    let installments: any[] = [];
-    if (latestFee) {
-        const detail = await getStudentFeeDetail(latestFee.id);
-        installments = detail.installments;
+    // Tüm ücret kalemleri için taksitleri topla
+    for (const fee of fees) {
+        const detail = await getStudentFeeDetail(fee.id);
+        installments.push(...detail.installments);
     }
 
     const { data: payments } = await getFeePayments({ student_id: id });
 
     const financialData = {
-        fee: latestFee,
+        fees: fees, // Birden fazla fee objesini besliyoruz
         installments: installments,
         payments: payments
     };

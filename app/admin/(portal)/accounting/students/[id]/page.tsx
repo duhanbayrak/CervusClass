@@ -1,7 +1,8 @@
-import { getStudentFeeDetail } from '@/lib/actions/student-fees';
+import { getStudentFees, getStudentFeeDetail } from '@/lib/actions/student-fees';
 import { getFeePayments } from '@/lib/actions/fee-payments';
 import { getFinanceSettings } from '@/lib/actions/finance-settings';
 import { StudentFeeDetail } from '@/components/accounting/students/StudentFeeDetail';
+import { notFound } from 'next/navigation';
 
 interface Props {
     params: Promise<{ id: string }>;
@@ -12,27 +13,38 @@ interface Props {
  * Ücret bilgileri, taksit planı ve ödeme geçmişi
  */
 export default async function StudentFeeDetailPage({ params }: Props) {
-    const { id } = await params;
+    const { id: studentId } = await params;
 
-    // Önce fee detayını çek — student_id'yi buradan alacağız
-    const [feeDetail, settings] = await Promise.all([
-        getStudentFeeDetail(id),
+    // Öğrenciye ait tüm ücret sepetlerini getir
+    const studentFees = await getStudentFees({ student_id: studentId });
+
+    if (!studentFees || studentFees.length === 0) {
+        notFound();
+    }
+
+    // Her bir sepet için detaylı bilgileri (taksitleri vb.) getir
+    const feesDetails = await Promise.all(
+        studentFees.map(fee => getStudentFeeDetail(fee.id))
+    );
+
+    // Tüm taksitleri düz bir dizide topla
+    const allInstallments = feesDetails.flatMap(detail => detail.installments);
+
+    // Ayarları ve öğrencinin tüm ödemelerini getir
+    const [paymentsResult, settings] = await Promise.all([
+        getFeePayments({ student_id: studentId }),
         getFinanceSettings(),
     ]);
 
-    // Fee'nin student_id'si ile ödemeleri çek
-    const studentId = feeDetail.fee?.student_id;
-    const paymentsResult = studentId
-        ? await getFeePayments({ student_id: studentId })
-        : { data: [] };
-
+    // fees propsuna fee nesnelerini gönder
     return (
         <div className="space-y-6">
             <StudentFeeDetail
-                fee={feeDetail.fee}
-                installments={feeDetail.installments}
+                fees={feesDetails.map(d => d.fee).filter(Boolean)}
+                installments={allInstallments}
                 payments={paymentsResult.data}
                 currency={settings?.currency || 'TRY'}
+                studentId={studentId}
             />
         </div>
     );

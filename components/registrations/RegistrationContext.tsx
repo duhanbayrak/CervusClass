@@ -18,10 +18,7 @@ const RegistrationContext = createContext<RegistrationState | undefined>(undefin
 export function RegistrationProvider({ children }: { children: ReactNode }) {
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState<Partial<RegistrationFormData>>({
-        paymentDueDay: 5, // Default
-        installmentCount: 1, // Default
-        discountAmount: 0,
-        downPayment: 0
+        services: []
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
 

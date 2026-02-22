@@ -9,14 +9,14 @@ import { tr } from 'date-fns/locale';
 
 interface FinancialTabProps {
     data: {
-        fee: any | null;
+        fees: any[];
         installments: any[];
         payments: any[];
     };
 }
 
 export function StudentFinancialTab({ data }: FinancialTabProps) {
-    const { fee, installments, payments } = data;
+    const { fees, installments, payments } = data;
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(amount);
@@ -48,7 +48,7 @@ export function StudentFinancialTab({ data }: FinancialTabProps) {
         }
     };
 
-    if (!fee) {
+    if (!fees || fees.length === 0) {
         return (
             <Card className="border-slate-200 shadow-sm border-dashed">
                 <CardContent className="flex flex-col items-center justify-center p-12 text-center text-slate-500">
@@ -60,8 +60,15 @@ export function StudentFinancialTab({ data }: FinancialTabProps) {
         );
     }
 
+    // Toplam tutarları fees dökümünden toplayalım
+    const totalNetAmount = fees.reduce((acc, f) => acc + (Number(f.net_amount) || 0), 0);
+    const totalGrossAmount = fees.reduce((acc, f) => acc + (Number(f.total_amount) || 0), 0);
     const totalPaid = installments.reduce((acc, inst) => acc + (Number(inst.paid_amount) || 0), 0);
-    const remainingAmount = Number(fee.net_amount) - totalPaid;
+    const remainingAmount = totalNetAmount - totalPaid;
+
+    // En az 1 tane aktif ücret varsa genel durumu Aktif göster
+    const isAnyActive = fees.some(f => f.status === 'active');
+    const displayStatus = remainingAmount <= 0 ? 'completed' : isAnyActive ? 'active' : 'pending';
 
     return (
         <div className="space-y-6">
@@ -73,8 +80,9 @@ export function StudentFinancialTab({ data }: FinancialTabProps) {
                         <CreditCard className="h-4 w-4 text-indigo-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(fee.net_amount)}</div>
-                        <p className="text-xs text-slate-500 mt-1">Brüt: {formatCurrency(fee.total_amount)}</p>
+                        <div className="text-2xl font-bold">{formatCurrency(totalNetAmount)}</div>
+                        <p className="text-xs text-slate-500 mt-1">Brüt: {formatCurrency(totalGrossAmount)}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{fees.length} adet Hizmet/Ürün Sepeti</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -94,7 +102,7 @@ export function StudentFinancialTab({ data }: FinancialTabProps) {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-amber-600">{formatCurrency(remainingAmount)}</div>
-                        <p className="text-xs text-slate-500 mt-1">Durum: {getStatusBadge(fee.status)}</p>
+                        <p className="text-xs text-slate-500 mt-1">Genel Durum: {getStatusBadge(displayStatus)}</p>
                     </CardContent>
                 </Card>
             </div>

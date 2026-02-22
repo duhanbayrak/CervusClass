@@ -17,8 +17,12 @@ export async function getFinancialSummary(period: string = 'yearly'): Promise<Fi
     const { supabase, error } = await getAuthContext();
     const defaultSummary: FinancialSummary = {
         total_income: 0,
+        total_income_vat: 0,
         total_expense: 0,
+        total_expense_vat: 0,
         net_profit: 0,
+        net_vat: 0,
+        total_vat: 0,
         collected_amount: 0,
         pending_amount: 0,
         overdue_amount: 0,
@@ -31,11 +35,11 @@ export async function getFinancialSummary(period: string = 'yearly'): Promise<Fi
     const today = format(new Date(), 'yyyy-MM-dd');
 
     // Paralel sorgular
-    const [incomeResult, expenseResult, installmentsResult, feePaymentsResult] = await Promise.all([
+    const [incomeResult, expenseResult, installmentsResult, paymentsResult] = await Promise.all([
         // Toplam gelir
         supabase
             .from('finance_transactions')
-            .select('amount')
+            .select('amount, vat_amount')
             .eq('type', 'income')
             .is('deleted_at', null)
             .gte('transaction_date', startDate)
@@ -44,41 +48,38 @@ export async function getFinancialSummary(period: string = 'yearly'): Promise<Fi
         // Toplam gider
         supabase
             .from('finance_transactions')
-            .select('amount')
+            .select('amount, vat_amount')
             .eq('type', 'expense')
             .is('deleted_at', null)
             .gte('transaction_date', startDate)
             .lte('transaction_date', endDate),
 
-        // Bu döneme düşen tüm taksit planları
+        // Bu döneme düşen tüm taksit planları (Bekleyen ve geciken)
         supabase
             .from('fee_installments')
             .select('amount, paid_amount, status, due_date')
             .gte('due_date', startDate)
             .lte('due_date', endDate),
 
-        // Öğrenci Ödemeleri (Gelir kalemi olarak eklenmek üzere)
+        // Bu dönemde yapılan tahsilatlar
         supabase
             .from('fee_payments')
             .select('amount')
             .gte('payment_date', startDate)
-            .lte('payment_date', endDate),
+            .lte('payment_date', endDate)
     ]);
 
     // Toplamları hesapla
-    const feePaymentsTotal = (feePaymentsResult?.data || []).reduce((sum: number, p: any) => sum + Number(p.amount), 0);
-    const totalIncome = (incomeResult.data || []).reduce((sum, t) => sum + Number(t.amount), 0) + feePaymentsTotal;
+    const totalIncome = (incomeResult.data || []).reduce((sum, t) => sum + Number(t.amount), 0);
     const totalExpense = (expenseResult.data || []).reduce((sum, t) => sum + Number(t.amount), 0);
+    const collectedAmount = (paymentsResult.data || []).reduce((sum, p) => sum + Number(p.amount), 0);
 
     // Taksit analizleri
-    let collectedAmount = 0;
     let pendingRaw = 0;
     let overdueRaw = 0;
 
     const installments = installmentsResult.data || [];
     for (const inst of installments) {
-        collectedAmount += Number(inst.paid_amount || 0);
-
         const remaining = Number(inst.amount) - Number(inst.paid_amount || 0);
         if (remaining > 0) {
             if (inst.status === 'overdue' || (inst.status === 'pending' && inst.due_date < today)) {
@@ -92,10 +93,18 @@ export async function getFinancialSummary(period: string = 'yearly'): Promise<Fi
     const totalExpected = collectedAmount + pendingRaw + overdueRaw;
     const collectionRate = totalExpected > 0 ? Math.round((collectedAmount / totalExpected) * 100) : 0;
 
+    const totalIncomeVat = (incomeResult.data || []).reduce((sum, t) => sum + Number(t.vat_amount || 0), 0);
+    const totalExpenseVat = (expenseResult.data || []).reduce((sum, t) => sum + Number(t.vat_amount || 0), 0);
+    const netVat = totalIncomeVat - totalExpenseVat;
+
     return {
         total_income: totalIncome,
+        total_income_vat: totalIncomeVat,
         total_expense: totalExpense,
+        total_expense_vat: totalExpenseVat,
         net_profit: totalIncome - totalExpense,
+        net_vat: netVat,
+        total_vat: totalIncomeVat + totalExpenseVat,
         collected_amount: collectedAmount,
         pending_amount: pendingRaw,
         overdue_amount: overdueRaw,
@@ -124,12 +133,6 @@ export async function getMonthlyTrends(period: string = 'yearly'): Promise<Month
         .lte('transaction_date', endDate)
         .in('type', ['income', 'expense']);
 
-    const { data: feePayments } = await supabase
-        .from('fee_payments')
-        .select('amount, payment_date')
-        .gte('payment_date', startDate)
-        .lte('payment_date', endDate);
-
     if (!transactions) return [];
 
     // 12 aylık boş veri oluştur
@@ -149,16 +152,6 @@ export async function getMonthlyTrends(period: string = 'yearly'): Promise<Month
                 } else {
                     months[monthKey].expense += Number(tx.amount);
                 }
-            }
-        }
-    }
-
-    // Öğrenci ödemelerini gelir olarak ekle
-    if (feePayments) {
-        for (const payment of feePayments) {
-            const monthKey = payment.payment_date.substring(0, 7); // "2026-01"
-            if (months[monthKey]) {
-                months[monthKey].income += Number(payment.amount);
             }
         }
     }
@@ -186,21 +179,7 @@ export async function getCategoryDistribution(type: 'income' | 'expense', period
         .gte('transaction_date', startDate)
         .lte('transaction_date', endDate);
 
-    // Öğrenci ödemelerini çek (Sadece gelir raporuysa)
-    let feePaymentsTotal = 0;
-    if (type === 'income') {
-        const { data: payments } = await supabase
-            .from('fee_payments')
-            .select('amount')
-            .gte('payment_date', startDate)
-            .lte('payment_date', endDate);
-
-        if (payments) {
-            feePaymentsTotal = payments.reduce((sum, p) => sum + Number(p.amount), 0);
-        }
-    }
-
-    if ((!transactions || transactions.length === 0) && feePaymentsTotal === 0) return [];
+    if (!transactions || transactions.length === 0) return [];
 
     // Kategorilere göre grupla
     const categoryMap: Record<string, { name: string; icon: string | null; total: number }> = {};
@@ -215,16 +194,6 @@ export async function getCategoryDistribution(type: 'income' | 'expense', period
         }
         categoryMap[catName].total += Number(tx.amount);
         grandTotal += Number(tx.amount);
-    }
-
-    // Eğitim Hizmetleri kategorisini ekle
-    if (feePaymentsTotal > 0) {
-        const catName = 'Eğitim Hizmetleri';
-        if (!categoryMap[catName]) {
-            categoryMap[catName] = { name: catName, icon: 'school', total: 0 };
-        }
-        categoryMap[catName].total += feePaymentsTotal;
-        grandTotal += feePaymentsTotal;
     }
 
     return Object.values(categoryMap).map(cat => ({

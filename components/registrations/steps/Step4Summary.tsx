@@ -2,13 +2,13 @@
 
 import { useRegistration } from '../RegistrationContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { registerStudent, RegistrationFormData, getNextStudentNumber } from '@/lib/actions/student-registration';
 import { getClassById } from '@/lib/actions/class';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Loader2, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, CheckCircle, ReceiptText } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export function Step4Summary() {
@@ -66,34 +66,40 @@ export function Step4Summary() {
         }
     };
 
-    // Finansal Hesaplamalar (Özet Gösterimi İçin Gerekli)
-    const totalAmount = formData.totalAmount || 0;
-    const discountAmountStr = formData.discountAmount || 0;
-    const discountAmount = Number(discountAmountStr);
-    const downPayment = formData.downPayment || 0;
+    // --- Sepet / Hizmet Hesaplamaları ---
+    let finalGrossTotal = 0; // İndirimsiz + KDV'siz (Birim Fiyatların Toplamı)
+    let finalDiscountTotal = 0; // Toplam İndirim (TL)
+    let finalNetTotal = 0; // İndirimli + KDV'siz 
+    let finalVatTotal = 0; // Toplam KDV
+    let finalGrandTotal = 0; // KDV Dahil Genel Toplam
+    let finalDownPayment = 0; // Toplam Peşinat
 
-    let netAmount = totalAmount;
-    let discountStr = "Yok";
+    const services = formData.services || [];
 
-    if (discountAmount > 0) {
-        if (formData.discountType === 'percentage') {
-            netAmount = totalAmount - (totalAmount * (discountAmount / 100));
-            discountStr = `%${discountAmount} (-${(totalAmount * (discountAmount / 100)).toLocaleString('tr-TR')} TL)`;
-        } else {
-            netAmount = totalAmount - discountAmount;
-            discountStr = `${discountAmount.toLocaleString('tr-TR')} TL`;
-        }
-    }
+    services.forEach(item => {
+        const p = Number(item.unitPrice) || 0;
+        const d = Number(item.discountAmount) || 0;
+        const isPercent = item.discountType === 'percentage';
 
-    const remainingAmount = netAmount - downPayment;
-    const installmentCount = formData.installmentCount || 1;
-    const amountPerInstallment = remainingAmount > 0 ? (remainingAmount / installmentCount) : 0;
+        const net = isPercent ? p - (p * (d / 100)) : p - d;
+        const discountVal = p - net;
+        const vat = net * ((Number(item.vatRate) || 0) / 100);
+
+        finalGrossTotal += p;
+        finalDiscountTotal += discountVal;
+        finalNetTotal += net;
+        finalVatTotal += vat;
+        finalGrandTotal += (net + vat);
+        finalDownPayment += Number(item.downPayment) || 0;
+    });
+
+    const finalRemaining = finalGrandTotal - finalDownPayment;
 
     return (
         <div>
             <div className="mb-6">
                 <h2 className="text-2xl font-bold tracking-tight">Özet ve Onay</h2>
-                <p className="text-muted-foreground">Lütfen kayıt bilgilerini kontrol edip işlemi onaylayın.</p>
+                <p className="text-muted-foreground">Lütfen kayıt bilgilerini ve sepet özetini kontrol edip işlemi onaylayın.</p>
             </div>
 
             <div className="space-y-6">
@@ -126,9 +132,26 @@ export function Step4Summary() {
                                 <span className="font-medium text-muted-foreground">Telefon:</span>
                                 <span>{formData.phone || '-'}</span>
                             </div>
+                            <div className="h-px bg-border my-2" />
                             <div className="grid grid-cols-2">
-                                <span className="font-medium text-muted-foreground">Veli Adı / Tel:</span>
-                                <span>{formData.parentName || '-'} / {formData.parentPhone || '-'}</span>
+                                <span className="font-medium text-muted-foreground">Veli Ad Soyad:</span>
+                                <span>{formData.parentFirstName || '-'} {formData.parentLastName || '-'}</span>
+                            </div>
+                            <div className="grid grid-cols-2">
+                                <span className="font-medium text-muted-foreground">Veli TC / Tel:</span>
+                                <span>{formData.parentTcNo || '-'} / {formData.parentPhone || '-'}</span>
+                            </div>
+                            <div className="grid grid-cols-2">
+                                <span className="font-medium text-muted-foreground">Veli E-posta:</span>
+                                <span className="truncate">{formData.parentEmail || '-'}</span>
+                            </div>
+                            <div className="grid grid-cols-2">
+                                <span className="font-medium text-muted-foreground">Yakınlık Türü:</span>
+                                <span>{formData.parentRelationship || '-'}</span>
+                            </div>
+                            <div className="grid grid-cols-2">
+                                <span className="font-medium text-muted-foreground">Adres:</span>
+                                <span className="truncate" title={formData.parentAddress}>{formData.parentAddress || '-'}</span>
                             </div>
                             <div className="h-px bg-border my-2" />
                             <div className="grid grid-cols-2">
@@ -144,49 +167,111 @@ export function Step4Summary() {
                         </CardContent>
                     </Card>
 
-                    {/* Finansal Özet */}
-                    <Card>
+                    {/* Finansal Genel Özet */}
+                    <Card className="bg-primary/5 border-primary/20">
                         <CardHeader className="pb-4">
-                            <CardTitle className="text-lg">Finansal Planlama</CardTitle>
+                            <CardTitle className="text-lg text-primary">Sepet Toplamı</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3 text-sm">
                             <div className="grid grid-cols-2">
-                                <span className="font-medium text-muted-foreground">Brüt Eğitim Ücreti:</span>
-                                <span>{totalAmount.toLocaleString('tr-TR')} TL</span>
+                                <span className="font-medium text-muted-foreground">Hizmet Toplamı (Brüt):</span>
+                                <span>{finalGrossTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</span>
                             </div>
-                            <div className="grid grid-cols-2">
-                                <span className="font-medium text-muted-foreground">İndirim ({formData.discountReason || '-'}):</span>
-                                <span className="text-red-500">{discountStr}</span>
-                            </div>
-                            <div className="grid grid-cols-2 font-medium">
-                                <span>Net Eğitim Ücreti:</span>
-                                <span>{netAmount.toLocaleString('tr-TR')} TL</span>
-                            </div>
-                            <div className="h-px bg-border my-2" />
-                            <div className="grid grid-cols-2">
-                                <span className="font-medium text-muted-foreground">Peşinat Alındı Mı?:</span>
-                                <span>{downPayment > 0 ? `${downPayment.toLocaleString('tr-TR')} TL` : 'Hayır (0 TL)'}</span>
-                            </div>
-                            <div className="grid grid-cols-2 font-medium text-primary">
-                                <span>Kalan (Taksitlendirilecek):</span>
-                                <span>{remainingAmount.toLocaleString('tr-TR')} TL</span>
-                            </div>
-                            {remainingAmount > 0 && (
-                                <div className="mt-3 p-3 bg-muted rounded-md border text-xs">
-                                    <p>
-                                        Geri kalan <strong>{remainingAmount.toLocaleString('tr-TR')} TL</strong> tutar,{' '}
-                                        <strong>{installmentCount}</strong> eşit taksite bölünecektir. Her ayın <strong>{formData.paymentDueDay}.</strong> günü vade tarihi olarak ayarlanmıştır.
-                                    </p>
-                                    <p className="mt-1">
-                                        {"=>"} Taksit Başına Düşen: <strong>{amountPerInstallment.toLocaleString('tr-TR')} TL</strong>
-                                    </p>
+                            {finalDiscountTotal > 0 && (
+                                <div className="grid grid-cols-2">
+                                    <span className="font-medium text-muted-foreground">Toplam İndirim:</span>
+                                    <span className="text-red-500">-{finalDiscountTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</span>
                                 </div>
                             )}
+                            <div className="grid grid-cols-2 text-muted-foreground">
+                                <span>Net Tutar (KDV Hariç):</span>
+                                <span>{finalNetTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</span>
+                            </div>
+                            <div className="grid grid-cols-2 text-muted-foreground">
+                                <span>Toplam KDV:</span>
+                                <span>{finalVatTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</span>
+                            </div>
+                            <div className="h-px bg-primary/20 my-2" />
+                            <div className="grid grid-cols-2 text-base font-bold text-primary">
+                                <span>Genel Toplam:</span>
+                                <span>{finalGrandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</span>
+                            </div>
+                            {finalDownPayment > 0 && (
+                                <div className="grid grid-cols-2">
+                                    <span className="font-medium text-green-600">Alınan Peşinatlar:</span>
+                                    <span className="text-green-600">-{finalDownPayment.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</span>
+                                </div>
+                            )}
+                            <div className="grid grid-cols-2 font-bold mt-2">
+                                <span>Kalan (Taksitlendirilecek):</span>
+                                <span>{finalRemaining.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</span>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
 
-                <div className="flex justify-between pt-6 border-t">
+                {/* Hizmet Kalemleri Detayı */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center text-lg">
+                            <ReceiptText className="w-5 h-5 mr-2" />
+                            Seçilen Hizmet ve Ödeme Planları
+                        </CardTitle>
+                        <CardDescription>
+                            Her bir hizmet/ürün kalemi için hesaplanan taksitler aşağıdadır.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {services.length === 0 ? (
+                                <p className="text-sm text-red-500 italic">Sepete hizmet eklenmemiş.</p>
+                            ) : (
+                                services.map((svc, i) => {
+                                    const p = Number(svc.unitPrice) || 0;
+                                    const d = Number(svc.discountAmount) || 0;
+                                    const isPercent = svc.discountType === 'percentage';
+                                    const net = isPercent ? p - (p * (d / 100)) : p - d;
+                                    const vat = net * ((Number(svc.vatRate) || 0) / 100);
+                                    const totalWithVat = net + vat;
+                                    const rem = totalWithVat - (Number(svc.downPayment) || 0);
+                                    const inst = Number(svc.installmentCount) || 1;
+                                    const perInst = rem > 0 ? rem / inst : 0;
+
+                                    return (
+                                        <div key={i} className="flex flex-col md:flex-row gap-4 p-4 border rounded-lg bg-card hover:bg-muted/30 transition-colors">
+                                            <div className="flex-1 space-y-1">
+                                                <h4 className="font-semibold text-primary">{svc.serviceName || 'İsimsiz Hizmet'}</h4>
+                                                <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
+                                                    <span>Birim Fiyat: ₺{p.toFixed(2)}</span>
+                                                    <span>KDV: %{svc.vatRate || 0}</span>
+                                                    {(d > 0) && (
+                                                        <span className="text-red-500">
+                                                            İndirim: {isPercent ? `%${d}` : `₺${d}`}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-sm font-medium mt-1">KDV Dahil Net Tutar: ₺{totalWithVat.toFixed(2)}</p>
+                                            </div>
+                                            <div className="md:w-px md:bg-border my-2 md:my-0"></div>
+                                            <div className="flex-1 space-y-1 text-sm">
+                                                <p><span className="text-muted-foreground">Peşinat:</span> <span className="font-semibold text-green-600">₺{(Number(svc.downPayment) || 0).toFixed(2)}</span></p>
+                                                <p><span className="text-muted-foreground">Kalan:</span> ₺{rem.toFixed(2)}</p>
+                                                {rem > 0 && (
+                                                    <p className="text-xs mt-1 bg-muted p-2 rounded">
+                                                        <strong>{inst} Taksit</strong> x ₺{perInst.toFixed(2)} / ay <br />
+                                                        <span className="text-[10px] text-muted-foreground">Başlangıç: {svc.startMonth || 'Hemen'} (Her ayın {svc.paymentDueDay}. günü)</span>
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )
+                                })
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <div className="flex justify-between pt-6 border-t pb-12">
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }}>
                         <Button
                             type="button"
@@ -201,8 +286,8 @@ export function Step4Summary() {
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }}>
                         <Button
                             onClick={handleSubmit}
-                            disabled={isSubmitting}
-                            className="bg-green-600 hover:bg-green-700 text-white min-w-[150px]"
+                            disabled={isSubmitting || services.length === 0}
+                            className="bg-green-600 hover:bg-green-700 text-white min-w-[200px]"
                         >
                             {isSubmitting ? (
                                 <>

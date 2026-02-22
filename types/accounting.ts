@@ -20,7 +20,7 @@ export type CategoryType = 'income' | 'expense';
 export type FeeStatus = 'active' | 'completed' | 'cancelled';
 
 /** Taksit durumu seçenekleri */
-export type InstallmentStatus = 'pending' | 'paid' | 'overdue' | 'partial';
+export type InstallmentStatus = 'pending' | 'paid' | 'overdue' | 'partial' | 'cancelled';
 
 /** İndirim tipi seçenekleri */
 export type DiscountType = 'percentage' | 'fixed';
@@ -75,6 +75,25 @@ export interface FinanceCategory {
     created_at: string;
 }
 
+/** Hizmet & Ürün tanımı */
+export interface FinanceService {
+    id: string;
+    organization_id: string;
+    name: string;
+    type: CategoryType;
+    category_id: string | null;
+    category?: {
+        name: string;
+        icon: string | null;
+    } | null;
+    unit_price: number;
+    vat_rate: number;
+    is_active: boolean;
+    description: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
 /** Öğrenci ücret tanımı */
 export interface StudentFee {
     id: string;
@@ -87,10 +106,14 @@ export interface StudentFee {
     } | null;
     class_id: string | null;
     classes?: { name: string } | null;
+    service_id: string | null;
+    service?: { name: string } | null;
     total_amount: number;
     discount_amount: number;
     discount_type: DiscountType | null;
     discount_reason: string | null;
+    vat_rate: number;
+    vat_amount: number;
     net_amount: number;
     installment_count: number;
     academic_period: string;
@@ -154,8 +177,13 @@ export interface FinanceTransaction {
         type: CategoryType;
         icon: string | null;
     } | null;
+    service_id: string | null;
+    service?: { name: string } | null;
     type: TransactionType;
     amount: number;
+    subtotal: number | null;
+    vat_rate: number;
+    vat_amount: number;
     description: string;
     transaction_date: string;
     reference_no: string | null;
@@ -180,12 +208,16 @@ export interface FinanceTransaction {
 /** Finansal dashboard özet verileri */
 export interface FinancialSummary {
     total_income: number;
+    total_income_vat: number;
     total_expense: number;
+    total_expense_vat: number;
     net_profit: number;
+    net_vat: number;
+    total_vat: number;
     collected_amount: number;
     pending_amount: number;
     overdue_amount: number;
-    collection_rate: number; // yüzde olarak 0-100
+    collection_rate: number;
 }
 
 /** Aylık gelir-gider trend verisi */
@@ -239,4 +271,24 @@ export const INSTALLMENT_STATUS_LABELS: Record<InstallmentStatus, string> = {
     paid: 'Ödendi',
     overdue: 'Vadesi Geçmiş',
     partial: 'Kısmi Ödeme',
+    cancelled: 'İptal Edildi',
 };
+
+/**
+ * Çoklu Ücret Atama (Sepet Modeli) İçin Sepet Elemanı
+ */
+export interface FinancialServiceItem {
+    id: string; // UI tarafında random id
+    serviceId: string;
+    serviceName?: string;
+    unitPrice: number;
+    vatRate: number;
+    discountAmount?: number;
+    discountType?: "percentage" | "fixed" | null;
+    discountReason?: string | null;
+    downPayment: number;
+    downPaymentAccountId?: string | null;
+    installmentCount: number;
+    startMonth?: string | null;
+    paymentDueDay?: number;
+}

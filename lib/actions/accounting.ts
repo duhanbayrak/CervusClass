@@ -158,6 +158,10 @@ export async function createFinanceTransaction(transaction: {
     category_id: string;
     type: TransactionType;
     amount: number;
+    subtotal?: number;
+    vat_rate?: number;
+    vat_amount?: number;
+    service_id?: string;
     description: string;
     transaction_date: string;
     reference_no?: string;
@@ -168,7 +172,7 @@ export async function createFinanceTransaction(transaction: {
     const { supabase, organizationId, user, error } = await getAuthContext();
     if (error || !organizationId || !user) return { success: false, error: error || 'Yetkilendirme hatası' };
 
-    // 1. İşlemi oluştur
+    // 1. İşlemi oluştur (KDV alanları dahil)
     const { error: insertError } = await supabase
         .from('finance_transactions')
         .insert({
@@ -177,6 +181,10 @@ export async function createFinanceTransaction(transaction: {
             category_id: transaction.category_id,
             type: transaction.type,
             amount: transaction.amount,
+            subtotal: transaction.subtotal ?? transaction.amount,
+            vat_rate: transaction.vat_rate ?? 0,
+            vat_amount: transaction.vat_amount ?? 0,
+            service_id: transaction.service_id || null,
             description: transaction.description,
             transaction_date: transaction.transaction_date,
             reference_no: transaction.reference_no || null,
@@ -188,7 +196,7 @@ export async function createFinanceTransaction(transaction: {
 
     if (insertError) return { success: false, error: insertError.message };
 
-    // 2. Hesap bakiyesini güncelle
+    // 2. Hesap bakiyesini güncelle (amount = KDV dahil toplam)
     const { data: account } = await supabase
         .from('finance_accounts')
         .select('balance')

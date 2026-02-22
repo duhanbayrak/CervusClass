@@ -13,6 +13,7 @@ import {
 import type { FinanceCategory, FinanceTransaction, TransactionType } from '@/types/accounting';
 import { getFinanceTransactions } from '@/lib/actions/accounting';
 import { format } from 'date-fns';
+import { CategoryIcon } from '@/components/accounting/CategoryIcon';
 
 // =============================================
 // Props
@@ -46,12 +47,14 @@ function formatDate(date: string): string {
 
 /** CSV'ye dönüştür ve indir */
 function exportToCSV(transactions: FinanceTransaction[]) {
-    const headers = ['Tarih', 'Tür', 'Kategori', 'Hesap', 'Tutar', 'Açıklama', 'Referans No'];
+    const headers = ['Tarih', 'Tür', 'Kategori', 'Hesap', 'KDV Oranı (%)', 'KDV Tutarı', 'Tutar', 'Açıklama', 'Referans No'];
     const rows = transactions.map(tx => [
         tx.transaction_date,
         tx.type === 'income' ? 'Gelir' : 'Gider',
         tx.category?.name || '',
         tx.account?.name || '',
+        tx.vat_rate ? `%${tx.vat_rate}` : '0',
+        tx.vat_amount ? tx.vat_amount.toString() : '0',
         tx.amount.toString(),
         tx.description || '',
         tx.reference_no || '',
@@ -284,6 +287,7 @@ export default function ReportsContent({ categories }: ReportsContentProps) {
                                         <th className="text-left text-xs font-semibold text-gray-500 dark:text-gray-400 px-5 py-3">Kategori</th>
                                         <th className="text-left text-xs font-semibold text-gray-500 dark:text-gray-400 px-5 py-3">Hesap</th>
                                         <th className="text-left text-xs font-semibold text-gray-500 dark:text-gray-400 px-5 py-3">Açıklama</th>
+                                        <th className="text-right text-xs font-semibold text-gray-500 dark:text-gray-400 px-5 py-3">Vergi (KDV)</th>
                                         <th className="text-right text-xs font-semibold text-gray-500 dark:text-gray-400 px-5 py-3">Tutar</th>
                                     </tr>
                                 </thead>
@@ -305,7 +309,7 @@ export default function ReportsContent({ categories }: ReportsContentProps) {
                                                 </span>
                                             </td>
                                             <td className="px-5 py-3 text-sm text-gray-700 dark:text-gray-300">
-                                                {tx.category?.icon && <span className="mr-1">{tx.category.icon}</span>}
+                                                <CategoryIcon iconName={tx.category?.icon} />
                                                 {tx.category?.name || '-'}
                                             </td>
                                             <td className="px-5 py-3 text-sm text-gray-500 dark:text-gray-400">
@@ -313,6 +317,9 @@ export default function ReportsContent({ categories }: ReportsContentProps) {
                                             </td>
                                             <td className="px-5 py-3 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
                                                 {tx.description || '-'}
+                                            </td>
+                                            <td className="px-5 py-3 text-sm text-gray-500 dark:text-gray-400 text-right whitespace-nowrap">
+                                                {tx.vat_rate ? `%${tx.vat_rate} (${formatCurrency(tx.vat_amount || 0)})` : '-'}
                                             </td>
                                             <td className={`px-5 py-3 text-sm font-semibold text-right whitespace-nowrap ${tx.type === 'income'
                                                 ? 'text-emerald-600 dark:text-emerald-400'

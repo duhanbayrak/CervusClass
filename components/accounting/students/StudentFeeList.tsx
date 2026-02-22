@@ -15,8 +15,9 @@ interface StudentFeeListProps {
 function formatCurrency(amount: number, currency: string): string {
     return new Intl.NumberFormat('tr-TR', {
         style: 'currency',
-        currency,
+        currency: currency || 'TRY',
         minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
     }).format(amount);
 }
 
@@ -52,12 +53,50 @@ export function StudentFeeList({ fees, currency }: StudentFeeListProps) {
         return matchesSearch && matchesStatus;
     });
 
-    // Özet istatistikler
+    // Özet istatistikler ve Gruplama Mantığı
     const activeFees = fees.filter(f => f.status === 'active').length;
     const totalNet = fees.reduce((sum, f) => sum + Number(f.net_amount), 0);
-    // Gerçek TL karşılığı: brüt - net fark
     const totalBrut = fees.reduce((sum, f) => sum + Number(f.total_amount), 0);
     const totalDiscountTL = totalBrut - totalNet;
+
+    // Öğrenci bazlı gruplama
+    const groupedStudents = filteredFees.reduce((acc, fee) => {
+        const feeWithStudent = fee as StudentFee & {
+            student?: { full_name?: string; email?: string };
+            classes?: { name?: string };
+        };
+        const studentId = fee.student_id;
+
+        if (!acc[studentId]) {
+            acc[studentId] = {
+                id: studentId,
+                firstFeeId: fee.id, // Yönlendirme için referans
+                student: feeWithStudent.student,
+                classes: feeWithStudent.classes,
+                academic_period: fee.academic_period,
+                total_amount: 0,
+                discount_amount: 0,
+                net_amount: 0,
+                vat_amount: 0,
+                status: fee.status, // En az biri aktifse genel aktif diyeceğiz (altta)
+                subFees: []
+            };
+        }
+
+        acc[studentId].total_amount += Number(fee.total_amount);
+        acc[studentId].discount_amount += Number(fee.discount_amount); // Sadece TL bazında indirim toplanır
+        acc[studentId].net_amount += Number(fee.net_amount);
+        acc[studentId].vat_amount += Number(fee.vat_amount || 0);
+        acc[studentId].subFees.push(fee);
+
+        if (fee.status === 'active') {
+            acc[studentId].status = 'active'; // Bir tane aktif hizmet varsa tümünü kapsasın
+        }
+
+        return acc;
+    }, {} as Record<string, any>);
+
+    const studentRows = Object.values(groupedStudents);
 
     const cardClass = 'rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5';
 
@@ -135,16 +174,17 @@ export function StudentFeeList({ fees, currency }: StudentFeeListProps) {
                                 <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Dönem</th>
                                 <th className="text-right px-6 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Brüt Tutar</th>
                                 <th className="text-right px-6 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">İndirim</th>
-                                <th className="text-right px-6 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Net Tutar</th>
+                                <th className="text-right px-6 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">KDV Tutarı</th>
+                                <th className="text-right px-6 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">KDV Dahil Net</th>
                                 <th className="text-center px-6 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Taksit</th>
                                 <th className="text-center px-6 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Durum</th>
                                 <th className="px-6 py-3.5"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 dark:divide-white/5">
-                            {filteredFees.length === 0 ? (
+                            {studentRows.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="text-center py-12 text-sm text-gray-500 dark:text-gray-400">
+                                    <td colSpan={9} className="text-center py-12 text-sm text-gray-500 dark:text-gray-400">
                                         <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
                                         {fees.length === 0
                                             ? 'Henüz ücret kaydı bulunmuyor. Yukarıdaki "Ücret Ata" butonuyla yeni kayıt oluşturun.'
@@ -152,53 +192,49 @@ export function StudentFeeList({ fees, currency }: StudentFeeListProps) {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredFees.map(fee => {
-                                    const feeWithStudent = fee as StudentFee & {
-                                        student?: { full_name?: string; email?: string };
-                                        classes?: { name?: string };
-                                    };
-                                    const statusStyle = getStatusStyle(fee.status);
+                                studentRows.map(row => {
+                                    const statusStyle = getStatusStyle(row.status);
                                     const StatusIcon = statusStyle.icon;
 
                                     return (
                                         <tr
-                                            key={fee.id}
-                                            onClick={() => router.push(`/admin/accounting/students/${fee.id}`)}
+                                            key={row.id}
+                                            onClick={() => router.push(`/admin/accounting/students/${row.id}`)}
                                             className="hover:bg-gray-50 dark:hover:bg-white/[0.02] cursor-pointer transition-colors"
                                         >
                                             <td className="px-6 py-4">
                                                 <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                                    {feeWithStudent.student?.full_name || '—'}
+                                                    {row.student?.full_name || '—'}
                                                 </p>
-                                                {feeWithStudent.classes?.name && (
+                                                {row.classes?.name && (
                                                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                        {feeWithStudent.classes.name}
+                                                        {row.classes.name}
                                                     </p>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                                                {fee.academic_period}
+                                                {row.academic_period}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 text-right">
-                                                {formatCurrency(Number(fee.total_amount), currency)}
+                                                {formatCurrency(row.total_amount, currency)}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-right">
-                                                {Number(fee.discount_amount) > 0 ? (
+                                                {row.discount_amount > 0 ? (
                                                     <span className="text-orange-600 dark:text-orange-400">
-                                                        -{fee.discount_type === 'percentage'
-                                                            ? `%${fee.discount_amount}`
-                                                            : formatCurrency(Number(fee.discount_amount), currency)
-                                                        }
+                                                        -{formatCurrency(row.discount_amount, currency)}
                                                     </span>
                                                 ) : (
                                                     <span className="text-gray-400">—</span>
                                                 )}
                                             </td>
+                                            <td className="px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400 text-right">
+                                                {formatCurrency(row.vat_amount, currency)}
+                                            </td>
                                             <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white text-right">
-                                                {formatCurrency(Number(fee.net_amount), currency)}
+                                                {formatCurrency(row.net_amount, currency)}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 text-center">
-                                                {fee.installment_count}{fee.installment_count === 1 ? ' (Peşin)' : ' Taksit'}
+                                                <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">{row.subFees.length} Hizmet Sepeti</span>
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}>
@@ -207,7 +243,7 @@ export function StudentFeeList({ fees, currency }: StudentFeeListProps) {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <span className="text-xs text-gray-400">Detay →</span>
+                                                <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">Detaya Git →</span>
                                             </td>
                                         </tr>
                                     );
