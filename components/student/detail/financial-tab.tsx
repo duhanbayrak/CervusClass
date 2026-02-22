@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CreditCard, Wallet, FileText, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { CreditCard, Wallet, FileText, CheckCircle, Clock, AlertCircle, ShoppingCart } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
@@ -106,6 +106,51 @@ export function StudentFinancialTab({ data }: FinancialTabProps) {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Alınan Hizmetler (Sepetler) Tablosu */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                        <ShoppingCart className="h-5 w-5 text-indigo-500" />
+                        Alınan Hizmetler
+                    </CardTitle>
+                    <CardDescription>Öğrencinin yararlandığı ürün ve hizmet paketleri</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="rounded-md border">
+                        <Table>
+                            <TableHeader className="bg-slate-50">
+                                <TableRow>
+                                    <TableHead>Hizmet/Ürün</TableHead>
+                                    <TableHead>Akademik Dönem</TableHead>
+                                    <TableHead className="text-right">İndirim</TableHead>
+                                    <TableHead className="text-right">Net Tutar (KDV Dahil)</TableHead>
+                                    <TableHead className="text-center">Durum</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {fees.map((fee) => (
+                                    <TableRow key={fee.id}>
+                                        <TableCell className="font-medium text-slate-900 border-r">{fee.service?.name || '-'}</TableCell>
+                                        <TableCell>{fee.academic_period || '-'}</TableCell>
+                                        <TableCell className="text-right">
+                                            {fee.discount_amount > 0 ? (
+                                                <span className="text-red-500 text-xs px-2 py-0.5 bg-red-50 rounded-full">
+                                                    -{formatCurrency(fee.discount_amount)}
+                                                </span>
+                                            ) : '-'}
+                                        </TableCell>
+                                        <TableCell className="text-right font-medium">{formatCurrency(fee.net_amount)}</TableCell>
+                                        <TableCell className="text-center">
+                                            {getStatusBadge(fee.status)}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </CardContent>
+            </Card>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {/* Taksit Planı */}
