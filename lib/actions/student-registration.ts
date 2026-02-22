@@ -38,6 +38,7 @@ export type RegistrationFormData = {
     lastName: string;
     email: string;
     tcNo: string;
+    studentNumber?: string;
     phone?: string;
     birthDate?: string;
 
@@ -85,26 +86,33 @@ export async function registerStudent(data: RegistrationFormData) {
         if (!role) throw new Error("Öğrenci rolü (student) sistemde tanımlı değil.");
 
         // ==========================================
-        // 1. KULLANICI OLUŞTURMA VE 0'DAN ÖĞRENCİ NO ATAMA (Auth)
+        // 1. KULLANICI OLUŞTURMA VE ÖĞRENCİ NO ATAMA (Auth)
         // ==========================================
 
-        // Öğrenci numarasını hesapla (Örn: 2026 -> 26xxx, max'i bul +1 artır)
-        const currentYear = new Date().getFullYear();
-        const yearPrefix = currentYear.toString().slice(-2); //"26"
+        let finalStudentNumber = data.studentNumber?.trim();
 
-        const { data: latestStudent } = await supabaseAdmin
-            .from('profiles')
-            .select('student_number')
-            .eq('organization_id', organizationId)
-            .ilike('student_number', `${yearPrefix}%`)
-            .order('student_number', { ascending: false })
-            .limit(1)
-            .single();
+        if (finalStudentNumber) {
+            // Manuel girilmiş, backend tarafında da benzersizliği son kes teyit edelim
+            const { count } = await supabaseAdmin
+                .from('profiles')
+                .select('*', { count: 'exact', head: true })
+                .eq('organization_id', organizationId)
+                .eq('student_number', finalStudentNumber);
 
-        let generatedStudentNumber = await getNextStudentNumber(organizationId);
+            if (count && count > 0) {
+                throw new Error(`"${finalStudentNumber}" öğrenci numarası bu kurumda zaten kullanımda. Lütfen benzersiz bir numara girin.`);
+            }
+        } else {
+            // Öğrenci numarasını otomatik hesapla (Örn: 2026 -> 26xxx)
+            const currentYear = new Date().getFullYear();
+            const yearPrefix = currentYear.toString().slice(-2); //"26"
 
-        if (!generatedStudentNumber) {
-            generatedStudentNumber = `${yearPrefix}001`; // Fallback
+            let generatedStudentNumber = await getNextStudentNumber(organizationId);
+
+            if (!generatedStudentNumber) {
+                generatedStudentNumber = `${yearPrefix}001`; // Fallback
+            }
+            finalStudentNumber = generatedStudentNumber;
         }
 
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -146,7 +154,7 @@ export async function registerStudent(data: RegistrationFormData) {
                 class_id: data.classId,
                 tc_no: data.tcNo,
                 phone: data.phone || null,
-                student_number: generatedStudentNumber,
+                student_number: finalStudentNumber,
                 parent_name: (data.parentFirstName || data.parentLastName) ? `${data.parentFirstName || ''} ${data.parentLastName || ''}`.trim() : null,
                 parent_phone: data.parentPhone || null,
                 parent_email: data.parentEmail || null,
@@ -421,4 +429,22 @@ export async function getNextStudentNumber(orgId?: string) {
     }
 
     return generatedStudentNumber;
+}
+
+export async function checkStudentNumberUnique(studentNumber: string): Promise<boolean> {
+    const { supabase, organizationId } = await getAuthContext();
+    if (!organizationId || !studentNumber) return false;
+
+    const { count, error } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .eq('student_number', studentNumber.trim());
+
+    if (error) {
+        console.error("Öğrenci numarası kontrol hatası:", error);
+        return false;
+    }
+
+    return count === 0;
 }

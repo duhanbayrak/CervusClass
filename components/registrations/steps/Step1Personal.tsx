@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRegistration } from '../RegistrationContext';
+import { checkStudentNumberUnique } from '@/lib/actions/student-registration';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,6 +18,7 @@ const personalSchema = z.object({
     lastName: z.string().min(2, 'Soyad en az 2 karakter olmalıdır'),
     email: z.string().email('Geçerli bir e-posta adresi giriniz'),
     tcNo: z.string().length(11, 'TC Kimlik No tam 11 haneli olmalıdır').regex(/^[0-9]+$/, 'Sadece rakam giriniz'),
+    studentNumber: z.string().optional(),
     phone: z.string().optional(),
     birthDate: z.string().optional(),
     parentFirstName: z.string().min(2, 'Veli adı en az 2 karakter olmalıdır'),
@@ -33,13 +35,14 @@ type PersonalFormData = z.infer<typeof personalSchema>;
 export function Step1Personal() {
     const { formData, updateFormData, setStep } = useRegistration();
 
-    const { register, handleSubmit, formState: { errors } } = useForm<PersonalFormData>({
+    const { register, handleSubmit, setError, formState: { errors } } = useForm<PersonalFormData>({
         resolver: zodResolver(personalSchema),
         defaultValues: {
             firstName: formData.firstName || '',
             lastName: formData.lastName || '',
             email: formData.email || '',
             tcNo: formData.tcNo || '',
+            studentNumber: formData.studentNumber || '',
             phone: formData.phone || '',
             birthDate: formData.birthDate || '',
             parentFirstName: formData.parentFirstName || '',
@@ -52,7 +55,14 @@ export function Step1Personal() {
         }
     });
 
-    const onSubmit = (data: PersonalFormData) => {
+    const onSubmit = async (data: PersonalFormData) => {
+        if (data.studentNumber && data.studentNumber.trim() !== '') {
+            const isUnique = await checkStudentNumberUnique(data.studentNumber.trim());
+            if (!isUnique) {
+                setError('studentNumber', { type: 'manual', message: 'Bu öğrenci numarası başka bir öğrencide kullanılıyor.' });
+                return;
+            }
+        }
         updateFormData(data);
         setStep(2); // İleri
     };
@@ -95,6 +105,14 @@ export function Step1Personal() {
                             <div className="space-y-2">
                                 <Label htmlFor="phone">Telefon</Label>
                                 <Input id="phone" {...register('phone')} placeholder="05XX XXX XX XX" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="studentNumber">Öğrenci Numarası (Opsiyonel)</Label>
+                                <Input id="studentNumber" {...register('studentNumber')} placeholder="Örn: 202600123" />
+                                {errors.studentNumber && <p className="text-sm text-red-500">{errors.studentNumber.message}</p>}
+                                <p className="text-[11px] text-gray-500">
+                                    Numara yazılmazsa sistem otomatik olarak sıradaki numarayı atayacaktır.
+                                </p>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="birthDate">Doğum Tarihi</Label>

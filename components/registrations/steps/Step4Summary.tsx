@@ -119,9 +119,11 @@ export function Step4Summary() {
                                 <span>{formData.tcNo || '-'}</span>
                             </div>
                             <div className="grid grid-cols-2">
-                                <span className="font-medium text-muted-foreground">Öğrenci No (Tahmini):</span>
+                                <span className="font-medium text-muted-foreground">
+                                    {formData.studentNumber ? 'Öğrenci No:' : 'Öğrenci No (Otomatik):'}
+                                </span>
                                 <span className="text-xs mt-0.5 text-blue-600 bg-blue-50/50 px-1 py-0.5 rounded border border-blue-100 dark:border-blue-900 flex items-center w-fit">
-                                    {nextStudentNumber ? nextStudentNumber : 'Hesaplanıyor...'}
+                                    {formData.studentNumber ? formData.studentNumber : (nextStudentNumber ? nextStudentNumber : 'Hesaplanıyor...')}
                                 </span>
                             </div>
                             <div className="grid grid-cols-2">
