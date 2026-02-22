@@ -175,8 +175,7 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
     };
 
     const handleCreate = () => {
-        setEditStudent(null);
-        setIsDialogOpen(true);
+        router.push('/admin/registrations/new');
     };
 
     const handleSave = () => {
