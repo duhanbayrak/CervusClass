@@ -550,3 +550,226 @@ export async function assignMultipleServicesToStudent(data: {
 
     return { success: true };
 }
+
+/**
+ * Toplu öğrencilere (ID dizisi) çoklu hizmet veya paket atamak için kullanılır.
+ * Öğrencinin 'class_id'sini profiles üzerinden çeker ve Kayıt esnasındaki
+ * KDV/Peşinat/Taksit bölme işlemlerinin birebir aynısını entegre eder.
+ */
+export async function assignBulkServicesToStudents(
+    studentIds: string[],
+    services: any[]
+): Promise<{ success: boolean; error?: string }> {
+    const { supabase, organizationId, user, error } = await getAuthContext();
+    if (error || !organizationId || !user) return { success: false, error: error || 'Yetkilendirme hatası' };
+
+    try {
+        for (const studentId of studentIds) {
+            // 1. Öğrencinin sınıfını bulalım
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('class_id')
+                .eq('id', studentId)
+                .single();
+
+            const classId = profile?.class_id || null;
+
+            // 2. Her bir hizmeti öğrenciye atayalım
+            for (const service of services) {
+                const netAmount = service.discountType === 'percentage'
+                    ? service.unitPrice - (service.unitPrice * ((service.discountAmount || 0) / 100))
+                    : service.unitPrice - (service.discountAmount || 0);
+
+                const vatAmount = netAmount * (service.vatRate / 100);
+                const totalAmountWithVat = netAmount + vatAmount;
+
+                const hasDownPayment = service.downPayment > 0;
+                const mainInstallmentCount = service.installmentCount > 0 ? service.installmentCount : 1;
+
+                // Ücret Kartını Oluştur
+                const { data: feeData, error: feeError } = await supabase
+                    .from('student_fees')
+                    .insert({
+                        organization_id: organizationId,
+                        student_id: studentId,
+                        class_id: classId,
+                        service_id: service.serviceId,
+                        total_amount: service.unitPrice,
+                        discount_amount: service.discountAmount || 0,
+                        discount_type: service.discountType || null,
+                        discount_reason: service.discountReason || null,
+                        vat_rate: service.vatRate,
+                        vat_amount: vatAmount,
+                        net_amount: totalAmountWithVat,
+                        installment_count: hasDownPayment ? mainInstallmentCount + 1 : mainInstallmentCount,
+                        academic_period: '2024-2025', // Default ya da formdan aktarılmalı TODO
+                        status: 'active'
+                    })
+                    .select()
+                    .single();
+
+                if (feeError) throw new Error(`${service.serviceName || 'Hizmet'} planı oluşturulamadı: ${feeError.message}`);
+                const feeId = feeData.id;
+
+                // Taksitleri ayarla
+                const installmentsToInsert = [];
+                let currentInstallmentNumber = 1;
+                const remainingAmount = totalAmountWithVat - (service.downPayment || 0);
+
+                // Peşinat varsa (Installment 1)
+                if (hasDownPayment) {
+                    if (!service.downPaymentAccountId) throw new Error(`${service.serviceName || 'Hizmet'} peşinatı için kasa/banka hesabı seçilmedi.`);
+
+                    installmentsToInsert.push({
+                        fee_id: feeId,
+                        organization_id: organizationId,
+                        installment_number: currentInstallmentNumber,
+                        amount: service.downPayment,
+                        due_date: format(new Date(), 'yyyy-MM-dd'),
+                        status: 'paid',
+                        paid_amount: service.downPayment,
+                        paid_at: new Date().toISOString()
+                    });
+                    currentInstallmentNumber++;
+                }
+
+                // Kalan Taksitler
+                if (remainingAmount > 0 && service.installmentCount > 0) {
+                    const amountPerInstallment = parseFloat((remainingAmount / service.installmentCount).toFixed(2));
+                    let startYear = new Date().getFullYear();
+                    let startMonthIndex = new Date().getMonth();
+
+                    if (service.startMonth) {
+                        const parts = service.startMonth.split('-');
+                        startYear = parseInt(parts[0]);
+                        startMonthIndex = parseInt(parts[1]) - 1;
+                    }
+
+                    for (let i = 0; i < service.installmentCount; i++) {
+                        let dueMonth = startMonthIndex + i;
+                        let dueYear = startYear;
+                        if (dueMonth > 11) {
+                            dueMonth = dueMonth % 12;
+                            dueYear += Math.floor((startMonthIndex + i) / 12);
+                        }
+
+                        const daysInMonth = new Date(dueYear, dueMonth + 1, 0).getDate();
+                        const safeDueDay = Math.min(service.paymentDueDay || 5, daysInMonth);
+                        const dueDateStr = `${dueYear}-${String(dueMonth + 1).padStart(2, '0')}-${String(safeDueDay).padStart(2, '0')}`;
+
+                        installmentsToInsert.push({
+                            fee_id: feeId,
+                            organization_id: organizationId,
+                            installment_number: currentInstallmentNumber++,
+                            amount: amountPerInstallment,
+                            due_date: dueDateStr,
+                            status: 'pending',
+                            paid_amount: 0,
+                            paid_at: null
+                        });
+                    }
+                }
+
+                if (installmentsToInsert.length > 0) {
+                    const { data: insertedInstallments, error: installmentError } = await supabase
+                        .from('fee_installments')
+                        .insert(installmentsToInsert)
+                        .select();
+
+                    if (installmentError) throw new Error(`${service.serviceName || 'Hizmet'} taksit planı kaydedilemedi: ${installmentError.message}`);
+
+                    // Peşinat Varsa; Ödeme Tablosu ve Kasa/Kategori KDV Muhasebeleştirmesi
+                    if (hasDownPayment && insertedInstallments) {
+                        const downPaymentInstallment = insertedInstallments.find(i => i.installment_number === 1);
+                        if (downPaymentInstallment) {
+                            const { error: paymentError } = await supabase
+                                .from('fee_payments')
+                                .insert({
+                                    organization_id: organizationId,
+                                    student_id: studentId,
+                                    installment_id: downPaymentInstallment.id,
+                                    account_id: service.downPaymentAccountId,
+                                    amount: service.downPayment,
+                                    payment_method: 'cash',
+                                    notes: 'Peşinat',
+                                    created_by: user.id,
+                                    payment_date: new Date().toISOString()
+                                });
+
+                            if (paymentError) throw new Error(`Peşinat ödemesi kaydedilemedi: ${paymentError.message}`);
+
+                            // Kasa Bakiyesini artır
+                            const { data: account } = await supabase
+                                .from('finance_accounts')
+                                .select('balance')
+                                .eq('id', service.downPaymentAccountId)
+                                .single();
+
+                            if (account) {
+                                await supabase
+                                    .from('finance_accounts')
+                                    .update({ balance: Number(account.balance || 0) + service.downPayment })
+                                    .eq('id', service.downPaymentAccountId);
+                            }
+
+                            // Muhasebe Kategorisi Bul
+                            const { data: catData } = await supabase
+                                .from('finance_categories')
+                                .select('id')
+                                .eq('organization_id', organizationId)
+                                .eq('name', 'Öğrenci Ücreti')
+                                .eq('type', 'income')
+                                .maybeSingle();
+
+                            let catId = catData?.id;
+                            if (!catId) {
+                                const { data: newCat } = await supabase
+                                    .from('finance_categories')
+                                    .insert({
+                                        organization_id: organizationId,
+                                        name: 'Öğrenci Ücreti',
+                                        type: 'income',
+                                        icon: '🎓',
+                                    })
+                                    .select('id')
+                                    .single();
+                                catId = newCat?.id;
+                            }
+
+                            if (catId) {
+                                // İç Yüzde Peşinat KDV Ayrıştırması
+                                let sub = service.downPayment;
+                                let vat = 0;
+                                if (service.vatRate > 0) {
+                                    sub = Number((service.downPayment / (1 + service.vatRate / 100)).toFixed(2));
+                                    vat = Number((service.downPayment - sub).toFixed(2));
+                                }
+
+                                await supabase
+                                    .from('finance_transactions')
+                                    .insert({
+                                        organization_id: organizationId,
+                                        account_id: service.downPaymentAccountId,
+                                        category_id: catId,
+                                        service_id: service.serviceId,
+                                        subtotal: sub,
+                                        vat_rate: service.vatRate,
+                                        vat_amount: vat,
+                                        type: 'income',
+                                        amount: service.downPayment,
+                                        description: `Öğrenci Taksit Peşinatı (${service.serviceName || 'Hizmet'})`,
+                                        transaction_date: format(new Date(), 'yyyy-MM-dd'),
+                                        created_by: user.id
+                                    });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return { success: true };
+    } catch (err: any) {
+        console.error("assignBulkServicesToStudents ERR:", err);
+        return { success: false, error: err.message };
+    }
+}
