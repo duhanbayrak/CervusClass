@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface StudentNotesTabProps {
-    role: 'admin' | 'teacher';
+    role: 'admin' | 'teacher' | 'parent';
     notes: any[];
     studentId: string;
 }

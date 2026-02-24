@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { getClasses } from '@/lib/actions/class';
 import { ClassWithCount } from '@/types/database';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const academicSchema = z.object({
     classId: z.string().min(1, 'Sınıf seçimi zorunludur'),
@@ -48,7 +50,11 @@ export function Step2Academic() {
     }, []);
 
     const onSubmit = (data: AcademicFormData) => {
-        updateFormData(data);
+        const selectedClass = classes.find(c => c.id === data.classId);
+        updateFormData({
+            ...data,
+            className: selectedClass ? selectedClass.name : undefined
+        });
         setStep(3); // Adım 3 (Finansal)
     };
 
@@ -99,10 +105,18 @@ export function Step2Academic() {
                 </Card>
 
                 <div className="flex justify-between pt-4">
-                    <Button type="button" variant="outline" onClick={() => setStep(1)}>
-                        Geri: Kişisel Bilgiler
-                    </Button>
-                    <Button type="submit">İleri: Finansal Bilgiler</Button>
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }}>
+                        <Button type="button" variant="outline" onClick={() => setStep(1)}>
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Geri: Kişisel Bilgiler
+                        </Button>
+                    </motion.div>
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }}>
+                        <Button type="submit">
+                            İleri: Finansal Bilgiler
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                    </motion.div>
                 </div>
             </form>
         </div>

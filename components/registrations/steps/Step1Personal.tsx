@@ -4,20 +4,30 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRegistration } from '../RegistrationContext';
+import { checkStudentNumberUnique } from '@/lib/actions/student-registration';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const personalSchema = z.object({
     firstName: z.string().min(2, 'Ad en az 2 karakter olmalıdır'),
     lastName: z.string().min(2, 'Soyad en az 2 karakter olmalıdır'),
     email: z.string().email('Geçerli bir e-posta adresi giriniz'),
+    tcNo: z.string().length(11, 'TC Kimlik No tam 11 haneli olmalıdır').regex(/^[0-9]+$/, 'Sadece rakam giriniz'),
     studentNumber: z.string().optional(),
     phone: z.string().optional(),
     birthDate: z.string().optional(),
-    parentName: z.string().optional(),
-    parentPhone: z.string().optional(),
+    parentFirstName: z.string().min(2, 'Veli adı en az 2 karakter olmalıdır'),
+    parentLastName: z.string().min(2, 'Veli soyadı en az 2 karakter olmalıdır'),
+    parentPhone: z.string().min(10, 'Geçerli bir telefon numarası giriniz'),
+    parentEmail: z.string().email('Geçerli bir e-posta adresi giriniz').optional().or(z.literal('')),
+    parentTcNo: z.string().optional().refine(val => !val || (val.length === 11 && /^[0-9]+$/.test(val)), 'TC Kimlik No tam 11 haneli rakam olmalıdır'),
+    parentRelationship: z.string().min(2, 'Yakınlık derecesi zorunludur'),
+    parentAddress: z.string().optional(),
 });
 
 type PersonalFormData = z.infer<typeof personalSchema>;
@@ -25,21 +35,34 @@ type PersonalFormData = z.infer<typeof personalSchema>;
 export function Step1Personal() {
     const { formData, updateFormData, setStep } = useRegistration();
 
-    const { register, handleSubmit, formState: { errors } } = useForm<PersonalFormData>({
+    const { register, handleSubmit, setError, formState: { errors } } = useForm<PersonalFormData>({
         resolver: zodResolver(personalSchema),
         defaultValues: {
             firstName: formData.firstName || '',
             lastName: formData.lastName || '',
             email: formData.email || '',
+            tcNo: formData.tcNo || '',
             studentNumber: formData.studentNumber || '',
             phone: formData.phone || '',
             birthDate: formData.birthDate || '',
-            parentName: formData.parentName || '',
+            parentFirstName: formData.parentFirstName || '',
+            parentLastName: formData.parentLastName || '',
             parentPhone: formData.parentPhone || '',
+            parentEmail: formData.parentEmail || '',
+            parentTcNo: formData.parentTcNo || '',
+            parentRelationship: formData.parentRelationship || '',
+            parentAddress: formData.parentAddress || '',
         }
     });
 
-    const onSubmit = (data: PersonalFormData) => {
+    const onSubmit = async (data: PersonalFormData) => {
+        if (data.studentNumber && data.studentNumber.trim() !== '') {
+            const isUnique = await checkStudentNumberUnique(data.studentNumber.trim());
+            if (!isUnique) {
+                setError('studentNumber', { type: 'manual', message: 'Bu öğrenci numarası başka bir öğrencide kullanılıyor.' });
+                return;
+            }
+        }
         updateFormData(data);
         setStep(2); // İleri
     };
@@ -75,12 +98,21 @@ export function Step1Personal() {
                                 {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="studentNumber">TC Kimlik / Öğrenci No</Label>
-                                <Input id="studentNumber" {...register('studentNumber')} placeholder="Kimlik no veya okul no" />
+                                <Label htmlFor="tcNo">TC Kimlik No <span className="text-red-500">*</span></Label>
+                                <Input id="tcNo" maxLength={11} {...register('tcNo')} placeholder="11 haneli TC kimlik numarası" />
+                                {errors.tcNo && <p className="text-sm text-red-500">{errors.tcNo.message}</p>}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="phone">Telefon</Label>
                                 <Input id="phone" {...register('phone')} placeholder="05XX XXX XX XX" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="studentNumber">Öğrenci Numarası (Opsiyonel)</Label>
+                                <Input id="studentNumber" {...register('studentNumber')} placeholder="Örn: 202600123" />
+                                {errors.studentNumber && <p className="text-sm text-red-500">{errors.studentNumber.message}</p>}
+                                <p className="text-[11px] text-gray-500">
+                                    Numara yazılmazsa sistem otomatik olarak sıradaki numarayı atayacaktır.
+                                </p>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="birthDate">Doğum Tarihi</Label>
@@ -92,23 +124,56 @@ export function Step1Personal() {
                     {/* Veli Bilgileri */}
                     <Card className="col-span-1 md:col-span-2">
                         <CardHeader className="pb-4">
-                            <CardTitle className="text-lg">Veli İletişim Bilgileri</CardTitle>
+                            <CardTitle className="text-lg">Veli Bilgileri</CardTitle>
+                            <CardDescription>Öğrencinin velisine ait zorunlu ve isteğe bağlı belgeler.</CardDescription>
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="parentName">Veli Ad Soyad</Label>
-                                <Input id="parentName" {...register('parentName')} placeholder="Veli Adı Soyadı" />
+                                <Label htmlFor="parentFirstName">Veli Adı <span className="text-red-500">*</span></Label>
+                                <Input id="parentFirstName" {...register('parentFirstName')} placeholder="Veli Adı" />
+                                {errors.parentFirstName && <p className="text-sm text-red-500">{errors.parentFirstName.message}</p>}
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="parentPhone">Veli Telefon</Label>
+                                <Label htmlFor="parentLastName">Veli Soyadı <span className="text-red-500">*</span></Label>
+                                <Input id="parentLastName" {...register('parentLastName')} placeholder="Veli Soyadı" />
+                                {errors.parentLastName && <p className="text-sm text-red-500">{errors.parentLastName.message}</p>}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="parentPhone">Veli Telefon <span className="text-red-500">*</span></Label>
                                 <Input id="parentPhone" {...register('parentPhone')} placeholder="05XX XXX XX XX" />
+                                {errors.parentPhone && <p className="text-sm text-red-500">{errors.parentPhone.message}</p>}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="parentRelationship">Yakınlık Türü (Örn: Anne, Baba) <span className="text-red-500">*</span></Label>
+                                <Input id="parentRelationship" {...register('parentRelationship')} placeholder="Yakınlık Derecesi" />
+                                {errors.parentRelationship && <p className="text-sm text-red-500">{errors.parentRelationship.message}</p>}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="parentEmail">Veli E-posta</Label>
+                                <Input id="parentEmail" type="email" {...register('parentEmail')} placeholder="veli@email.com" />
+                                {errors.parentEmail && <p className="text-sm text-red-500">{errors.parentEmail.message}</p>}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="parentTcNo">Veli TC Kimlik No</Label>
+                                <Input id="parentTcNo" maxLength={11} {...register('parentTcNo')} placeholder="11 haneli TC No" />
+                                {errors.parentTcNo && <p className="text-sm text-red-500">{errors.parentTcNo.message}</p>}
+                            </div>
+                            <div className="space-y-2 col-span-1 md:col-span-2">
+                                <Label htmlFor="parentAddress">Veli Adres</Label>
+                                <Textarea id="parentAddress" {...register('parentAddress')} placeholder="Tam Adres" rows={3} className="resize-none" />
+                                {errors.parentAddress && <p className="text-sm text-red-500">{errors.parentAddress.message}</p>}
                             </div>
                         </CardContent>
                     </Card>
                 </div>
 
                 <div className="flex justify-end pt-4">
-                    <Button type="submit">İleri: Akademik Bilgiler</Button>
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }}>
+                        <Button type="submit">
+                            İleri: Akademik Bilgiler
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                    </motion.div>
                 </div>
             </form>
         </div>

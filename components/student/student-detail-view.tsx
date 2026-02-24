@@ -21,6 +21,15 @@ import { StudentAttendanceTab } from './detail/attendance-tab';
 import { StudentNotesTab } from './detail/notes-tab';
 import { StudentFinancialTab } from './detail/financial-tab';
 
+interface OmitOptionalStats {
+    total: number;
+    present: number;
+    absent: number;
+    late: number;
+    excused: number;
+    rate: number;
+}
+
 interface StudentDetailViewProps {
     profile: any;
     examResults: any[];
@@ -33,14 +42,7 @@ interface StudentDetailViewProps {
             total: number;
         };
         attendance: {
-            class: {
-                total: number;
-                present: number;
-                absent: number;
-                late: number;
-                excused: number;
-                rate: number;
-            };
+            class: OmitOptionalStats;
             study: {
                 total: number;
                 attended: number;
@@ -50,9 +52,9 @@ interface StudentDetailViewProps {
         };
         averageGrade: number;
     };
-    role: 'admin' | 'teacher';
+    role: 'admin' | 'teacher' | 'parent';
     financialData?: {
-        fee: any | null;
+        fees: any[];
         installments: any[];
         payments: any[];
     };

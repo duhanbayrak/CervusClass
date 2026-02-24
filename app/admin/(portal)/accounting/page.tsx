@@ -28,16 +28,24 @@ function DashboardSkeleton() {
     );
 }
 
-export default async function AccountingDashboardPage() {
+type Props = {
+    searchParams: { [key: string]: string | string[] | undefined } | Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+export default async function AccountingDashboardPage(props: Props) {
+    const rawParams = await props.searchParams;
+    const periodValue = rawParams?.period;
+    const period = typeof periodValue === 'string' ? periodValue : 'yearly';
+
     // Paralel veri çekme
     const [summary, trends, incomeDistribution, expenseDistribution, overdueInstallments, recentTransactions] =
         await Promise.all([
-            getFinancialSummary(),
-            getMonthlyTrends(),
-            getCategoryDistribution('income'),
-            getCategoryDistribution('expense'),
+            getFinancialSummary(period),
+            getMonthlyTrends(period),
+            getCategoryDistribution('income', period),
+            getCategoryDistribution('expense', period),
             getOverdueInstallments(),
-            getRecentTransactions(10),
+            getRecentTransactions(10, period),
         ]);
 
     return (

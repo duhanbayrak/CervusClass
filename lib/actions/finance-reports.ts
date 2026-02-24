@@ -7,18 +7,22 @@ import type {
     CategoryDistribution,
     OverdueInstallment,
 } from '@/types/accounting';
+import { getDateRange } from '@/lib/utils/date';
+import { format } from 'date-fns';
 
 /**
  * Finansal dashboard özet verilerini getirir.
  */
-export async function getFinancialSummary(period?: {
-    year?: number;
-}): Promise<FinancialSummary> {
+export async function getFinancialSummary(period: string = 'yearly'): Promise<FinancialSummary> {
     const { supabase, error } = await getAuthContext();
     const defaultSummary: FinancialSummary = {
         total_income: 0,
+        total_income_vat: 0,
         total_expense: 0,
+        total_expense_vat: 0,
         net_profit: 0,
+        net_vat: 0,
+        total_vat: 0,
         collected_amount: 0,
         pending_amount: 0,
         overdue_amount: 0,
@@ -27,16 +31,15 @@ export async function getFinancialSummary(period?: {
 
     if (error) return defaultSummary;
 
-    const year = period?.year || new Date().getFullYear();
-    const startDate = `${year}-01-01`;
-    const endDate = `${year}-12-31`;
+    const { startDate, endDate } = getDateRange(period);
+    const today = format(new Date(), 'yyyy-MM-dd');
 
     // Paralel sorgular
-    const [incomeResult, expenseResult, collectedResult, pendingResult, overdueResult, feePaymentsResult] = await Promise.all([
+    const [incomeResult, expenseResult, installmentsResult, paymentsResult] = await Promise.all([
         // Toplam gelir
         supabase
             .from('finance_transactions')
-            .select('amount')
+            .select('amount, vat_amount')
             .eq('type', 'income')
             .is('deleted_at', null)
             .gte('transaction_date', startDate)
@@ -45,53 +48,63 @@ export async function getFinancialSummary(period?: {
         // Toplam gider
         supabase
             .from('finance_transactions')
-            .select('amount')
+            .select('amount, vat_amount')
             .eq('type', 'expense')
             .is('deleted_at', null)
             .gte('transaction_date', startDate)
             .lte('transaction_date', endDate),
 
-        // Tahsil edilen (ödenen taksitler)
+        // Bu döneme düşen tüm taksit planları (Bekleyen ve geciken)
         supabase
             .from('fee_installments')
-            .select('paid_amount')
-            .eq('status', 'paid'),
+            .select('amount, paid_amount, status, due_date')
+            .gte('due_date', startDate)
+            .lte('due_date', endDate),
 
-        // Bekleyen (pending taksitler)
-        supabase
-            .from('fee_installments')
-            .select('amount, paid_amount')
-            .eq('status', 'pending'),
-
-        // Vadesi geçmiş
-        supabase
-            .from('fee_installments')
-            .select('amount, paid_amount')
-            .eq('status', 'overdue'),
-
-        // Öğrenci Ödemeleri (Gelir kalemi olarak eklenmek üzere)
+        // Bu dönemde yapılan tahsilatlar
         supabase
             .from('fee_payments')
             .select('amount')
             .gte('payment_date', startDate)
-            .lte('payment_date', endDate), // fee_payments'te payment_date var, transaction_date yok
+            .lte('payment_date', endDate)
     ]);
 
     // Toplamları hesapla
-    // Manuel gelirler + Öğrenci ödemeleri
-    const feePaymentsTotal = (feePaymentsResult?.data || []).reduce((sum: number, p: any) => sum + Number(p.amount), 0);
-    const totalIncome = (incomeResult.data || []).reduce((sum, t) => sum + Number(t.amount), 0) + feePaymentsTotal;
+    const totalIncome = (incomeResult.data || []).reduce((sum, t) => sum + Number(t.amount), 0);
     const totalExpense = (expenseResult.data || []).reduce((sum, t) => sum + Number(t.amount), 0);
-    const collectedAmount = (collectedResult.data || []).reduce((sum, i) => sum + Number(i.paid_amount), 0);
-    const pendingRaw = (pendingResult.data || []).reduce((sum, i) => sum + (Number(i.amount) - Number(i.paid_amount)), 0);
-    const overdueRaw = (overdueResult.data || []).reduce((sum, i) => sum + (Number(i.amount) - Number(i.paid_amount)), 0);
+    const collectedAmount = (paymentsResult.data || []).reduce((sum, p) => sum + Number(p.amount), 0);
+
+    // Taksit analizleri
+    let pendingRaw = 0;
+    let overdueRaw = 0;
+
+    const installments = installmentsResult.data || [];
+    for (const inst of installments) {
+        const remaining = Number(inst.amount) - Number(inst.paid_amount || 0);
+        if (remaining > 0) {
+            if (inst.status === 'overdue' || (inst.status === 'pending' && inst.due_date < today)) {
+                overdueRaw += remaining;
+            } else if (inst.status === 'pending') {
+                pendingRaw += remaining;
+            }
+        }
+    }
+
     const totalExpected = collectedAmount + pendingRaw + overdueRaw;
     const collectionRate = totalExpected > 0 ? Math.round((collectedAmount / totalExpected) * 100) : 0;
 
+    const totalIncomeVat = (incomeResult.data || []).reduce((sum, t) => sum + Number(t.vat_amount || 0), 0);
+    const totalExpenseVat = (expenseResult.data || []).reduce((sum, t) => sum + Number(t.vat_amount || 0), 0);
+    const netVat = totalIncomeVat - totalExpenseVat;
+
     return {
         total_income: totalIncome,
+        total_income_vat: totalIncomeVat,
         total_expense: totalExpense,
+        total_expense_vat: totalExpenseVat,
         net_profit: totalIncome - totalExpense,
+        net_vat: netVat,
+        total_vat: totalIncomeVat + totalExpenseVat,
         collected_amount: collectedAmount,
         pending_amount: pendingRaw,
         overdue_amount: overdueRaw,
@@ -100,13 +113,15 @@ export async function getFinancialSummary(period?: {
 }
 
 /**
- * Aylık gelir-gider trend verilerini getirir (12 ay).
+ * Aylık gelir-gider trend verilerini getirir (Her zaman seçili periyodun YILINI baz alarak 12 ay çeker).
  */
-export async function getMonthlyTrends(year?: number): Promise<MonthlyTrend[]> {
+export async function getMonthlyTrends(period: string = 'yearly'): Promise<MonthlyTrend[]> {
     const { supabase, error } = await getAuthContext();
     if (error) return [];
 
-    const currentYear = year || new Date().getFullYear();
+    const { startDate: periodStart } = getDateRange(period);
+    const currentYear = parseInt(periodStart.substring(0, 4), 10);
+
     const startDate = `${currentYear}-01-01`;
     const endDate = `${currentYear}-12-31`;
 
@@ -117,12 +132,6 @@ export async function getMonthlyTrends(year?: number): Promise<MonthlyTrend[]> {
         .gte('transaction_date', startDate)
         .lte('transaction_date', endDate)
         .in('type', ['income', 'expense']);
-
-    const { data: feePayments } = await supabase
-        .from('fee_payments')
-        .select('amount, payment_date')
-        .gte('payment_date', startDate)
-        .lte('payment_date', endDate);
 
     if (!transactions) return [];
 
@@ -147,25 +156,17 @@ export async function getMonthlyTrends(year?: number): Promise<MonthlyTrend[]> {
         }
     }
 
-    // Öğrenci ödemelerini gelir olarak ekle
-    if (feePayments) {
-        for (const payment of feePayments) {
-            const monthKey = payment.payment_date.substring(0, 7); // "2026-01"
-            if (months[monthKey]) {
-                months[monthKey].income += Number(payment.amount);
-            }
-        }
-    }
-
     return Object.values(months);
 }
 
 /**
  * Kategori bazlı gelir/gider dağılımını getirir.
  */
-export async function getCategoryDistribution(type: 'income' | 'expense'): Promise<CategoryDistribution[]> {
+export async function getCategoryDistribution(type: 'income' | 'expense', period: string = 'yearly'): Promise<CategoryDistribution[]> {
     const { supabase, error } = await getAuthContext();
     if (error) return [];
+
+    const { startDate, endDate } = getDateRange(period);
 
     const { data: transactions } = await supabase
         .from('finance_transactions')
@@ -174,21 +175,11 @@ export async function getCategoryDistribution(type: 'income' | 'expense'): Promi
             category:finance_categories!category_id(name, icon)
         `)
         .eq('type', type)
-        .is('deleted_at', null);
+        .is('deleted_at', null)
+        .gte('transaction_date', startDate)
+        .lte('transaction_date', endDate);
 
-    // Öğrenci ödemelerini çek (Sadece gelir raporuysa)
-    let feePaymentsTotal = 0;
-    if (type === 'income') {
-        const { data: payments } = await supabase
-            .from('fee_payments')
-            .select('amount');
-
-        if (payments) {
-            feePaymentsTotal = payments.reduce((sum, p) => sum + Number(p.amount), 0);
-        }
-    }
-
-    if ((!transactions || transactions.length === 0) && feePaymentsTotal === 0) return [];
+    if (!transactions || transactions.length === 0) return [];
 
     // Kategorilere göre grupla
     const categoryMap: Record<string, { name: string; icon: string | null; total: number }> = {};
@@ -203,16 +194,6 @@ export async function getCategoryDistribution(type: 'income' | 'expense'): Promi
         }
         categoryMap[catName].total += Number(tx.amount);
         grandTotal += Number(tx.amount);
-    }
-
-    // Eğitim Hizmetleri kategorisini ekle
-    if (feePaymentsTotal > 0) {
-        const catName = 'Eğitim Hizmetleri';
-        if (!categoryMap[catName]) {
-            categoryMap[catName] = { name: catName, icon: 'school', total: 0 };
-        }
-        categoryMap[catName].total += feePaymentsTotal;
-        grandTotal += feePaymentsTotal;
     }
 
     return Object.values(categoryMap).map(cat => ({
@@ -230,7 +211,7 @@ export async function getOverdueInstallments(): Promise<OverdueInstallment[]> {
     const { supabase, error } = await getAuthContext();
     if (error) return [];
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = format(new Date(), 'yyyy-MM-dd');
 
     // Vadesi geçmiş ama ödenmemiş taksitleri bul
     const { data } = await supabase

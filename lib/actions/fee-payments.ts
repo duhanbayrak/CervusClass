@@ -59,8 +59,29 @@ export async function createFeePayment(payment: {
     const { supabase, organizationId, user, error } = await getAuthContext();
     if (error || !organizationId || !user) return { success: false, error: error || 'Yetkilendirme hatası' };
 
-    // 1. Ödeme kaydını oluştur
-    const { error: insertError } = await supabase
+    // 1. Taksit tutarı kontrolü (Eğer bir taksite istinaden ödeme yapılıyorsa)
+    if (payment.installment_id) {
+        const { data: checkInst } = await supabase
+            .from('fee_installments')
+            .select('amount, paid_amount')
+            .eq('id', payment.installment_id)
+            .single();
+
+        if (checkInst) {
+            const remaining = Number(checkInst.amount) - Number(checkInst.paid_amount);
+            if (payment.amount > remaining) {
+                return {
+                    success: false,
+                    error: `Tahsilat tutarı aşımı! Bu taksit için en fazla ${remaining.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ödeme alınabilir.`
+                };
+            }
+        }
+    }
+
+    // 2. Ödeme kaydını oluştur
+    const paymentDate = payment.payment_date || new Date().toISOString();
+
+    const { data: insertedPayment, error: insertError } = await supabase
         .from('fee_payments')
         .insert({
             organization_id: organizationId,
@@ -72,10 +93,96 @@ export async function createFeePayment(payment: {
             reference_no: payment.reference_no || null,
             notes: payment.notes || null,
             created_by: user.id,
-            payment_date: payment.payment_date || new Date().toISOString(),
-        });
+            payment_date: paymentDate,
+        })
+        .select('id')
+        .single();
 
     if (insertError) return { success: false, error: insertError.message };
+
+    // 1b. Muhasebe kaydı — "Öğrenci Ücreti" kategorisini bul veya oluştur
+    let studentFeeCategoryId: string | null = null;
+
+    const { data: existingCategory } = await supabase
+        .from('finance_categories')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('name', 'Öğrenci Ücreti')
+        .eq('type', 'income')
+        .maybeSingle();
+
+    if (existingCategory) {
+        studentFeeCategoryId = existingCategory.id;
+    } else {
+        // Kategori yoksa oluştur
+        const { data: newCategory } = await supabase
+            .from('finance_categories')
+            .insert({
+                organization_id: organizationId,
+                name: 'Öğrenci Ücreti',
+                type: 'income',
+                icon: '🎓',
+            })
+            .select('id')
+            .single();
+
+        studentFeeCategoryId = newCategory?.id || null;
+    }
+
+    // 1c. finance_transactions tablosuna gelir kaydı ekle
+    if (studentFeeCategoryId) {
+        // Öğrenci adını açıklama için çek
+        const { data: studentProfile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', payment.student_id)
+            .single();
+
+        const studentName = studentProfile?.full_name || 'Öğrenci';
+        const description = payment.notes || `${studentName} - Taksit ödemesi`;
+
+        // KDV Hesaplaması (Eğer taksite bağlıysa, ilgili fee'den oran çekilir)
+        let vat_rate = 0;
+        let subtotal = payment.amount;
+        let vat_amount = 0;
+
+        if (payment.installment_id) {
+            const { data: instData } = await supabase
+                .from('fee_installments')
+                .select(`
+                    fee_id,
+                    student_fees ( vat_rate )
+                `)
+                .eq('id', payment.installment_id)
+                .single() as any;
+
+            if (instData?.student_fees?.vat_rate) {
+                vat_rate = Number(instData.student_fees.vat_rate);
+                if (vat_rate > 0) {
+                    subtotal = Number((payment.amount / (1 + vat_rate / 100)).toFixed(2));
+                    vat_amount = Number((payment.amount - subtotal).toFixed(2));
+                }
+            }
+        }
+
+        await supabase
+            .from('finance_transactions')
+            .insert({
+                organization_id: organizationId,
+                account_id: payment.account_id,
+                category_id: studentFeeCategoryId,
+                type: 'income',
+                amount: payment.amount,
+                subtotal: subtotal,
+                vat_rate: vat_rate,
+                vat_amount: vat_amount,
+                description,
+                transaction_date: paymentDate,
+                reference_no: payment.reference_no || null,
+                related_payment_id: insertedPayment?.id || null,
+                created_by: user.id,
+            });
+    }
 
     // 2. Taksit durumunu güncelle (eğer taksit belirtilmişse)
     if (payment.installment_id) {

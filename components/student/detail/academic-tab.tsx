@@ -9,7 +9,7 @@ import { StudentExamChart } from './student-exam-chart';
 
 interface StudentAcademicTabProps {
     examResults: any[];
-    role: 'admin' | 'teacher';
+    role: 'admin' | 'teacher' | 'parent';
     studentId: string;
 }
 

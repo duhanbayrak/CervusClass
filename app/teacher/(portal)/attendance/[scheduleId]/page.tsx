@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, Clock, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import AttendanceForm from '@/components/dashboard/teacher/attendance-form';
+import { format } from 'date-fns';
 
 async function getScheduleWithStudents(scheduleId: string) {
     const cookieStore = await cookies();
@@ -73,7 +74,7 @@ async function getScheduleWithStudents(scheduleId: string) {
     const dayDiff = targetDayISO - currentDayISO;
     const targetDateObj = new Date(now);
     targetDateObj.setDate(now.getDate() + dayDiff);
-    const targetDateStr = targetDateObj.toISOString().split('T')[0];
+    const targetDateStr = format(targetDateObj, 'yyyy-MM-dd');
 
     // Get existing attendance for the TARGET date
     const { data: existingAttendance } = await supabase

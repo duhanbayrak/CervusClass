@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar, Clock, MapPin, CheckCircle2, AlertCircle, ClipboardList, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { redirect } from 'next/navigation';
+import { format } from 'date-fns';
 
 interface PageProps {
     searchParams: Promise<{
@@ -53,7 +54,7 @@ async function getSchedule(dayOfWeek: number) {
     const targetDateObj = new Date(now);
     targetDateObj.setDate(now.getDate() + dayDifference);
     targetDateObj.setHours(0, 0, 0, 0); // Normalize time
-    const targetDate = targetDateObj.toISOString().split('T')[0];
+    const targetDate = format(targetDateObj, 'yyyy-MM-dd');
 
     // Determine if the target date is in the future
     const today = new Date();

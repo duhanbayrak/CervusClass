@@ -8,6 +8,7 @@ import { PendingStudyRequestsList } from '@/components/dashboard/teacher/pending
 import { getAuthContext } from '@/lib/auth-context';
 import { Schedule, StudySession, Homework, HomeworkSubmission } from '@/types/database';
 import { MissingAttendanceAlert } from '@/components/dashboard/teacher/missing-attendance-alert';
+import { format } from 'date-fns';
 
 export default async function TeacherDashboardPage() {
     // Merkezi auth context — tek bir client + getUser + organizationId
@@ -21,7 +22,7 @@ export default async function TeacherDashboardPage() {
 
     // Paralel veri çekme — tüm sorgular aynı anda çalışır
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = format(now, 'yyyy-MM-dd');
     const currentTimeStr = now.toTimeString().slice(0, 5); // HH:mm
 
     // Hafta başını bul (Pazartesi)
@@ -141,7 +142,7 @@ export default async function TeacherDashboardPage() {
         const diff = itemDayDow - 1; // Pazartesi(1) -> 0 fark
         const targetDateObj = new Date(startOfWeek);
         targetDateObj.setDate(startOfWeek.getDate() + diff);
-        const targetDateStr = targetDateObj.toISOString().split('T')[0];
+        const targetDateStr = format(targetDateObj, 'yyyy-MM-dd');
 
         // Gelecek dersleri ele (Bugünün ilerleyen saatleri)
         if (targetDateStr > todayStr) return; // İmkansız ama güvenli olsun

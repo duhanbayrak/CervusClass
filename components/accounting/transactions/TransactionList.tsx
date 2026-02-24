@@ -78,7 +78,7 @@ export function TransactionList({ transactions, type }: TransactionListProps) {
                                     <td className={`px-6 py-4 text-sm font-semibold text-right whitespace-nowrap ${type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                                         }`}>
                                         {type === 'income' ? '+' : '-'}
-                                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(Number(tx.amount))}
+                                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(tx.amount))}
                                     </td>
                                     <td className="px-6 py-4 text-xs text-gray-400">
                                         {tx.reference_no || '—'}

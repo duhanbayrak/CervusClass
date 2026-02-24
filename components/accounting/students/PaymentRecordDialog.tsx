@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import { X, Loader2 } from 'lucide-react';
 import { createFeePayment } from '@/lib/actions/fee-payments';
 import type { PaymentMethod } from '@/types/accounting';
+import { format } from 'date-fns';
 
 interface PaymentRecordDialogProps {
     studentId: string;
     installmentId: string | null;
     currency: string;
+    defaultAmount?: number;
     onClose: () => void;
 }
 
@@ -23,6 +25,7 @@ export function PaymentRecordDialog({
     studentId,
     installmentId,
     currency,
+    defaultAmount,
     onClose,
 }: PaymentRecordDialogProps) {
     const router = useRouter();
@@ -31,11 +34,11 @@ export function PaymentRecordDialog({
 
     // Form state
     const [accountId, setAccountId] = useState('');
-    const [amount, setAmount] = useState('');
+    const [amount, setAmount] = useState(defaultAmount ? defaultAmount.toString() : '');
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
     const [referenceNo, setReferenceNo] = useState('');
     const [notes, setNotes] = useState('');
-    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+    const [paymentDate, setPaymentDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
     // Hesap listesi
     const [accounts, setAccounts] = useState<AccountOption[]>([]);
@@ -65,12 +68,19 @@ export function PaymentRecordDialog({
             return;
         }
 
+        const numAmount = parseFloat(amount);
+
+        if (defaultAmount !== undefined && numAmount > defaultAmount) {
+            setMessage(`Hata: Tahsilat tutarı aşımı! Bu taksit için en fazla ${defaultAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ${currency} ödeme alınabilir.`);
+            return;
+        }
+
         startTransition(async () => {
             const result = await createFeePayment({
                 student_id: studentId,
                 installment_id: installmentId || undefined,
                 account_id: accountId,
-                amount: parseFloat(amount),
+                amount: numAmount,
                 payment_method: paymentMethod,
                 reference_no: referenceNo || undefined,
                 notes: notes || undefined,

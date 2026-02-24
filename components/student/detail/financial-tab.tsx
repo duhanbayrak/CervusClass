@@ -3,20 +3,20 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CreditCard, Wallet, FileText, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { CreditCard, Wallet, FileText, CheckCircle, Clock, AlertCircle, ShoppingCart } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
 interface FinancialTabProps {
     data: {
-        fee: any | null;
+        fees: any[];
         installments: any[];
         payments: any[];
     };
 }
 
 export function StudentFinancialTab({ data }: FinancialTabProps) {
-    const { fee, installments, payments } = data;
+    const { fees, installments, payments } = data;
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(amount);
@@ -48,7 +48,7 @@ export function StudentFinancialTab({ data }: FinancialTabProps) {
         }
     };
 
-    if (!fee) {
+    if (!fees || fees.length === 0) {
         return (
             <Card className="border-slate-200 shadow-sm border-dashed">
                 <CardContent className="flex flex-col items-center justify-center p-12 text-center text-slate-500">
@@ -60,8 +60,15 @@ export function StudentFinancialTab({ data }: FinancialTabProps) {
         );
     }
 
+    // Toplam tutarları fees dökümünden toplayalım
+    const totalNetAmount = fees.reduce((acc, f) => acc + (Number(f.net_amount) || 0), 0);
+    const totalGrossAmount = fees.reduce((acc, f) => acc + (Number(f.total_amount) || 0), 0);
     const totalPaid = installments.reduce((acc, inst) => acc + (Number(inst.paid_amount) || 0), 0);
-    const remainingAmount = Number(fee.net_amount) - totalPaid;
+    const remainingAmount = totalNetAmount - totalPaid;
+
+    // En az 1 tane aktif ücret varsa genel durumu Aktif göster
+    const isAnyActive = fees.some(f => f.status === 'active');
+    const displayStatus = remainingAmount <= 0 ? 'completed' : isAnyActive ? 'active' : 'pending';
 
     return (
         <div className="space-y-6">
@@ -73,8 +80,9 @@ export function StudentFinancialTab({ data }: FinancialTabProps) {
                         <CreditCard className="h-4 w-4 text-indigo-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(fee.net_amount)}</div>
-                        <p className="text-xs text-slate-500 mt-1">Brüt: {formatCurrency(fee.total_amount)}</p>
+                        <div className="text-2xl font-bold">{formatCurrency(totalNetAmount)}</div>
+                        <p className="text-xs text-slate-500 mt-1">Brüt: {formatCurrency(totalGrossAmount)}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{fees.length} adet Hizmet/Ürün Sepeti</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -94,10 +102,55 @@ export function StudentFinancialTab({ data }: FinancialTabProps) {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-amber-600">{formatCurrency(remainingAmount)}</div>
-                        <p className="text-xs text-slate-500 mt-1">Durum: {getStatusBadge(fee.status)}</p>
+                        <p className="text-xs text-slate-500 mt-1">Genel Durum: {getStatusBadge(displayStatus)}</p>
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Alınan Hizmetler (Sepetler) Tablosu */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                        <ShoppingCart className="h-5 w-5 text-indigo-500" />
+                        Alınan Hizmetler
+                    </CardTitle>
+                    <CardDescription>Öğrencinin yararlandığı ürün ve hizmet paketleri</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="rounded-md border">
+                        <Table>
+                            <TableHeader className="bg-slate-50">
+                                <TableRow>
+                                    <TableHead>Hizmet/Ürün</TableHead>
+                                    <TableHead>Akademik Dönem</TableHead>
+                                    <TableHead className="text-right">İndirim</TableHead>
+                                    <TableHead className="text-right">Net Tutar (KDV Dahil)</TableHead>
+                                    <TableHead className="text-center">Durum</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {fees.map((fee) => (
+                                    <TableRow key={fee.id}>
+                                        <TableCell className="font-medium text-slate-900 border-r">{fee.service?.name || '-'}</TableCell>
+                                        <TableCell>{fee.academic_period || '-'}</TableCell>
+                                        <TableCell className="text-right">
+                                            {fee.discount_amount > 0 ? (
+                                                <span className="text-red-500 text-xs px-2 py-0.5 bg-red-50 rounded-full">
+                                                    -{formatCurrency(fee.discount_amount)}
+                                                </span>
+                                            ) : '-'}
+                                        </TableCell>
+                                        <TableCell className="text-right font-medium">{formatCurrency(fee.net_amount)}</TableCell>
+                                        <TableCell className="text-center">
+                                            {getStatusBadge(fee.status)}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </CardContent>
+            </Card>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {/* Taksit Planı */}
