@@ -52,49 +52,53 @@ export function flattenExamScores(scores: any, type?: string) {
   // Helper to safely get net value
   const getNet = (val: any) => {
     if (typeof val === 'number') return val
-    if (val && typeof val === 'object' && 'net' in val) return val.net
+    if (typeof val === 'string' && !isNaN(parseFloat(val))) return parseFloat(val)
+    if (val && typeof val === 'object' && 'net' in val) {
+      const netVal = val.net
+      if (typeof netVal === 'number') return netVal
+      if (typeof netVal === 'string' && !isNaN(parseFloat(netVal))) return parseFloat(netVal)
+    }
     return null
   }
 
+  const setNet = (key: string, val: any) => {
+    if (val !== undefined) {
+      const net = getNet(val);
+      if (net !== null) flat[key] = net;
+    }
+  }
+
   // Common subjects (TYT/AYT)
-  // Check common keys directly
-  if (scores.matematik) flat['Matematik'] = getNet(scores.matematik)
-  if (scores.turkce) flat['Türkçe'] = getNet(scores.turkce)
-  if (scores.sosyal) flat['Sosyal'] = getNet(scores.sosyal)
-  if (scores.fen) flat['Fen'] = getNet(scores.fen)
-  if (scores.tarih) flat['Tarih'] = getNet(scores.tarih)
-  if (scores.cografya) flat['Coğrafya'] = getNet(scores.cografya)
-  if (scores.felsefe) flat['Felsefe'] = getNet(scores.felsefe)
-  if (scores.din) flat['Din Kültürü'] = getNet(scores.din)
-  if (scores.fizik) flat['Fizik'] = getNet(scores.fizik)
-  if (scores.kimya) flat['Kimya'] = getNet(scores.kimya)
-  if (scores.biyoloji) flat['Biyoloji'] = getNet(scores.biyoloji)
-  if (scores.edebiyat) flat['Edebiyat'] = getNet(scores.edebiyat)
+  setNet('Matematik', scores?.matematik)
+  setNet('Türkçe', scores?.turkce)
+  setNet('Sosyal', scores?.sosyal)
+  setNet('Fen', scores?.fen)
+  setNet('Tarih', scores?.tarih)
+  setNet('Coğrafya', scores?.cografya)
+  setNet('Felsefe', scores?.felsefe)
+  setNet('Din Kültürü', scores?.din)
+  setNet('Fizik', scores?.fizik)
+  setNet('Kimya', scores?.kimya)
+  setNet('Biyoloji', scores?.biyoloji)
+  setNet('Edebiyat', scores?.edebiyat)
 
   // AYT Specific Nested Structures
-  // If type is explicitly AYT or implied by presence of specific keys
   if (type === 'AYT' || !type) {
     // Fen Bilimleri (AYT)
-    if (scores.fen_bilimleri) {
-      if (scores.fen_bilimleri.fizik) flat['Fizik'] = getNet(scores.fen_bilimleri.fizik)
-      if (scores.fen_bilimleri.kimya) flat['Kimya'] = getNet(scores.fen_bilimleri.kimya)
-      if (scores.fen_bilimleri.biyoloji) flat['Biyoloji'] = getNet(scores.fen_bilimleri.biyoloji)
-    }
+    setNet('Fizik', scores?.fen_bilimleri?.fizik)
+    setNet('Kimya', scores?.fen_bilimleri?.kimya)
+    setNet('Biyoloji', scores?.fen_bilimleri?.biyoloji)
 
     // T.D. Edebiyat Sos-1 (AYT)
-    if (scores.td_edebiyat_sos1) {
-      if (scores.td_edebiyat_sos1.edebiyat) flat['Edebiyat'] = getNet(scores.td_edebiyat_sos1.edebiyat)
-      if (scores.td_edebiyat_sos1.tarih1) flat['Tarih-1'] = getNet(scores.td_edebiyat_sos1.tarih1)
-      if (scores.td_edebiyat_sos1.cografya1) flat['Coğrafya-1'] = getNet(scores.td_edebiyat_sos1.cografya1)
-    }
+    setNet('Edebiyat', scores?.td_edebiyat_sos1?.edebiyat)
+    setNet('Tarih-1', scores?.td_edebiyat_sos1?.tarih1)
+    setNet('Coğrafya-1', scores?.td_edebiyat_sos1?.cografya1)
 
     // Sosyal-2 (AYT)
-    if (scores.sosyal2) {
-      if (scores.sosyal2.tarih2) flat['Tarih-2'] = getNet(scores.sosyal2.tarih2)
-      if (scores.sosyal2.cografya2) flat['Coğrafya-2'] = getNet(scores.sosyal2.cografya2)
-      if (scores.sosyal2.felsefe) flat['Felsefe'] = getNet(scores.sosyal2.felsefe)
-      if (scores.sosyal2.din) flat['Din Kültürü'] = getNet(scores.sosyal2.din)
-    }
+    setNet('Tarih-2', scores?.sosyal2?.tarih2)
+    setNet('Coğrafya-2', scores?.sosyal2?.cografya2)
+    setNet('Felsefe', scores?.sosyal2?.felsefe)
+    setNet('Din Kültürü', scores?.sosyal2?.din)
   }
 
   return flat
@@ -119,47 +123,55 @@ export function flattenExamDetails(scores: any, type?: string) {
     // If scalar (net), return mock detail. Or if we want to be safe, standard object.
     // Assuming number is just net.
     if (typeof val === 'number') return { net: val, dogru: 0, yanlis: 0 }
-    if (val && typeof val === 'object') return val
+    if (typeof val === 'string' && !isNaN(parseFloat(val))) return { net: parseFloat(val), dogru: 0, yanlis: 0 }
+    if (val && typeof val === 'object') {
+      const netVal = val.net
+      if (typeof netVal === 'string' && !isNaN(parseFloat(netVal))) {
+        return { ...val, net: parseFloat(netVal) }
+      }
+      return val
+    }
     return null
   }
 
+  const setData = (key: string, val: any) => {
+    if (val !== undefined) {
+      const data = getData(val);
+      if (data !== null) flat[key] = data;
+    }
+  }
+
   // Common subjects (TYT/AYT)
-  if (scores.matematik) flat['Matematik'] = getData(scores.matematik)
-  if (scores.turkce) flat['Türkçe'] = getData(scores.turkce)
-  if (scores.sosyal) flat['Sosyal'] = getData(scores.sosyal)
-  if (scores.fen) flat['Fen'] = getData(scores.fen)
-  if (scores.tarih) flat['Tarih'] = getData(scores.tarih)
-  if (scores.cografya) flat['Coğrafya'] = getData(scores.cografya)
-  if (scores.felsefe) flat['Felsefe'] = getData(scores.felsefe)
-  if (scores.din) flat['Din Kültürü'] = getData(scores.din)
-  if (scores.fizik) flat['Fizik'] = getData(scores.fizik)
-  if (scores.kimya) flat['Kimya'] = getData(scores.kimya)
-  if (scores.biyoloji) flat['Biyoloji'] = getData(scores.biyoloji)
-  if (scores.edebiyat) flat['Edebiyat'] = getData(scores.edebiyat)
+  setData('Matematik', scores?.matematik)
+  setData('Türkçe', scores?.turkce)
+  setData('Sosyal', scores?.sosyal)
+  setData('Fen', scores?.fen)
+  setData('Tarih', scores?.tarih)
+  setData('Coğrafya', scores?.cografya)
+  setData('Felsefe', scores?.felsefe)
+  setData('Din Kültürü', scores?.din)
+  setData('Fizik', scores?.fizik)
+  setData('Kimya', scores?.kimya)
+  setData('Biyoloji', scores?.biyoloji)
+  setData('Edebiyat', scores?.edebiyat)
 
   // AYT Specific Nested Structures
   if (type === 'AYT' || !type) {
     // Fen Bilimleri (AYT)
-    if (scores.fen_bilimleri) {
-      if (scores.fen_bilimleri.fizik) flat['Fizik'] = getData(scores.fen_bilimleri.fizik)
-      if (scores.fen_bilimleri.kimya) flat['Kimya'] = getData(scores.fen_bilimleri.kimya)
-      if (scores.fen_bilimleri.biyoloji) flat['Biyoloji'] = getData(scores.fen_bilimleri.biyoloji)
-    }
+    setData('Fizik', scores?.fen_bilimleri?.fizik)
+    setData('Kimya', scores?.fen_bilimleri?.kimya)
+    setData('Biyoloji', scores?.fen_bilimleri?.biyoloji)
 
     // T.D. Edebiyat Sos-1 (AYT)
-    if (scores.td_edebiyat_sos1) {
-      if (scores.td_edebiyat_sos1.edebiyat) flat['Edebiyat'] = getData(scores.td_edebiyat_sos1.edebiyat)
-      if (scores.td_edebiyat_sos1.tarih1) flat['Tarih-1'] = getData(scores.td_edebiyat_sos1.tarih1)
-      if (scores.td_edebiyat_sos1.cografya1) flat['Coğrafya-1'] = getData(scores.td_edebiyat_sos1.cografya1)
-    }
+    setData('Edebiyat', scores?.td_edebiyat_sos1?.edebiyat)
+    setData('Tarih-1', scores?.td_edebiyat_sos1?.tarih1)
+    setData('Coğrafya-1', scores?.td_edebiyat_sos1?.cografya1)
 
     // Sosyal-2 (AYT)
-    if (scores.sosyal2) {
-      if (scores.sosyal2.tarih2) flat['Tarih-2'] = getData(scores.sosyal2.tarih2)
-      if (scores.sosyal2.cografya2) flat['Coğrafya-2'] = getData(scores.sosyal2.cografya2)
-      if (scores.sosyal2.felsefe) flat['Felsefe'] = getData(scores.sosyal2.felsefe)
-      if (scores.sosyal2.din) flat['Din Kültürü'] = getData(scores.sosyal2.din)
-    }
+    setData('Tarih-2', scores?.sosyal2?.tarih2)
+    setData('Coğrafya-2', scores?.sosyal2?.cografya2)
+    setData('Felsefe', scores?.sosyal2?.felsefe)
+    setData('Din Kültürü', scores?.sosyal2?.din)
   }
 
   return flat

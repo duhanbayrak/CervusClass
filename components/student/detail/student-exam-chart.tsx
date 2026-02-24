@@ -26,13 +26,18 @@ export function StudentExamChart({ data }: StudentExamChartProps) {
     }
 
     // Tarihe göre sırala (eskiden yeniye)
-    const sortedData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const sortedData = [...data].sort((a, b) => {
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        return dateA - dateB;
+    });
 
-    // Tarih formatla (GG/AA) ve index ekle
+    // Tarih formatla ve index ekle
     const formattedData = sortedData.map((item, index) => ({
         ...item,
-        index, // Unique key for XAxis
-        formattedDate: new Date(item.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'numeric' }),
+        index,
+        // Sınav adını kısalt (max 12 karakter)
+        shortName: item.name.length > 12 ? item.name.substring(0, 12) + '…' : item.name,
         fullDate: new Date(item.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
     }));
 
@@ -57,17 +62,20 @@ export function StudentExamChart({ data }: StudentExamChartProps) {
                 </div>
             </CardHeader>
             <CardContent>
-                <div className="h-[250px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={formattedData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                <div className="w-full">
+                    <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={formattedData} margin={{ top: 5, right: 10, left: -20, bottom: 40 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="dark:stroke-slate-700" />
                             <XAxis
                                 dataKey="index"
                                 tickLine={false}
                                 axisLine={false}
-                                tick={{ fontSize: 12, fill: '#64748b' }}
-                                tickMargin={10}
-                                tickFormatter={(value) => formattedData[value]?.formattedDate || ''}
+                                tick={{ fontSize: 10, fill: '#64748b' }}
+                                tickMargin={8}
+                                angle={-35}
+                                textAnchor="end"
+                                interval={0}
+                                tickFormatter={(value) => formattedData[value]?.shortName || ''}
                             />
                             <YAxis
                                 domain={[minNet < 0 ? 0 : minNet, maxNet]}
@@ -75,6 +83,7 @@ export function StudentExamChart({ data }: StudentExamChartProps) {
                                 axisLine={false}
                                 tick={{ fontSize: 12, fill: '#64748b' }}
                                 tickCount={5}
+                                allowDecimals={true}
                             />
                             <Tooltip
                                 content={({ active, payload }) => {
@@ -103,6 +112,7 @@ export function StudentExamChart({ data }: StudentExamChartProps) {
                                 strokeWidth={3}
                                 activeDot={{ r: 6, fill: "#6366f1", stroke: "#e0e7ff", strokeWidth: 4 }}
                                 dot={{ r: 4, fill: "#6366f1", strokeWidth: 0 }}
+                                connectNulls
                             />
                         </LineChart>
                     </ResponsiveContainer>

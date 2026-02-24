@@ -10,6 +10,7 @@ import {
     Tooltip,
     Legend,
     ResponsiveContainer,
+    ReferenceLine,
 } from 'recharts'
 import { flattenExamScores } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -43,6 +44,30 @@ const COLORS = {
     student: '#3b82f6',
     class: '#f59e0b',
     school: '#10b981',
+}
+
+function computeYAxisConfig(values: number[]) {
+    const filtered = values.filter(v => v != null && typeof v === 'number')
+    if (filtered.length === 0) return {}
+
+    const min = Math.min(...filtered)
+    const max = Math.max(...filtered)
+
+    // No negative values - use default Recharts behavior
+    if (min >= 0) return {}
+
+    // Has negative values - compute tight domain & ticks
+    const yMin = Math.floor(min) // e.g. -0.75 → -1
+    const step = max > 20 ? 10 : max > 10 ? 5 : max > 5 ? 2 : 1
+    const yMax = Math.ceil(max / step) * step
+
+    // Generate ticks: include yMin, 0, then positive steps
+    const ticks = [yMin, 0]
+    for (let t = step; t <= yMax; t += step) {
+        ticks.push(t)
+    }
+
+    return { domain: [yMin, yMax] as [number, number], ticks }
 }
 
 // Study Tracks Configuration
@@ -118,9 +143,9 @@ export function ExamDetailCharts({
         const studentNet = typeof net === 'number' ? net : 0
         return {
             subject,
-            'Benim Netim': studentNet,
-            'Sınıf Ortalaması': classSubjectAverages[subject] ?? 0,
-            'Okul Ortalaması': schoolSubjectAverages[subject] ?? 0,
+            student_net: studentNet,
+            class_net: classSubjectAverages[subject] ?? 0,
+            school_net: schoolSubjectAverages[subject] ?? 0,
         }
     })
 
@@ -136,11 +161,21 @@ export function ExamDetailCharts({
     const totalData = [
         {
             subject: 'Toplam Net',
-            'Benim Netim': totalNet ?? 0,
-            'Sınıf Ortalaması': classTotalAvg,
-            'Okul Ortalaması': schoolTotalAvg,
+            student_net: totalNet ?? 0,
+            class_net: classTotalAvg,
+            school_net: schoolTotalAvg,
         }
     ]
+
+    // Compute Y axis configs for each chart type
+    const subjectYAxis = computeYAxisConfig(
+        subjectData.flatMap(d => [d.student_net, d.class_net, d.school_net])
+    )
+    const totalYAxis = computeYAxisConfig(
+        [totalNet ?? 0, classTotalAvg, schoolTotalAvg]
+    )
+    const hasNegativeSubject = !!subjectYAxis.domain
+    const hasNegativeTotal = !!totalYAxis.domain
 
     if (subjectData.length === 0) {
         return (
@@ -229,16 +264,17 @@ export function ExamDetailCharts({
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={subjectData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                                        <XAxis dataKey="subject" tick={{ fontSize: 12 }} />
-                                        <YAxis tick={{ fontSize: 12 }} />
+                                        <XAxis dataKey="subject" tick={{ fontSize: 12 }} axisLine={!hasNegativeSubject} tickLine={!hasNegativeSubject} />
+                                        <YAxis tick={{ fontSize: 12 }} {...(subjectYAxis.domain ? { domain: subjectYAxis.domain } : {})} {...(subjectYAxis.ticks ? { ticks: subjectYAxis.ticks } : {})} />
+                                        {hasNegativeSubject && <ReferenceLine y={0} stroke="#999" strokeWidth={1.5} />}
                                         <Tooltip content={<CustomSubjectTooltip />} cursor={{ fill: 'transparent' }} />
                                         <Legend
                                             verticalAlign="top" align="right" iconType="circle"
                                             wrapperStyle={{ fontSize: '13px', paddingBottom: '16px' }}
                                         />
-                                        {visibleSeries.student && <Bar dataKey="Benim Netim" fill={COLORS.student} radius={[6, 6, 0, 0]} barSize={32} />}
-                                        {visibleSeries.class && <Bar dataKey="Sınıf Ortalaması" fill={COLORS.class} radius={[6, 6, 0, 0]} barSize={32} />}
-                                        {visibleSeries.school && <Bar dataKey="Okul Ortalaması" fill={COLORS.school} radius={[6, 6, 0, 0]} barSize={32} />}
+                                        {visibleSeries.student && <Bar name="Benim Netim" dataKey="student_net" fill={COLORS.student} radius={[6, 6, 0, 0]} barSize={32} />}
+                                        {visibleSeries.class && <Bar name="Sınıf Ortalaması" dataKey="class_net" fill={COLORS.class} radius={[6, 6, 0, 0]} barSize={32} />}
+                                        {visibleSeries.school && <Bar name="Okul Ortalaması" dataKey="school_net" fill={COLORS.school} radius={[6, 6, 0, 0]} barSize={32} />}
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -248,54 +284,59 @@ export function ExamDetailCharts({
 
                 {/* Her ders için ayrı küçük grafik kartları */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {subjectData.map((item) => (
-                        <div key={item.subject} className="border rounded-xl bg-card p-5 shadow-sm">
-                            <h3 className="text-base font-semibold mb-4">{item.subject}</h3>
-                            <ExpandableChartWrapper onClick={() => setExpandedSubject(item.subject)}>
-                                <div className="w-full h-[280px]">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart
-                                            data={[
-                                                { name: 'Ben', value: item['Benim Netim'], fill: COLORS.student },
-                                                { name: 'Sınıf', value: item['Sınıf Ortalaması'], fill: COLORS.class },
-                                                { name: 'Okul', value: item['Okul Ortalaması'], fill: COLORS.school },
-                                            ]}
-                                            margin={{ top: 5, right: 10, left: -10, bottom: 5 }}
-                                        >
-                                            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                                            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                                            <YAxis tick={{ fontSize: 11 }} />
-                                            <Tooltip content={<CustomSubjectTooltip />} cursor={{ fill: 'transparent' }} />
-                                            <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>
-                                                {[
-                                                    { key: 'student', color: COLORS.student },
-                                                    { key: 'class', color: COLORS.class },
-                                                    { key: 'school', color: COLORS.school }
-                                                ].map((s, i) => (
-                                                    // Only render if visible, effectively hiding/showing bars
-                                                    <rect key={i} fill={s.color} className={visibleSeries[s.key as keyof typeof visibleSeries] ? 'opacity-100' : 'opacity-0'} />
-                                                ))}
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </ExpandableChartWrapper>
-                            <div className="flex items-center justify-between mt-3 text-xs">
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS.student }} />
-                                    <span className="text-muted-foreground">Sen: <span className="font-semibold text-foreground">{item['Benim Netim']}</span></span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS.class }} />
-                                    <span className="text-muted-foreground">Sınıf: <span className="font-semibold text-foreground">{item['Sınıf Ortalaması']}</span></span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS.school }} />
-                                    <span className="text-muted-foreground">Okul: <span className="font-semibold text-foreground">{item['Okul Ortalaması']}</span></span>
+                    {subjectData.map((item) => {
+                        const itemYAxis = computeYAxisConfig([item.student_net, item.class_net, item.school_net])
+                        const hasNeg = !!itemYAxis.domain
+                        return (
+                            <div key={item.subject} className="border rounded-xl bg-card p-5 shadow-sm">
+                                <h3 className="text-base font-semibold mb-4">{item.subject}</h3>
+                                <ExpandableChartWrapper onClick={() => setExpandedSubject(item.subject)}>
+                                    <div className="w-full h-[280px]">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart
+                                                data={[
+                                                    { name: 'Ben', value: item.student_net, fill: COLORS.student },
+                                                    { name: 'Sınıf', value: item.class_net, fill: COLORS.class },
+                                                    { name: 'Okul', value: item.school_net, fill: COLORS.school },
+                                                ]}
+                                                margin={{ top: 5, right: 10, left: -10, bottom: 5 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                                                <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={!hasNeg} tickLine={!hasNeg} />
+                                                <YAxis tick={{ fontSize: 11 }} {...(itemYAxis.domain ? { domain: itemYAxis.domain } : {})} {...(itemYAxis.ticks ? { ticks: itemYAxis.ticks } : {})} />
+                                                {hasNeg && <ReferenceLine y={0} stroke="#999" strokeWidth={1.5} />}
+                                                <Tooltip content={<CustomSubjectTooltip />} cursor={{ fill: 'transparent' }} />
+                                                <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>
+                                                    {[
+                                                        { key: 'student', color: COLORS.student },
+                                                        { key: 'class', color: COLORS.class },
+                                                        { key: 'school', color: COLORS.school }
+                                                    ].map((s, i) => (
+                                                        // Only render if visible, effectively hiding/showing bars
+                                                        <rect key={i} fill={s.color} className={visibleSeries[s.key as keyof typeof visibleSeries] ? 'opacity-100' : 'opacity-0'} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </ExpandableChartWrapper>
+                                <div className="flex items-center justify-between mt-3 text-xs">
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS.student }} />
+                                        <span className="text-muted-foreground">Sen: <span className="font-semibold text-foreground">{item.student_net}</span></span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS.class }} />
+                                        <span className="text-muted-foreground">Sınıf: <span className="font-semibold text-foreground">{item.class_net}</span></span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS.school }} />
+                                        <span className="text-muted-foreground">Okul: <span className="font-semibold text-foreground">{item.school_net}</span></span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
 
                 {/* Toplam Net Karşılaştırma */}
@@ -312,16 +353,17 @@ export function ExamDetailCharts({
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={totalData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                                        <XAxis dataKey="subject" tick={{ fontSize: 12 }} />
-                                        <YAxis tick={{ fontSize: 12 }} />
+                                        <XAxis dataKey="subject" tick={{ fontSize: 12 }} axisLine={!hasNegativeTotal} tickLine={!hasNegativeTotal} />
+                                        <YAxis tick={{ fontSize: 12 }} {...(totalYAxis.domain ? { domain: totalYAxis.domain } : {})} {...(totalYAxis.ticks ? { ticks: totalYAxis.ticks } : {})} />
+                                        {hasNegativeTotal && <ReferenceLine y={0} stroke="#999" strokeWidth={1.5} />}
                                         <Tooltip content={<CustomSubjectTooltip />} cursor={{ fill: 'transparent' }} />
                                         <Legend
                                             verticalAlign="top" align="right" iconType="circle"
                                             wrapperStyle={{ fontSize: '13px', paddingBottom: '16px' }}
                                         />
-                                        <Bar dataKey="Benim Netim" fill={COLORS.student} radius={[6, 6, 0, 0]} barSize={48} />
-                                        <Bar dataKey="Sınıf Ortalaması" fill={COLORS.class} radius={[6, 6, 0, 0]} barSize={48} />
-                                        <Bar dataKey="Okul Ortalaması" fill={COLORS.school} radius={[6, 6, 0, 0]} barSize={48} />
+                                        <Bar name="Benim Netim" dataKey="student_net" fill={COLORS.student} radius={[6, 6, 0, 0]} barSize={48} />
+                                        <Bar name="Sınıf Ortalaması" dataKey="class_net" fill={COLORS.class} radius={[6, 6, 0, 0]} barSize={48} />
+                                        <Bar name="Okul Ortalaması" dataKey="school_net" fill={COLORS.school} radius={[6, 6, 0, 0]} barSize={48} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -357,16 +399,17 @@ export function ExamDetailCharts({
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={subjectData} margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                            <XAxis dataKey="subject" tick={{ fontSize: 14 }} />
-                            <YAxis tick={{ fontSize: 14 }} />
+                            <XAxis dataKey="subject" tick={{ fontSize: 14 }} axisLine={!hasNegativeSubject} tickLine={!hasNegativeSubject} />
+                            <YAxis tick={{ fontSize: 14 }} {...(subjectYAxis.domain ? { domain: subjectYAxis.domain } : {})} {...(subjectYAxis.ticks ? { ticks: subjectYAxis.ticks } : {})} />
+                            {hasNegativeSubject && <ReferenceLine y={0} stroke="#999" strokeWidth={1.5} />}
                             <Tooltip content={<CustomSubjectTooltip />} cursor={{ fill: 'transparent' }} />
                             <Legend
                                 verticalAlign="top" align="right" iconType="circle"
                                 wrapperStyle={{ fontSize: '14px', paddingBottom: '16px' }}
                             />
-                            {visibleSeries.student && <Bar dataKey="Benim Netim" fill={COLORS.student} radius={[8, 8, 0, 0]} barSize={48} />}
-                            {visibleSeries.class && <Bar dataKey="Sınıf Ortalaması" fill={COLORS.class} radius={[8, 8, 0, 0]} barSize={48} />}
-                            {visibleSeries.school && <Bar dataKey="Okul Ortalaması" fill={COLORS.school} radius={[8, 8, 0, 0]} barSize={48} />}
+                            {visibleSeries.student && <Bar name="Benim Netim" dataKey="student_net" fill={COLORS.student} radius={[8, 8, 0, 0]} barSize={48} />}
+                            {visibleSeries.class && <Bar name="Sınıf Ortalaması" dataKey="class_net" fill={COLORS.class} radius={[8, 8, 0, 0]} barSize={48} />}
+                            {visibleSeries.school && <Bar name="Okul Ortalaması" dataKey="school_net" fill={COLORS.school} radius={[8, 8, 0, 0]} barSize={48} />}
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -385,37 +428,44 @@ export function ExamDetailCharts({
                             <div className="flex items-center justify-center gap-8 mb-4 shrink-0">
                                 <div className="flex items-center gap-2 text-sm">
                                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.student }} />
-                                    <span>Sen: <strong>{expandedItem['Benim Netim']}</strong></span>
+                                    <span>Sen: <strong>{expandedItem.student_net}</strong></span>
                                 </div>
                                 <div className="flex items-center gap-2 text-sm">
                                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.class }} />
-                                    <span>Sınıf: <strong>{expandedItem['Sınıf Ortalaması']}</strong></span>
+                                    <span>Sınıf: <strong>{expandedItem.class_net}</strong></span>
                                 </div>
                                 <div className="flex items-center gap-2 text-sm">
                                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.school }} />
-                                    <span>Okul: <strong>{expandedItem['Okul Ortalaması']}</strong></span>
+                                    <span>Okul: <strong>{expandedItem.school_net}</strong></span>
                                 </div>
                             </div>
                             <div className="flex-1 min-h-0">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart
-                                        data={[
-                                            { name: 'Ben', value: expandedItem['Benim Netim'], fill: COLORS.student },
-                                            { name: 'Sınıf', value: expandedItem['Sınıf Ortalaması'], fill: COLORS.class },
-                                            { name: 'Okul', value: expandedItem['Okul Ortalaması'], fill: COLORS.school },
-                                        ]}
-                                        margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
-                                    >
-                                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                                        <XAxis dataKey="name" tick={{ fontSize: 14 }} />
-                                        <YAxis tick={{ fontSize: 14 }} />
-                                        <Tooltip content={<CustomSubjectTooltip />} cursor={{ fill: 'transparent' }} />
-                                        <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={80}>
-                                            {[COLORS.student, COLORS.class, COLORS.school].map((color, i) => (
-                                                <rect key={i} fill={color} />
-                                            ))}
-                                        </Bar>
-                                    </BarChart>
+                                    {(() => {
+                                        const expandedYAxis = computeYAxisConfig([expandedItem.student_net, expandedItem.class_net, expandedItem.school_net])
+                                        const hasNeg = !!expandedYAxis.domain
+                                        return (
+                                            <BarChart
+                                                data={[
+                                                    { name: 'Ben', value: expandedItem.student_net, fill: COLORS.student },
+                                                    { name: 'Sınıf', value: expandedItem.class_net, fill: COLORS.class },
+                                                    { name: 'Okul', value: expandedItem.school_net, fill: COLORS.school },
+                                                ]}
+                                                margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                                                <XAxis dataKey="name" tick={{ fontSize: 14 }} axisLine={!hasNeg} tickLine={!hasNeg} />
+                                                <YAxis tick={{ fontSize: 14 }} {...(expandedYAxis.domain ? { domain: expandedYAxis.domain } : {})} {...(expandedYAxis.ticks ? { ticks: expandedYAxis.ticks } : {})} />
+                                                {hasNeg && <ReferenceLine y={0} stroke="#999" strokeWidth={1.5} />}
+                                                <Tooltip content={<CustomSubjectTooltip />} cursor={{ fill: 'transparent' }} />
+                                                <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={80}>
+                                                    {[COLORS.student, COLORS.class, COLORS.school].map((color, i) => (
+                                                        <rect key={i} fill={color} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        )
+                                    })()}
                                 </ResponsiveContainer>
                             </div>
                         </div>
@@ -449,16 +499,17 @@ export function ExamDetailCharts({
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={totalData} margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                                <XAxis dataKey="subject" tick={{ fontSize: 14 }} />
-                                <YAxis tick={{ fontSize: 14 }} />
+                                <XAxis dataKey="subject" tick={{ fontSize: 14 }} axisLine={!hasNegativeTotal} tickLine={!hasNegativeTotal} />
+                                <YAxis tick={{ fontSize: 14 }} {...(totalYAxis.domain ? { domain: totalYAxis.domain } : {})} {...(totalYAxis.ticks ? { ticks: totalYAxis.ticks } : {})} />
+                                {hasNegativeTotal && <ReferenceLine y={0} stroke="#999" strokeWidth={1.5} />}
                                 <Tooltip content={<CustomSubjectTooltip />} cursor={{ fill: 'transparent' }} />
                                 <Legend
                                     verticalAlign="top" align="right" iconType="circle"
                                     wrapperStyle={{ fontSize: '14px', paddingBottom: '16px' }}
                                 />
-                                <Bar dataKey="Benim Netim" fill={COLORS.student} radius={[8, 8, 0, 0]} barSize={80} />
-                                <Bar dataKey="Sınıf Ortalaması" fill={COLORS.class} radius={[8, 8, 0, 0]} barSize={80} />
-                                <Bar dataKey="Okul Ortalaması" fill={COLORS.school} radius={[8, 8, 0, 0]} barSize={80} />
+                                <Bar name="Benim Netim" dataKey="student_net" fill={COLORS.student} radius={[8, 8, 0, 0]} barSize={80} />
+                                <Bar name="Sınıf Ortalaması" dataKey="class_net" fill={COLORS.class} radius={[8, 8, 0, 0]} barSize={80} />
+                                <Bar name="Okul Ortalaması" dataKey="school_net" fill={COLORS.school} radius={[8, 8, 0, 0]} barSize={80} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>

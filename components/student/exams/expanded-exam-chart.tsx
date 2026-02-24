@@ -38,9 +38,9 @@ interface ChartDataPoint {
     name: string
     label: string
     fullDate: string
-    'Benim Netim': number | null
-    'Sınıf Ortalaması': number | null
-    'Okul Ortalaması': number | null
+    student_net: number | null
+    class_net: number | null
+    school_net: number | null
     originalDate: Date | null // Used for filtering
     [key: string]: any
 }
@@ -191,9 +191,9 @@ export function ExpandedExamChart({ data }: ExpandedExamChartProps) {
             return (
                 <BarChart {...CommonProps}>
                     {CommonComponents}
-                    <Bar dataKey="Benim Netim" fill={COLORS.student} radius={[6, 6, 0, 0]} barSize={32} />
-                    <Bar dataKey="Sınıf Ortalaması" fill={COLORS.class} radius={[6, 6, 0, 0]} barSize={32} />
-                    <Bar dataKey="Okul Ortalaması" fill={COLORS.school} radius={[6, 6, 0, 0]} barSize={32} />
+                    <Bar name="Benim Netim" dataKey="student_net" fill={COLORS.student} radius={[6, 6, 0, 0]} barSize={32} />
+                    <Bar name="Sınıf Ortalaması" dataKey="class_net" fill={COLORS.class} radius={[6, 6, 0, 0]} barSize={32} />
+                    <Bar name="Okul Ortalaması" dataKey="school_net" fill={COLORS.school} radius={[6, 6, 0, 0]} barSize={32} />
                 </BarChart>
             )
         }
@@ -201,23 +201,26 @@ export function ExpandedExamChart({ data }: ExpandedExamChartProps) {
             <LineChart {...CommonProps}>
                 {CommonComponents}
                 <Line
-                    type="monotone" dataKey="Benim Netim" stroke={COLORS.student}
+                    name="Benim Netim"
+                    type="monotone" dataKey="student_net" stroke={COLORS.student}
                     strokeWidth={3}
                     dot={{ r: 5, fill: COLORS.student, strokeWidth: 2, stroke: '#fff' }}
                     activeDot={{ r: 7, stroke: COLORS.student, strokeWidth: 2 }}
-                    connectNulls
+                    connectNulls={true}
                 />
                 <Line
-                    type="monotone" dataKey="Sınıf Ortalaması" stroke={COLORS.class}
+                    name="Sınıf Ortalaması"
+                    type="monotone" dataKey="class_net" stroke={COLORS.class}
                     strokeWidth={2} strokeDasharray="6 3"
                     dot={{ r: 4, fill: COLORS.class, strokeWidth: 2, stroke: '#fff' }}
-                    connectNulls
+                    connectNulls={true}
                 />
                 <Line
-                    type="monotone" dataKey="Okul Ortalaması" stroke={COLORS.school}
+                    name="Okul Ortalaması"
+                    type="monotone" dataKey="school_net" stroke={COLORS.school}
                     strokeWidth={2} strokeDasharray="3 3"
                     dot={{ r: 4, fill: COLORS.school, strokeWidth: 2, stroke: '#fff' }}
-                    connectNulls
+                    connectNulls={true}
                 />
             </LineChart>
         )

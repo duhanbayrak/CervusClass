@@ -1,8 +1,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BookOpen, Calendar as CalendarIcon, Clock, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { BookOpen, Calendar as CalendarIcon, Clock, TrendingUp, CheckCircle2, ChevronRight } from 'lucide-react';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { getAuthContext } from '@/lib/auth-context';
 import { Schedule, Homework, ExamResult, StudySession } from '@/types/database';
 
@@ -57,7 +59,7 @@ export default async function StudentDashboardPage() {
             .select('*')
             .eq('student_id', user.id)
             .order('exam_date', { ascending: false })
-            .limit(3),
+            .limit(5),
 
         // Etüt talepleri
         supabase
@@ -185,38 +187,48 @@ export default async function StudentDashboardPage() {
                                 <CardTitle className="text-lg font-bold">Son Sınav Sonuçları</CardTitle>
                                 <CardDescription>Katıldığınız son deneme sınavları</CardDescription>
                             </div>
+                            <Link href="/student/exams">
+                                <Button variant="outline" size="sm" className="flex items-center gap-1.5 text-sm font-medium">
+                                    Tüm Sınavlarım
+                                    <ChevronRight className="w-4 h-4" />
+                                </Button>
+                            </Link>
                         </div>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
                             {exams.map((exam) => (
-                                <div key={exam.id} className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400">
-                                            <TrendingUp className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <h4 className="font-bold text-slate-900 dark:text-white">{exam.exam_name}</h4>
-                                                {exam.exam_type === 'TYT' && (
-                                                    <Badge className="h-5 px-1.5 text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
-                                                        TYT
-                                                    </Badge>
-                                                )}
-                                                {exam.exam_type === 'AYT' && (
-                                                    <Badge className="h-5 px-1.5 text-[10px] bg-purple-100 text-purple-700 hover:bg-purple-100 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800">
-                                                        AYT
-                                                    </Badge>
-                                                )}
+                                <Link key={exam.id} href={`/student/exams/${exam.id}`} className="block group">
+                                    <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 group-hover:border-indigo-200 dark:group-hover:border-indigo-800/50 transition-colors">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:bg-indigo-100 group-hover:text-indigo-600 dark:group-hover:bg-indigo-900/30 dark:group-hover:text-indigo-400 transition-colors">
+                                                <TrendingUp className="w-5 h-5" />
                                             </div>
-                                            <p className="text-xs text-slate-500">{exam.exam_date ? new Date(exam.exam_date).toLocaleDateString('tr-TR') : '-'}</p>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{exam.exam_name}</h4>
+                                                    {exam.exam_type === 'TYT' && (
+                                                        <Badge className="h-5 px-1.5 text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                                                            TYT
+                                                        </Badge>
+                                                    )}
+                                                    {exam.exam_type === 'AYT' && (
+                                                        <Badge className="h-5 px-1.5 text-[10px] bg-purple-100 text-purple-700 hover:bg-purple-100 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800">
+                                                            AYT
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs text-slate-500">{exam.exam_date ? new Date(exam.exam_date).toLocaleDateString('tr-TR') : '-'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right flex items-center gap-4">
+                                            <div>
+                                                <span className="block text-xl font-black text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{exam.total_net}</span>
+                                                <span className="text-xs text-slate-500 font-medium">NET</span>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <span className="block text-xl font-black text-slate-900 dark:text-white">{exam.total_net}</span>
-                                        <span className="text-xs text-slate-500 font-medium">NET</span>
-                                    </div>
-                                </div>
+                                </Link>
                             ))}
                             {exams.length === 0 && (
                                 <p className="text-slate-500 text-center py-4">Henüz sınav sonucu bulunmuyor.</p>

@@ -24,7 +24,7 @@ import {
 import Link from 'next/link'
 import { getExamDetailData } from '@/lib/actions/exam-stats'
 import { flattenExamDetails } from '@/lib/utils'
-import { ExamDetailCharts } from '@/components/student/exams/exam-detail-charts'
+import { DynamicExamDetailCharts } from '@/components/student/exams/student-charts-wrapper'
 
 async function getStudentExamDetails(examName: string, studentId: string) {
     const cookieStore = await cookies()
@@ -46,7 +46,6 @@ async function getStudentExamDetails(examName: string, studentId: string) {
         .select(`
             id,
             exam_name,
-            exam_name,
             exam_date,
             exam_type,
             total_net,
@@ -56,7 +55,7 @@ async function getStudentExamDetails(examName: string, studentId: string) {
                 full_name,
                 student_number,
                 class_id,
-                classes!inner (
+                classes (
                     id,
                     name
                 ),
@@ -65,15 +64,16 @@ async function getStudentExamDetails(examName: string, studentId: string) {
         `)
         .eq('exam_name', examName)
         .eq('student_id', studentId)
-        .single()
+        .limit(1)
 
-
-    if (error || !result) {
+    if (error || !result || result.length === 0) {
         return null
     }
 
+    const examResult = result[0];
+
     // Get class average and ranking using the SAME logic/query as the class list page
-    const classId = (result.profiles as any)?.class_id
+    const classId = (examResult.profiles as any)?.class_id
 
     // Get ALL results for this class and this exam to calculate rank and average consistently
     const { data: classResults } = await supabase
@@ -105,7 +105,7 @@ async function getStudentExamDetails(examName: string, studentId: string) {
     }
 
     // Parse scores
-    const scoresData = flattenExamDetails(result.scores, result.exam_type)
+    const scoresData = flattenExamDetails(examResult.scores, examResult.exam_type)
 
     const questionCounts: Record<string, number> = {
         'Turkce': 40,
@@ -140,22 +140,22 @@ async function getStudentExamDetails(examName: string, studentId: string) {
 
     return {
         student: {
-            fullName: (result.profiles as any)?.full_name || 'N/A',
-            studentNumber: (result.profiles as any)?.student_number || 'N/A',
-            className: (result.profiles as any)?.classes?.name || 'N/A',
-            classId: (result.profiles as any)?.classes?.id
+            fullName: (examResult.profiles as any)?.full_name || 'N/A',
+            studentNumber: (examResult.profiles as any)?.student_number || 'N/A',
+            className: (examResult.profiles as any)?.classes?.name || 'N/A',
+            classId: (examResult.profiles as any)?.classes?.id
         },
         exam: {
-            name: result.exam_name,
-            date: result.exam_date,
-            type: result.exam_type
+            name: examResult.exam_name,
+            date: examResult.exam_date,
+            type: examResult.exam_type
         },
         scores,
-        rawScores: scoresData,
-        totalNet: result.total_net || 0,
+        rawScores: examResult.scores,
+        totalNet: examResult.total_net || 0,
         classRank,
         classAvg,
-        examId: result.id
+        examId: examResult.id
     }
 }
 
@@ -330,7 +330,7 @@ export default async function StudentExamDetailPage({
 
             {/* Analytics Charts */}
             {statsData && (
-                <ExamDetailCharts
+                <DynamicExamDetailCharts
                     scores={data.rawScores}
                     examType={data.exam.type}
                     totalNet={data.totalNet}

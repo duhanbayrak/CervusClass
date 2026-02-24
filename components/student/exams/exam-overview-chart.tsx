@@ -13,6 +13,7 @@ import {
     Legend,
     Brush,
     ResponsiveContainer,
+    ReferenceLine,
     TooltipProps,
 } from 'recharts'
 import { format } from 'date-fns'
@@ -38,6 +39,7 @@ interface ExamResult {
 
 interface Average {
     exam_name: string
+    exam_type: 'TYT' | 'AYT'
     exam_date: string
     avg_net: number
 }
@@ -56,13 +58,13 @@ const COLORS = {
 
 
 
-function renderChart(chartData: any[], isBarChart: boolean, fontSize: number = 10) {
+function renderChart(chartData: any[], isBarChart: boolean, yDomain: [number, number], hasNegative: boolean, fontSize: number = 10) {
     if (isBarChart) {
         return (
             <BarChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis dataKey="label" tick={{ fontSize }} interval="preserveStartEnd" height={70} angle={-20} textAnchor="end" tickFormatter={formatXAxisTick} />
-                <YAxis tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} allowDecimals={true} domain={yDomain} tickCount={8} />
                 <Tooltip
                     content={<CustomTooltip />}
                     cursor={{ fill: 'transparent' }}
@@ -73,9 +75,10 @@ function renderChart(chartData: any[], isBarChart: boolean, fontSize: number = 1
                     verticalAlign="top" align="right" iconType="circle"
                     wrapperStyle={{ fontSize: '13px', paddingBottom: '16px' }}
                 />
-                <Bar dataKey="Benim Netim" fill={COLORS.student} radius={[6, 6, 0, 0]} barSize={24} />
-                <Bar dataKey="Sınıf Ortalaması" fill={COLORS.class} radius={[6, 6, 0, 0]} barSize={24} />
-                <Bar dataKey="Okul Ortalaması" fill={COLORS.school} radius={[6, 6, 0, 0]} barSize={24} />
+                {hasNegative && <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="4 4" />}
+                <Bar name="Benim Netim" dataKey="student_net" fill={COLORS.student} radius={[6, 6, 0, 0]} barSize={24} />
+                <Bar name="Sınıf Ortalaması" dataKey="class_net" fill={COLORS.class} radius={[6, 6, 0, 0]} barSize={24} />
+                <Bar name="Okul Ortalaması" dataKey="school_net" fill={COLORS.school} radius={[6, 6, 0, 0]} barSize={24} />
             </BarChart>
         )
     }
@@ -83,7 +86,7 @@ function renderChart(chartData: any[], isBarChart: boolean, fontSize: number = 1
         <LineChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 60 }}>
             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
             <XAxis dataKey="label" tick={{ fontSize }} interval="preserveStartEnd" height={70} angle={-20} textAnchor="end" className="text-muted-foreground" tickFormatter={formatXAxisTick} />
-            <YAxis tick={{ fontSize: 12 }} className="text-muted-foreground" />
+            <YAxis tick={{ fontSize: 12 }} allowDecimals={true} domain={yDomain} tickCount={8} className="text-muted-foreground" />
             <Tooltip
                 content={<CustomTooltip />}
                 isAnimationActive={false}
@@ -93,24 +96,28 @@ function renderChart(chartData: any[], isBarChart: boolean, fontSize: number = 1
                 verticalAlign="top" align="right" iconType="circle"
                 wrapperStyle={{ fontSize: '13px', paddingBottom: '16px' }}
             />
+            {hasNegative && <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="4 4" />}
             <Line
-                type="monotone" dataKey="Benim Netim" stroke={COLORS.student}
+                name="Benim Netim"
+                type="monotone" dataKey="student_net" stroke={COLORS.student}
                 strokeWidth={3}
                 dot={{ r: 5, fill: COLORS.student, strokeWidth: 2, stroke: '#fff' }}
                 activeDot={{ r: 7, stroke: COLORS.student, strokeWidth: 2 }}
-                connectNulls
+                connectNulls={true}
             />
             <Line
-                type="monotone" dataKey="Sınıf Ortalaması" stroke={COLORS.class}
+                name="Sınıf Ortalaması"
+                type="monotone" dataKey="class_net" stroke={COLORS.class}
                 strokeWidth={2} strokeDasharray="6 3"
                 dot={{ r: 4, fill: COLORS.class, strokeWidth: 2, stroke: '#fff' }}
-                connectNulls
+                connectNulls={true}
             />
             <Line
-                type="monotone" dataKey="Okul Ortalaması" stroke={COLORS.school}
+                name="Okul Ortalaması"
+                type="monotone" dataKey="school_net" stroke={COLORS.school}
                 strokeWidth={2} strokeDasharray="3 3"
                 dot={{ r: 4, fill: COLORS.school, strokeWidth: 2, stroke: '#fff' }}
-                connectNulls
+                connectNulls={true}
             />
         </LineChart>
     )
@@ -131,19 +138,20 @@ export function ExamOverviewChart({ studentExams, classAverages, schoolAverages 
     const chartData = useMemo(() => currentExams
         .filter(e => e.exam_date)
         .sort((a, b) => {
-            const dateA = new Date(a.exam_date!).getTime()
-            const dateB = new Date(b.exam_date!).getTime()
-            if (dateA !== dateB) return dateA - dateB
+            const dateA = a.exam_date ? new Date(a.exam_date).getTime() : 0;
+            const dateB = b.exam_date ? new Date(b.exam_date).getTime() : 0;
+            if (dateA !== dateB) return dateA - dateB;
 
             // Secondary sort: created_at (oldest first)
-            const createdA = new Date(a.created_at).getTime()
-            const createdB = new Date(b.created_at).getTime()
-            return createdA - createdB
+            const createdA = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const createdB = b.created_at ? new Date(b.created_at).getTime() : 0;
+            if (createdA !== createdB) return createdA - createdB;
+
+            return String(a.id).localeCompare(String(b.id));
         })
         .map(exam => {
-            const key = `${exam.exam_name}_${exam.exam_date}`
-            const classAvg = classAverages.find(c => `${c.exam_name}_${c.exam_date}` === key)
-            const schoolAvg = schoolAverages.find(s => `${s.exam_name}_${s.exam_date}` === key)
+            const classAvg = classAverages.find(c => c.exam_name === exam.exam_name && c.exam_type === exam.exam_type)
+            const schoolAvg = schoolAverages.find(s => s.exam_name === exam.exam_name && s.exam_type === exam.exam_type)
 
             const shortName = exam.exam_name
                 .replace(/\.xlsx?$/i, '')
@@ -155,6 +163,8 @@ export function ExamOverviewChart({ studentExams, classAverages, schoolAverages 
                 : ''
 
             return {
+                exam_date: exam.exam_date,
+                exam_name: exam.exam_name,
                 name: exam.exam_name,
                 label: `${shortName} (${dateStr})`,
                 fullDate: exam.exam_date
@@ -162,11 +172,23 @@ export function ExamOverviewChart({ studentExams, classAverages, schoolAverages 
                     : '',
                 originalDate: exam.exam_date ? new Date(exam.exam_date) : null,
                 created_at: exam.created_at, // Pass created_at for secondary sorting in modal
-                'Benim Netim': exam.total_net ?? 0,
-                'Sınıf Ortalaması': classAvg?.avg_net ?? null,
-                'Okul Ortalaması': schoolAvg?.avg_net ?? null,
+                student_net: exam.total_net ?? null,
+                class_net: classAvg?.avg_net ?? null,
+                school_net: schoolAvg?.avg_net ?? null,
             }
         }), [currentExams, classAverages, schoolAverages])
+
+    // Y ekseni domain hesaplama
+    const { yDomain, hasNegative } = useMemo(() => {
+        const allNets = chartData.flatMap(d => [d.student_net, d.class_net, d.school_net]).filter((v): v is number => v !== null);
+        if (allNets.length === 0) return { yDomain: [0, 100] as [number, number], hasNegative: false };
+        const minVal = Math.min(...allNets);
+        const maxVal = Math.max(...allNets);
+        const hasNeg = minVal < 0;
+        const yMin = hasNeg ? Math.floor(minVal - 5) : 0;
+        const yMax = Math.ceil(maxVal + 10);
+        return { yDomain: [yMin, yMax] as [number, number], hasNegative: hasNeg };
+    }, [chartData])
 
     const { totalPages, defaultPage, getPageData } = usePaginatedData(chartData, 5)
     // When using pagination/slice directly, we might not need separate state for pages if only showing chart.
@@ -175,6 +197,9 @@ export function ExamOverviewChart({ studentExams, classAverages, schoolAverages 
     const [currentPage, setCurrentPage] = useState(defaultPage)
 
     const pagedData = getPageData(currentPage)
+
+    // Log the final consolidated data structure as requested
+    console.log("Final Merged Chart Data: ", chartData);
 
     // Removed the early return for empty data to allow showing empty state within tabs if needed? 
     // Actually, if we have NO exams for a category, chartData is empty. We should handle empty state gracefully.
@@ -205,9 +230,9 @@ export function ExamOverviewChart({ studentExams, classAverages, schoolAverages 
                 {chartData.length > 0 ? (
                     <>
                         <ExpandableChartWrapper onClick={() => setIsModalOpen(true)}>
-                            <div className="w-full h-[450px]">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    {renderChart(pagedData, isBarChart)}
+                            <div className="w-full">
+                                <ResponsiveContainer width="100%" height={450}>
+                                    {renderChart(pagedData, isBarChart, yDomain, hasNegative)}
                                 </ResponsiveContainer>
                             </div>
                         </ExpandableChartWrapper>
@@ -219,7 +244,7 @@ export function ExamOverviewChart({ studentExams, classAverages, schoolAverages 
                         />
                     </>
                 ) : (
-                    <div className="h-[300px] flex items-center justify-center border-2 border-dashed rounded-xl bg-muted/10">
+                    <div className="h-[450px] flex items-center justify-center border-2 border-dashed rounded-xl bg-muted/10">
                         <p className="text-muted-foreground">Bu kategoride henüz sınav verisi bulunmuyor.</p>
                     </div>
                 )}

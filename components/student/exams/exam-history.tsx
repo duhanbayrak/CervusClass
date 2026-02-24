@@ -24,7 +24,7 @@ interface ExamResults {
 
 interface ExamHistoryProps {
     exams: ExamResults[]
-    role?: 'student' | 'teacher'
+    role?: 'student' | 'teacher' | 'admin'
     studentId?: string
 }
 
@@ -44,7 +44,7 @@ export function ExamHistory({ exams, role = 'student', studentId }: ExamHistoryP
                 </div>
                 <h3 className="font-semibold text-lg">Henüz Sınav Kaydı Yok</h3>
                 <p className="text-sm text-muted-foreground max-w-sm mt-1">
-                    {role === 'teacher' ? 'Öğrencinin henüz bir sınav kaydı bulunmamaktadır.' : 'Girdiğiniz deneme sınavları sisteme yüklendiğinde burada görünecektir.'}
+                    {role === 'teacher' || role === 'admin' ? 'Öğrencinin henüz bir sınav kaydı bulunmamaktadır.' : 'Girdiğiniz deneme sınavları sisteme yüklendiğinde burada görünecektir.'}
                 </p>
             </div>
         )
@@ -73,7 +73,9 @@ export function ExamHistory({ exams, role = 'student', studentId }: ExamHistoryP
                             key={exam.id}
                             href={role === 'teacher'
                                 ? `/teacher/exams/${encodeURIComponent(exam.exam_name)}/students/${studentId}`
-                                : `/student/exams/${exam.id}`
+                                : role === 'admin'
+                                    ? `/admin/exams/${encodeURIComponent(exam.exam_name)}/students/${studentId}`
+                                    : `/student/exams/${exam.id}`
                             }
                             className="block group"
                         >
