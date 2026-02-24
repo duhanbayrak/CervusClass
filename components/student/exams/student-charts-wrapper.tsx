@@ -11,3 +11,13 @@ export const DynamicSubjectOverviewCharts = dynamic(() => import('@/components/s
     loading: () => <div className="h-[400px] w-full bg-muted/20 animate-pulse rounded-xl" />,
     ssr: false
 })
+
+export const DynamicStudentExamChart = dynamic(() => import('@/components/student/detail/student-exam-chart').then(mod => mod.StudentExamChart), {
+    loading: () => <div className="h-[300px] w-full bg-muted/20 animate-pulse rounded-xl" />,
+    ssr: false
+})
+
+export const DynamicExamDetailCharts = dynamic(() => import('@/components/student/exams/exam-detail-charts').then(mod => mod.ExamDetailCharts), {
+    loading: () => <div className="h-[400px] w-full bg-muted/20 animate-pulse rounded-xl" />,
+    ssr: false
+})

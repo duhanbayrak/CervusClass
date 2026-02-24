@@ -1,11 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, LineChart, ChevronRight } from 'lucide-react';
+import { TrendingUp, LineChart, ChevronRight, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
-import { StudentExamChart } from './student-exam-chart';
+import { DynamicStudentExamChart } from '@/components/student/exams/student-charts-wrapper';
 
 interface StudentAcademicTabProps {
     examResults: any[];
@@ -14,19 +15,60 @@ interface StudentAcademicTabProps {
 }
 
 export function StudentAcademicTab({ examResults, role, studentId }: StudentAcademicTabProps) {
-    // Chart için veriyi hazırla
+    const [activeTab, setActiveTab] = useState<'TYT' | 'AYT'>('TYT');
+
+    // Chart için veriyi hazırla (exam_type dahil)
     const chartData = examResults
         .filter(exam => exam.total_net !== null && exam.exam_date)
         .map(exam => ({
             date: exam.exam_date,
             net: Number(exam.total_net),
-            name: exam.exam_name
+            name: exam.exam_name,
+            exam_type: exam.exam_type || 'TYT'
         }));
+
+    // Aktif sekmeye göre filtrele
+    const filteredChartData = chartData.filter(d => d.exam_type === activeTab);
 
     return (
         <div className="space-y-6">
-            {/* Grafik */}
-            <StudentExamChart data={chartData} />
+            {/* TYT/AYT Sekme Butonları + Grafik */}
+            <div>
+                <div className="flex items-center gap-2 mb-4">
+                    <button
+                        onClick={() => setActiveTab('TYT')}
+                        className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${activeTab === 'TYT'
+                            ? 'bg-indigo-600 text-white shadow-sm'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                            }`}
+                    >
+                        TYT
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('AYT')}
+                        className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${activeTab === 'AYT'
+                            ? 'bg-indigo-600 text-white shadow-sm'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                            }`}
+                    >
+                        AYT
+                    </button>
+                </div>
+
+                {filteredChartData.length >= 2 ? (
+                    <DynamicStudentExamChart data={filteredChartData} />
+                ) : (
+                    <Card className="border-slate-200 dark:border-slate-700/50 shadow-sm mb-6">
+                        <CardContent className="py-12">
+                            <div className="flex flex-col items-center justify-center text-center text-slate-400">
+                                <Info className="w-8 h-8 mb-2 opacity-50" />
+                                <p className="text-sm">{activeTab} türünde yeterli sınav verisi bulunmuyor.</p>
+                                <p className="text-xs mt-1">Grafik için en az 2 sınav gereklidir.</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
 
             {/* Liste */}
             <Card className="border-slate-200 dark:border-slate-700/50 shadow-sm">
@@ -35,14 +77,12 @@ export function StudentAcademicTab({ examResults, role, studentId }: StudentAcad
                         <CardTitle>Sınav Sonuçları</CardTitle>
                         <CardDescription>Son girilen sınavlar ve puanları</CardDescription>
                     </div>
-                    {role === 'teacher' && (
-                        <Link href={`/teacher/students/${studentId}/exams`}>
-                            <Button variant="outline" size="sm" className="flex items-center gap-2">
-                                <LineChart className="h-4 w-4" />
-                                Tüm Sınav Detaylarını Gör
-                            </Button>
-                        </Link>
-                    )}
+                    <Link href={role === 'admin' ? `/admin/students/${studentId}/exams` : `/teacher/students/${studentId}/exams`}>
+                        <Button variant="outline" size="sm" className="flex items-center gap-2">
+                            <LineChart className="h-4 w-4" />
+                            Tüm Sınav Detaylarını Gör
+                        </Button>
+                    </Link>
                 </CardHeader>
                 <CardContent>
                     {examResults.length > 0 ? (
@@ -50,7 +90,7 @@ export function StudentAcademicTab({ examResults, role, studentId }: StudentAcad
                             {examResults.map((exam) => {
                                 const examUrl = role === 'teacher'
                                     ? `/teacher/exams/${encodeURIComponent(exam.exam_name)}/students/${studentId}`
-                                    : `/student/exams/${exam.id}`;
+                                    : `/admin/exams/${encodeURIComponent(exam.exam_name)}/students/${studentId}`;
 
                                 return (
                                     <Link

@@ -9,7 +9,7 @@ import { ArrowLeft, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
-export default async function TeacherStudentExamsPage({
+export default async function AdminStudentExamsPage({
     params,
 }: {
     params: Promise<{ id: string }>
@@ -58,7 +58,7 @@ export default async function TeacherStudentExamsPage({
         <div className="container py-8 max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
             {/* Header with Back Button */}
             <div className="flex items-center gap-4">
-                <Link href={`/teacher/students/${id}`}>
+                <Link href={`/admin/students/${id}`}>
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Geri
@@ -67,7 +67,7 @@ export default async function TeacherStudentExamsPage({
                 <div className="h-8 w-px bg-border" />
                 <div className="flex items-center gap-2 text-muted-foreground">
                     <User className="h-4 w-4" />
-                    <span className="text-sm font-medium">Öğrenci Gelişim Analizi</span>
+                    <span className="text-sm font-medium">Öğrenci Gelişim Analizi (Admin)</span>
                 </div>
             </div>
 
@@ -97,7 +97,7 @@ export default async function TeacherStudentExamsPage({
             )}
 
             {/* Sınav Listesi */}
-            <ExamHistory exams={exams} role="teacher" studentId={id} />
+            <ExamHistory exams={exams} role="admin" studentId={id} />
         </div>
     )
 }
