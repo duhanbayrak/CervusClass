@@ -227,9 +227,9 @@ export default async function TeacherDashboardPage() {
                                 <CardTitle className="text-lg font-bold">Bugünün Programı</CardTitle>
                                 <CardDescription>{new Date().toLocaleDateString('tr-TR', { weekday: 'long', month: 'long', day: 'numeric' })}</CardDescription>
                             </div>
-                            <div className="bg-indigo-100 dark:bg-indigo-900/30 p-2 rounded-lg text-indigo-600 dark:text-indigo-400">
+                            <Link href="/teacher/schedule" className="bg-indigo-100 dark:bg-indigo-900/30 p-2 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors cursor-pointer">
                                 <CalendarIcon className="w-5 h-5" />
-                            </div>
+                            </Link>
                         </div>
                     </CardHeader>
                     <CardContent>

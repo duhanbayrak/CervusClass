@@ -22,7 +22,6 @@ export default function StudentLayout({
                 <DashboardHeader
                     title="Tekrar Hoşgeldiniz!"
                     description="Günlük özetiniz ve yaklaşan etkinlikleriniz."
-                    actionButtonText="Etüt Talep Et"
                     mobileNav={
                         <MobileSidebar
                             items={STUDENT_NAV}

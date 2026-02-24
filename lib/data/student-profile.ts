@@ -96,6 +96,16 @@ export async function getStudentProfileData(supabase: SupabaseClient, id: string
             : 100;
     }
 
+    // 6. Get Student Notes
+    const { data: notes } = await supabase
+        .from('student_notes')
+        .select(`
+            *,
+            teacher:profiles!student_notes_teacher_id_fkey(full_name, avatar_url)
+        `)
+        .eq('student_id', id)
+        .order('created_at', { ascending: false });
+
     return {
         profile,
         examResults: examResults || [],
@@ -111,6 +121,7 @@ export async function getStudentProfileData(supabase: SupabaseClient, id: string
                 study: { ...studyStats }
             },
             averageGrade: 0 // Placeholder
-        }
+        },
+        notes: notes || []
     };
 }
