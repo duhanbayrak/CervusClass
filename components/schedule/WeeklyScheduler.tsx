@@ -342,11 +342,11 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                                                     {timeRange}
                                                 </div>
 
-                                                <div className={cn("text-xs font-bold leading-tight flex items-center gap-1 mt-1", classes.title)}>
+                                                <div className={cn("text-xs font-bold leading-tight mt-1", classes.title)}>
                                                     {session.status === 'available' ? (
-                                                        <><CalendarPlus className={cn("w-3.5 h-3.5", classes.icon)} /> Boş</>
+                                                        <div className="flex items-center gap-1"><CalendarPlus className={cn("w-3.5 h-3.5", classes.icon)} /> Boş</div>
                                                     ) : (
-                                                        <>{session.topic || 'Dolu'}</>
+                                                        <div className="line-clamp-2" title={session.topic || 'Dolu'}>{session.topic || 'Dolu'}</div>
                                                     )}
                                                 </div>
 

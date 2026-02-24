@@ -26,8 +26,6 @@ export default function TeacherLayout({
                 <DashboardHeader
                     title="Eğitmen Paneli"
                     description="Sınıflarınızı ve programınızı yönetin."
-                    actionButtonText="Yeni Ödev"
-                    onActionClick={() => router.push('/teacher/homework/new')}
                     mobileNav={
                         <MobileSidebar
                             items={TEACHER_NAV}

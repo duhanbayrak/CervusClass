@@ -52,6 +52,7 @@ export default async function StudentDetailPage(props: { params: Promise<{ id: s
                 profile={data.profile}
                 examResults={data.examResults}
                 stats={data.stats}
+                notes={data.notes}
                 role="admin"
                 financialData={financialData}
             />

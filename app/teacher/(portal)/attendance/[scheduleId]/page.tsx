@@ -82,11 +82,18 @@ async function getScheduleWithStudents(scheduleId: string) {
         .eq('schedule_id', scheduleId)
         .eq('date', targetDateStr);
 
+    // Determine if target date is in the future
+    const todayObj = new Date(now);
+    todayObj.setHours(0, 0, 0, 0);
+    targetDateObj.setHours(0, 0, 0, 0);
+    const isFuture = targetDateObj > todayObj;
+
     return {
         schedule,
         students: students || [],
         existingAttendance: existingAttendance || [],
-        date: targetDateStr // Renamed from today to date
+        date: targetDateStr, // Renamed from today to date
+        isFuture
     };
 }
 
@@ -104,7 +111,7 @@ export default async function TakeAttendancePage({ params }: { params: any }) {
         notFound();
     }
 
-    const { schedule, students, existingAttendance, date } = data;
+    const { schedule, students, existingAttendance, date, isFuture } = data;
 
     // Create a map of existing attendance for easy lookup
     const attendanceMap: Record<string, { status: string; late_minutes: number; id: string }> = {};
@@ -150,11 +157,17 @@ export default async function TakeAttendancePage({ params }: { params: any }) {
                 <CardHeader>
                     <CardTitle>Öğrenci Listesi</CardTitle>
                     <CardDescription>
-                        {date && new Date(date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' })} tarihli yoklama. Durumu seçip kaydedin.
+                        {date && new Date(date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' })} {isFuture ? 'tarihli ders için henüz yoklama alınamaz.' : 'tarihli yoklama. Durumu seçip kaydedin.'}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {students.length > 0 ? (
+                    {isFuture ? (
+                        <div className="text-center py-12 text-amber-500 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                            <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                            <h3 className="text-lg font-medium text-amber-700 dark:text-amber-400 mb-2">Henüz Zamanı Gelmedi</h3>
+                            <p className="text-amber-600 dark:text-amber-500">Gelecekteki günlerin yoklaması alınamaz. Yoklama alabilmek için ders gününün gelmesini beklemelisiniz.</p>
+                        </div>
+                    ) : students.length > 0 ? (
                         <AttendanceForm
                             scheduleId={scheduleId}
                             classId={schedule.class_id}

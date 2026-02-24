@@ -31,6 +31,7 @@ export default async function StudentDetailPage({ params }: { params: any }) {
             profile={data.profile}
             examResults={data.examResults}
             stats={data.stats}
+            notes={data.notes}
             role="teacher"
         />
     );

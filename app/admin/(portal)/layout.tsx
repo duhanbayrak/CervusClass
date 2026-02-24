@@ -26,8 +26,6 @@ export default function AdminLayout({
                 <DashboardHeader
                     title="Yönetim"
                     description="Kurumunuza genel bakış."
-                    actionButtonText="Kullanıcı Ekle"
-                    onActionClick={() => setIsUserSelectionOpen(true)}
                     mobileNav={
                         <MobileSidebar
                             items={ADMIN_NAV}

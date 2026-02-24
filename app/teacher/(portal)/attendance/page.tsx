@@ -52,7 +52,13 @@ async function getSchedule(dayOfWeek: number) {
     const dayDifference = dayOfWeek - currentDayISO;
     const targetDateObj = new Date(now);
     targetDateObj.setDate(now.getDate() + dayDifference);
+    targetDateObj.setHours(0, 0, 0, 0); // Normalize time
     const targetDate = targetDateObj.toISOString().split('T')[0];
+
+    // Determine if the target date is in the future
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isFuture = targetDateObj > today;
 
     // 1. Fetch Basic Schedule
     const { data: schedules, error } = await supabase
@@ -86,7 +92,8 @@ async function getSchedule(dayOfWeek: number) {
         return {
             ...item,
             isAttendanceTaken: !!attendanceId,
-            attendanceId: attendanceId
+            attendanceId: attendanceId,
+            isFuture: isFuture
         };
     });
 
@@ -163,27 +170,38 @@ export default async function AttendancePage(props: PageProps) {
                                 </CardDescription>
                             </CardHeader>
                             <CardFooter>
-                                <Link href={`/teacher/attendance/${item.id}`} className="w-full">
+                                {item.isFuture ? (
                                     <Button
-                                        className={item.isAttendanceTaken
-                                            ? "w-full border-zinc-300 text-zinc-700 hover:bg-zinc-50 group hover:border-zinc-400"
-                                            : "w-full bg-indigo-600 hover:bg-indigo-700 shadow-md hover:shadow-lg transition-all text-white group"
-                                        }
-                                        variant={item.isAttendanceTaken ? "outline" : "default"}
+                                        className="w-full bg-slate-100 text-slate-400 cursor-not-allowed border-slate-200"
+                                        variant="outline"
+                                        disabled
                                     >
-                                        {item.isAttendanceTaken ? (
-                                            <>
-                                                <Eye className="w-4 h-4 mr-2 text-zinc-500 group-hover:text-zinc-700" />
-                                                Düzenle / Göster
-                                            </>
-                                        ) : (
-                                            <>
-                                                <ClipboardList className="w-4 h-4 mr-2" />
-                                                Yoklama Al
-                                            </>
-                                        )}
+                                        <Clock className="w-4 h-4 mr-2" />
+                                        Henüz Zamanı Gelmedi
                                     </Button>
-                                </Link>
+                                ) : (
+                                    <Link href={`/teacher/attendance/${item.id}`} className="w-full">
+                                        <Button
+                                            className={item.isAttendanceTaken
+                                                ? "w-full border-zinc-300 text-zinc-700 hover:bg-zinc-50 group hover:border-zinc-400"
+                                                : "w-full bg-indigo-600 hover:bg-indigo-700 shadow-md hover:shadow-lg transition-all text-white group"
+                                            }
+                                            variant={item.isAttendanceTaken ? "outline" : "default"}
+                                        >
+                                            {item.isAttendanceTaken ? (
+                                                <>
+                                                    <Eye className="w-4 h-4 mr-2 text-zinc-500 group-hover:text-zinc-700" />
+                                                    Düzenle / Göster
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ClipboardList className="w-4 h-4 mr-2" />
+                                                    Yoklama Al
+                                                </>
+                                            )}
+                                        </Button>
+                                    </Link>
+                                )}
                             </CardFooter>
                         </Card>
                     ))

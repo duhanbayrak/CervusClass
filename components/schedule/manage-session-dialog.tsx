@@ -99,9 +99,9 @@ export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Ma
                     </div>
 
                     {session.topic && (
-                        <div className="flex flex-col gap-1">
-                            <span className="text-sm text-muted-foreground">Konu</span>
-                            <span className="font-medium">{session.topic}</span>
+                        <div className="flex flex-col gap-1 w-full overflow-hidden">
+                            <span className="text-sm text-muted-foreground shrink-0">Konu</span>
+                            <span className="font-medium break-all whitespace-pre-wrap">{session.topic}</span>
                         </div>
                     )}
 
