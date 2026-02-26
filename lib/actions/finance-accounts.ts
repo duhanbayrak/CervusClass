@@ -26,6 +26,7 @@ export async function createFinanceAccount(account: {
     name: string;
     account_type: 'cash' | 'bank' | 'pos';
     balance?: number;
+    initial_balance?: number;
     currency?: string;
 }): Promise<{ success: boolean; data?: FinanceAccount; error?: string }> {
     const { supabase, organizationId, error } = await getAuthContext();
@@ -38,6 +39,7 @@ export async function createFinanceAccount(account: {
             name: account.name,
             account_type: account.account_type,
             balance: account.balance || 0,
+            initial_balance: account.initial_balance || 0,
             currency: account.currency || 'TRY',
         })
         .select()

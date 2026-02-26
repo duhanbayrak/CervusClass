@@ -57,6 +57,7 @@ export interface FinanceAccount {
     name: string;
     account_type: AccountType;
     balance: number;
+    initial_balance: number;
     currency: string;
     is_active: boolean;
     created_at: string;

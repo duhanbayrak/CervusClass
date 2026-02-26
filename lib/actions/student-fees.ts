@@ -37,6 +37,45 @@ export async function getStudentFees(filters?: {
 }
 
 /**
+ * Belirli bir öğrenci, akademik dönem ve servis listesi için mükerrer kayıt kontrolü yapar.
+ * İşlem sonucunda sistemde daha önceden var olan (active, completed) hizmetlerin isimlerini döner.
+ */
+export async function checkDuplicateServices(data: {
+    studentId: string;
+    academicPeriod: string;
+    serviceIds: string[];
+}): Promise<{ duplicates: string[]; error?: string }> {
+    const { supabase, organizationId, error } = await getAuthContext();
+    if (error || !organizationId) return { duplicates: [], error: error || 'Yetkilendirme hatası' };
+    if (!data.serviceIds || data.serviceIds.length === 0) return { duplicates: [] };
+
+    const { data: existingFees, error: fetchError } = await supabase
+        .from('student_fees')
+        .select(`
+            service_id,
+            service:finance_services(name)
+        `)
+        .eq('organization_id', organizationId)
+        .eq('student_id', data.studentId)
+        .eq('academic_period', data.academicPeriod)
+        .in('status', ['active', 'completed'])
+        .in('service_id', data.serviceIds);
+
+    if (fetchError) {
+        console.error('checkDuplicateServices Error:', fetchError);
+        return { duplicates: [], error: 'Mükerrer kontrolü sırasında bir hata oluştu.' };
+    }
+
+    if (!existingFees || existingFees.length === 0) {
+        return { duplicates: [] };
+    }
+
+    // Sadece benzersiz isimleri döndür
+    const duplicateNames = Array.from(new Set(existingFees.map((fee: any) => fee.service?.name || 'İsimsiz Hizmet')));
+    return { duplicates: duplicateNames };
+}
+
+/**
  * Tek bir öğrencinin ücret detayını taksitleriyle birlikte getirir.
  */
 export async function getStudentFeeDetail(feeId: string): Promise<{
@@ -274,19 +313,7 @@ export async function cancelStudentFee(
                     // İade yapılacak hesap: parametre verilmişse o, yoksa ilk ödemenin hesabı
                     const refundAccountId = options.refundAccountId || payments[0].account_id;
 
-                    // a) Kasa/banka bakiyesinden düş
-                    const { data: account } = await supabase
-                        .from('finance_accounts')
-                        .select('balance')
-                        .eq('id', refundAccountId)
-                        .single();
-
-                    if (account) {
-                        await supabase
-                            .from('finance_accounts')
-                            .update({ balance: Number(account.balance) - refundedAmount })
-                            .eq('id', refundAccountId);
-                    }
+                    // a) Kasa/banka bakiyesinde iade güncellemesi DB Trigger'ı tarafından otomatik yapılacaktır.
 
                     // b) Öğrenci adını çek
                     const { data: student } = await supabase
@@ -488,11 +515,7 @@ export async function assignMultipleServicesToStudent(data: {
                     created_by: user.id
                 });
 
-                // Kasa bakiyesi arttırma
-                const { data: acc } = await supabase.from('finance_accounts').select('balance').eq('id', service.downPaymentAccountId).single();
-                if (acc) {
-                    await supabase.from('finance_accounts').update({ balance: Number(acc.balance) + service.downPayment }).eq('id', service.downPaymentAccountId);
-                }
+                // Kasa bakiyesi arttırma işlemi DB Trigger tarafından otomatik yapılır.
 
                 // Kategori bul / oluştur
                 const { data: existingCat } = await supabase
@@ -698,19 +721,7 @@ export async function assignBulkServicesToStudents(
 
                             if (paymentError) throw new Error(`Peşinat ödemesi kaydedilemedi: ${paymentError.message}`);
 
-                            // Kasa Bakiyesini artır
-                            const { data: account } = await supabase
-                                .from('finance_accounts')
-                                .select('balance')
-                                .eq('id', service.downPaymentAccountId)
-                                .single();
-
-                            if (account) {
-                                await supabase
-                                    .from('finance_accounts')
-                                    .update({ balance: Number(account.balance || 0) + service.downPayment })
-                                    .eq('id', service.downPaymentAccountId);
-                            }
+                            // Kasa bakiyesi artırma işlemi DB Trigger tarafından otomatik yapılır.
 
                             // Muhasebe Kategorisi Bul
                             const { data: catData } = await supabase

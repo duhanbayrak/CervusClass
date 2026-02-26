@@ -9,6 +9,9 @@ import {
 import type { StudentFee, FeeInstallment, FeePayment } from '@/types/accounting';
 import { CancelFeeDialog } from './CancelFeeDialog';
 import { PaymentRecordDialog } from './PaymentRecordDialog';
+import { FeeAssignmentDialog } from './FeeAssignmentDialog';
+import { Plus } from 'lucide-react';
+import { ReceiptDownloadButton } from '@/components/accounting/receipt/ReceiptDownloadButton';
 
 interface StudentFeeDetailProps {
     fees: (StudentFee | null)[];
@@ -58,6 +61,7 @@ export function StudentFeeDetail({ fees, installments, payments, currency, stude
     const [isPending, startTransition] = useTransition();
     const [showPaymentDialog, setShowPaymentDialog] = useState(false);
     const [showCancelDialog, setShowCancelDialog] = useState(false);
+    const [showFeeDialog, setShowFeeDialog] = useState(false);
 
     // İşlem yapılan fee ve taksidi tut
     const [selectedFee, setSelectedFee] = useState<StudentFee | null>(null);
@@ -66,9 +70,12 @@ export function StudentFeeDetail({ fees, installments, payments, currency, stude
 
     // Sadece null olmayan geçerli ücretleri filtrele
     const validFees = fees.filter((f): f is StudentFee => f !== null);
+    const activeFees = validFees.filter(f => f.status !== 'cancelled');
+    const cancelledFees = validFees.filter(f => f.status === 'cancelled');
 
-    // Aktif sekme state'i (önce validFees hesaplansın)
-    const [activeTab, setActiveTab] = useState<string | null>(validFees[0]?.id || null);
+    // Aktif sekme state'i (önce activeFees hesaplansın)
+    const defaultTab = activeFees.length > 0 ? activeFees[0].id : (cancelledFees.length > 0 ? 'cancelled_fees_tab' : null);
+    const [activeTab, setActiveTab] = useState<string | null>(defaultTab);
 
     if (validFees.length === 0) {
         return (
@@ -123,16 +130,24 @@ export function StudentFeeDetail({ fees, installments, payments, currency, stude
                         </h2>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                             {feeWithStudent.classes?.name && `${feeWithStudent.classes.name} sınıfı öğrencisi • `}
-                            Toplam {validFees.length} aktif hizmet sepeti
+                            Toplam {activeFees.length} aktif sepet{cancelledFees.length > 0 ? `, ${cancelledFees.length} iptal edilen` : ''}
                         </p>
                     </div>
+                </div>
+                <div>
+                    <button
+                        onClick={() => setShowFeeDialog(true)}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm active:scale-95"
+                    >
+                        <Plus className="w-4 h-4" /> Hizmet Ekle
+                    </button>
                 </div>
             </div>
 
             {/* Bölüm Başlığı & Tab Geçişleri */}
-            <div className="border-b border-gray-200 dark:border-gray-800">
-                <div className="flex overflow-x-auto gap-2 scrollbar-hide">
-                    {validFees.map(fee => {
+            <div className="border-b border-gray-200 dark:border-gray-800 flex justify-between items-end">
+                <div className="flex overflow-x-auto overflow-y-hidden gap-2 scrollbar-hide flex-1">
+                    {activeFees.map(fee => {
                         const serviceDetails = fee as StudentFee & { service?: { name: string } };
                         const serviceName = serviceDetails.service?.name || `Hizmet/Ürün (${fee.academic_period})`;
                         const isActive = activeTab === fee.id;
@@ -151,11 +166,22 @@ export function StudentFeeDetail({ fees, installments, payments, currency, stude
                         );
                     })}
                 </div>
+                {cancelledFees.length > 0 && (
+                    <button
+                        onClick={() => setActiveTab('cancelled_fees_tab')}
+                        className={`whitespace-nowrap px-5 py-3 font-medium text-sm transition-colors border-b-2 -mb-[1px] border-l border-l-gray-200 dark:border-l-gray-800 ${activeTab === 'cancelled_fees_tab'
+                            ? 'border-b-red-500 text-red-600 dark:border-b-red-400 dark:text-red-400 bg-red-50/50 dark:bg-red-900/10'
+                            : 'border-b-transparent text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/5'
+                            }`}
+                    >
+                        İptal Edilenler ({cancelledFees.length})
+                    </button>
+                )}
             </div>
 
             {/* Seçili Hizmet Sepeti ve Taksit Planı */}
-            <div className="space-y-6">
-                {validFees.filter(fee => fee.id === activeTab).map(fee => {
+            <div className="space-y-6 mt-6">
+                {(activeTab === 'cancelled_fees_tab' ? cancelledFees : activeFees.filter(fee => fee.id === activeTab)).map(fee => {
                     const feeInstallments = installments.filter(i => i.fee_id === fee.id);
                     const totalPaid = feeInstallments.reduce((sum, i) => sum + Number(i.paid_amount), 0);
                     const remaining = Number(fee.net_amount) - totalPaid;
@@ -314,6 +340,14 @@ export function StudentFeeDetail({ fees, installments, payments, currency, stude
                                                                 Tahsil Et ({formatCurrency(remainingAmount, currency)})
                                                             </button>
                                                         )}
+
+                                                        {/* Ödendi taksitler için makbuz ikonu */}
+                                                        {installment.status === 'paid' && (
+                                                            <ReceiptDownloadButton
+                                                                installmentId={installment.id}
+                                                                variant="icon"
+                                                            />
+                                                        )}
                                                     </div>
                                                 </div>
                                             );
@@ -366,11 +400,15 @@ export function StudentFeeDetail({ fees, installments, payments, currency, stude
                                         </div>
                                     </div>
                                     <div className="text-right flex flex-col items-end gap-1.5">
-                                        <span className="text-[11px] uppercase tracking-wider font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2.5 py-1 rounded-md">
-                                            {payment.payment_method === 'cash' ? 'Nakit' :
-                                                payment.payment_method === 'bank_transfer' ? 'Havale' :
-                                                    payment.payment_method === 'credit_card' ? 'Kredi Kartı' : 'Diğer'}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            {/* Makbuz indirme ikonu */}
+                                            <ReceiptDownloadButton paymentId={payment.id} variant="icon" />
+                                            <span className="text-[11px] uppercase tracking-wider font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2.5 py-1 rounded-md">
+                                                {payment.payment_method === 'cash' ? 'Nakit' :
+                                                    payment.payment_method === 'bank_transfer' ? 'Havale' :
+                                                        payment.payment_method === 'credit_card' ? 'Kredi Kartı' : 'Diğer'}
+                                            </span>
+                                        </div>
                                         {payment.reference_no && (
                                             <span className="text-xs text-gray-400 overflow-hidden text-ellipsis max-w-[120px]" title={payment.reference_no}>
                                                 Ref: {payment.reference_no}
@@ -415,6 +453,14 @@ export function StudentFeeDetail({ fees, installments, payments, currency, stude
                         setShowCancelDialog(false);
                         setSelectedFee(null);
                     }}
+                />
+            )}
+
+            {showFeeDialog && (
+                <FeeAssignmentDialog
+                    currency={currency}
+                    defaultStudentId={studentId}
+                    onClose={() => setShowFeeDialog(false)}
                 />
             )}
         </div>

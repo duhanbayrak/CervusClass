@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { X, Loader2, Users, User, Plus, Trash2, Calculator, ReceiptText } from 'lucide-react';
-import { assignMultipleServicesToStudent, bulkAssignFees } from '@/lib/actions/student-fees';
+import { X, Loader2, Users, User, Plus, Trash2, Calculator, ReceiptText, AlertTriangle } from 'lucide-react';
+import { assignMultipleServicesToStudent, checkDuplicateServices } from '@/lib/actions/student-fees';
 import { getFinanceSettings } from '@/lib/actions/finance-settings';
 import { getFinanceServices } from '@/lib/actions/finance-services';
 import { getFinanceAccounts } from '@/lib/actions/finance-accounts';
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 interface FeeAssignmentDialogProps {
     onClose: () => void;
     currency: string;
+    defaultStudentId?: string;
 }
 
 interface StudentOption {
@@ -72,11 +73,13 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export function FeeAssignmentDialog({ onClose, currency }: FeeAssignmentDialogProps) {
+export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: FeeAssignmentDialogProps) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [mode, setMode] = useState<'single' | 'bulk'>('single');
     const [message, setMessage] = useState('');
+    const [duplicateWarnings, setDuplicateWarnings] = useState<string[]>([]);
+    const [pendingData, setPendingData] = useState<FormData | null>(null);
 
     const [studentSearch, setStudentSearch] = useState('');
     const [students, setStudents] = useState<StudentOption[]>([]);
@@ -90,7 +93,7 @@ export function FeeAssignmentDialog({ onClose, currency }: FeeAssignmentDialogPr
     const { register, handleSubmit, control, watch, setValue, formState: { errors } } = useForm<FormData>({
         resolver: zodResolver(formSchema as any),
         defaultValues: {
-            studentId: '',
+            studentId: defaultStudentId || '',
             classId: '',
             academicPeriod: new Date().getFullYear().toString() + '-' + (new Date().getFullYear() + 1).toString(),
             services: []
@@ -173,54 +176,88 @@ export function FeeAssignmentDialog({ onClose, currency }: FeeAssignmentDialogPr
         return true;
     });
 
-    // Ana Gönderim (Submit)
-    const onSubmit = (data: FormData) => {
-        startTransition(async () => {
-            setMessage('');
+    // Ana Gönderim (Submit İşi)
+    const executeSubmit = async (data: FormData) => {
+        setMessage('');
 
-            if (mode === 'single') {
-                if (!data.studentId) return setMessage("Hata: Öğrenci seçimi zorunludur.");
+        if (mode === 'single') {
+            if (!data.studentId) return setMessage("Hata: Öğrenci seçimi zorunludur.");
 
-                const res = await assignMultipleServicesToStudent({
-                    studentId: data.studentId,
-                    classId: data.classId || undefined,
+            const res = await assignMultipleServicesToStudent({
+                studentId: data.studentId,
+                classId: data.classId || undefined,
+                academicPeriod: data.academicPeriod,
+                services: data.services
+            });
+
+            if (res.success) {
+                router.refresh();
+                onClose();
+            } else {
+                setMessage(`Hata: ${res.error}`);
+            }
+        } else {
+            if (!data.classId) return setMessage("Hata: Sınıf seçimi zorunludur.");
+
+            const classStudents = students.filter(s => s.class_id === data.classId);
+            if (classStudents.length === 0) return setMessage("Hata: Sınıfta kayıtlı öğrenci yok.");
+
+            let count = 0;
+            for (const s of classStudents) {
+                await assignMultipleServicesToStudent({
+                    studentId: s.id,
+                    classId: data.classId,
                     academicPeriod: data.academicPeriod,
                     services: data.services
                 });
-
-                if (res.success) {
-                    router.refresh();
-                    onClose();
-                } else {
-                    setMessage(`Hata: ${res.error}`);
-                }
-            } else {
-                if (!data.classId) return setMessage("Hata: Sınıf seçimi zorunludur.");
-                // Bulk mod geçici adaptasyon: her öğrenciye loop atılacak
-                // Performanslı olması için bulkAssignFees benzeri bir yapıya ihtiyaç var ama 
-                // mevcut fonksiyonda loop yapılabilir
-
-                const classStudents = students.filter(s => s.class_id === data.classId);
-                if (classStudents.length === 0) return setMessage("Hata: Sınıfta kayıtlı öğrenci yok.");
-
-                let count = 0;
-                for (const s of classStudents) {
-                    await assignMultipleServicesToStudent({
-                        studentId: s.id,
-                        classId: data.classId,
-                        academicPeriod: data.academicPeriod,
-                        services: data.services
-                    });
-                    count++;
-                }
-
-                setMessage(`${count} öğrenciye ücret atandı.`);
-                setTimeout(() => {
-                    router.refresh();
-                    onClose();
-                }, 1500);
+                count++;
             }
+
+            setMessage(`${count} öğrenciye ücret atandı.`);
+            setTimeout(() => {
+                router.refresh();
+                onClose();
+            }, 1500);
+        }
+    };
+
+    // İlk Tetikleme ve Mükerrer Kontrolü (Soft-Check)
+    const onSubmit = (data: FormData) => {
+        startTransition(async () => {
+            setMessage('');
+            setDuplicateWarnings([]);
+            setPendingData(null);
+
+            // Mükerrer kontrolü "tekli" atamalarda daha kritiktir çünkü genelde kullanıcı hatası burada olur.
+            // Sınıf atamalarında da benzer yapılabilir ama performansı düşürmemek veya uyarıları karmaşıklaştırmamak için
+            // Single modalında soft-check yapıyoruz.
+            if (mode === 'single' && data.studentId) {
+                const serviceIds = data.services.map(s => s.serviceId);
+                const check = await checkDuplicateServices({
+                    studentId: data.studentId,
+                    academicPeriod: data.academicPeriod,
+                    serviceIds
+                });
+
+                if (check.duplicates && check.duplicates.length > 0) {
+                    setDuplicateWarnings(check.duplicates);
+                    setPendingData(data);
+                    return; // İşlemi durdur ve UI'da uyarı göster.
+                }
+            }
+
+            // Mükerrer yoksa veya Bulk mode ise direkt çalıştır
+            await executeSubmit(data);
         });
+    };
+
+    const handleOverrideSubmit = () => {
+        if (pendingData) {
+            setDuplicateWarnings([]);
+            startTransition(async () => {
+                await executeSubmit(pendingData);
+            });
+        }
     };
 
     // Fiyat Özeti
@@ -272,22 +309,6 @@ export function FeeAssignmentDialog({ onClose, currency }: FeeAssignmentDialogPr
 
                 {/* Body */}
                 <div className="p-6 overflow-y-auto space-y-6 flex-1">
-                    {/* Mod Seçimi */}
-                    <div className="flex gap-2 p-1 bg-gray-100 dark:bg-white/5 rounded-lg w-fit">
-                        <button
-                            onClick={() => { setMode('single'); setValue('classId', ''); setValue('studentId', ''); }}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${mode === 'single' ? 'bg-white dark:bg-gray-800 text-primary shadow-sm' : 'text-gray-500'}`}
-                        >
-                            <User className="w-4 h-4" /> Tekli Atama
-                        </button>
-                        <button
-                            onClick={() => { setMode('bulk'); setValue('studentId', ''); }}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${mode === 'bulk' ? 'bg-white dark:bg-gray-800 text-primary shadow-sm' : 'text-gray-500'}`}
-                        >
-                            <Users className="w-4 h-4" /> Toplu (Sınıf) Atama
-                        </button>
-                    </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Öğrenci/Sınıf Seçim */}
                         <div className="bg-gray-50 dark:bg-white/5 p-4 rounded-xl border border-gray-100 dark:border-white/5 space-y-4">
@@ -296,49 +317,72 @@ export function FeeAssignmentDialog({ onClose, currency }: FeeAssignmentDialogPr
                                 <input type="text" {...register('academicPeriod')} className={inputClass} />
                             </div>
 
-                            {mode === 'single' ? (
+                            {/* defaultStudentId gelmişse sınıf ve öğrenci seçimini gizle */}
+                            {!defaultStudentId && (
                                 <>
-                                    <div>
-                                        <label className={labelClass}>Sınıfa Göre Filtrele (Opsiyonel)</label>
-                                        <select {...register('classId')} className={inputClass} onChange={(e) => setValue('classId', e.target.value)}>
-                                            <option value="">Tüm Sınıflar</option>
-                                            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                        </select>
+                                    {/* Mod Seçimi (Sadece default öğrenci yokken gösterilir) */}
+                                    <div className="flex gap-2 p-1 bg-white dark:bg-gray-900 rounded-lg w-fit border border-gray-200 dark:border-white/10 mb-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setMode('single'); setValue('classId', ''); setValue('studentId', ''); }}
+                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${mode === 'single' ? 'bg-gray-100 dark:bg-gray-800 text-primary shadow-sm' : 'text-gray-500'}`}
+                                        >
+                                            <User className="w-3.5 h-3.5" /> Tekli
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setMode('bulk'); setValue('studentId', ''); }}
+                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${mode === 'bulk' ? 'bg-gray-100 dark:bg-gray-800 text-primary shadow-sm' : 'text-gray-500'}`}
+                                        >
+                                            <Users className="w-3.5 h-3.5" /> Toplu
+                                        </button>
                                     </div>
-                                    <div>
-                                        <label className={labelClass}>Öğrenci Ara / Seç *</label>
-                                        <input
-                                            type="text"
-                                            placeholder="İsim ara..."
-                                            value={studentSearch}
-                                            onChange={e => setStudentSearch(e.target.value)}
-                                            className={`${inputClass} mb-2`}
-                                        />
-                                        <div className="max-h-36 overflow-y-auto rounded-md border border-gray-200 dark:border-white/10 bg-white dark:bg-transparent">
-                                            {filteredStudents.map(s => (
-                                                <button
-                                                    key={s.id}
-                                                    type="button"
-                                                    onClick={() => setValue('studentId', s.id, { shouldValidate: true })}
-                                                    className={`w-full flex justify-between px-3 py-2 text-sm text-left transition-colors ${watchStudentId === s.id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'}`}
-                                                >
-                                                    <span>{s.full_name}</span>
-                                                    <span className="text-xs text-muted-foreground">{s.class_name}</span>
-                                                </button>
-                                            ))}
-                                            {filteredStudents.length === 0 && <p className="text-xs text-center py-3 text-muted-foreground">Kayıtlı öğrenci yok</p>}
+
+                                    {mode === 'single' ? (
+                                        <>
+                                            <div>
+                                                <label className={labelClass}>Sınıfa Göre Filtrele (Opsiyonel)</label>
+                                                <select {...register('classId')} className={inputClass} onChange={(e) => setValue('classId', e.target.value)}>
+                                                    <option value="">Tüm Sınıflar</option>
+                                                    {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className={labelClass}>Öğrenci Ara / Seç *</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="İsim ara..."
+                                                    value={studentSearch}
+                                                    onChange={e => setStudentSearch(e.target.value)}
+                                                    className={`${inputClass} mb-2`}
+                                                />
+                                                <div className="max-h-36 overflow-y-auto rounded-md border border-gray-200 dark:border-white/10 bg-white dark:bg-transparent">
+                                                    {filteredStudents.map(s => (
+                                                        <button
+                                                            key={s.id}
+                                                            type="button"
+                                                            onClick={() => setValue('studentId', s.id, { shouldValidate: true })}
+                                                            className={`w-full flex justify-between px-3 py-2 text-sm text-left transition-colors ${watchStudentId === s.id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'}`}
+                                                        >
+                                                            <span>{s.full_name}</span>
+                                                            <span className="text-xs text-muted-foreground">{s.class_name}</span>
+                                                        </button>
+                                                    ))}
+                                                    {filteredStudents.length === 0 && <p className="text-xs text-center py-3 text-muted-foreground">Kayıtlı öğrenci yok</p>}
+                                                </div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div>
+                                            <label className={labelClass}>Sınıf Seç *</label>
+                                            <select {...register('classId')} className={inputClass}>
+                                                <option value="">Sınıf seçin...</option>
+                                                {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                            </select>
+                                            <p className="text-xs text-orange-500 mt-2">Bu sınıftaki tüm öğrencilere aşağıdaki sepet aynen kopyalanacaktır.</p>
                                         </div>
-                                    </div>
+                                    )}
                                 </>
-                            ) : (
-                                <div>
-                                    <label className={labelClass}>Sınıf Seç *</label>
-                                    <select {...register('classId')} className={inputClass}>
-                                        <option value="">Sınıf seçin...</option>
-                                        {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                    </select>
-                                    <p className="text-xs text-orange-500 mt-2">Bu sınıftaki tüm öğrencilere aşağıdaki sepet aynen kopyalanacaktır.</p>
-                                </div>
                             )}
                         </div>
 
@@ -502,20 +546,53 @@ export function FeeAssignmentDialog({ onClose, currency }: FeeAssignmentDialogPr
                     )}
                 </div>
 
+                {/* Uyarı Alanı */}
+                {duplicateWarnings.length > 0 && (
+                    <div className="px-6 py-4 bg-orange-50 border-t border-orange-200 flex-shrink-0">
+                        <div className="flex items-start">
+                            <AlertTriangle className="w-5 h-5 text-orange-500 mr-3 mt-0.5" />
+                            <div>
+                                <h4 className="text-orange-800 font-semibold mb-1">DİKKAT: Mükerrer Hizmet Tespit Edildi!</h4>
+                                <p className="text-orange-700 text-sm mb-2">
+                                    Seçtiğiniz dönemde ({watch('academicPeriod')}) aşağıdaki hizmetler bu öğrenciye {' '}
+                                    <strong>zaten atanmış:</strong>
+                                </p>
+                                <ul className="list-disc list-inside text-sm text-orange-700/80 mb-4 font-medium">
+                                    {duplicateWarnings.map(name => (
+                                        <li key={name}>{name}</li>
+                                    ))}
+                                </ul>
+                                <p className="text-orange-600 font-medium text-xs mb-3">Yine de eklerseniz öğrencinin borcu ve taksitleri ikiye katlanır.</p>
+
+                                <div className="flex items-center gap-3">
+                                    <Button type="button" variant="outline" size="sm" onClick={() => setDuplicateWarnings([])} className="border-orange-300 text-orange-700 hover:bg-orange-100">
+                                        İptal Et ve Vazgeç
+                                    </Button>
+                                    <Button type="button" size="sm" onClick={handleOverrideSubmit} disabled={isPending} className="bg-orange-600 hover:bg-orange-700 text-white font-medium">
+                                        {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Tehlikeyi Onayla ve Yine de Ekle'}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Footer */}
-                <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/[0.02] flex-shrink-0">
-                    <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>İptal</Button>
-                    <Button
-                        type="button"
-                        onClick={handleSubmit(onSubmit)}
-                        disabled={isPending || fields.length === 0}
-                        className="bg-primary hover:bg-primary/90 min-w-[150px]"
-                    >
-                        {isPending ? (
-                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Kaydediliyor...</>
-                        ) : 'Sepeti Onayla / Ata'}
-                    </Button>
-                </div>
+                {duplicateWarnings.length === 0 && (
+                    <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/[0.02] flex-shrink-0">
+                        <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>İptal</Button>
+                        <Button
+                            type="button"
+                            onClick={handleSubmit(onSubmit)}
+                            disabled={isPending || fields.length === 0}
+                            className="bg-primary hover:bg-primary/90 min-w-[150px]"
+                        >
+                            {isPending ? (
+                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> İşleniyor...</>
+                            ) : 'Sepeti Onayla / Ata'}
+                        </Button>
+                    </div>
+                )}
             </div>
         </div>
     );

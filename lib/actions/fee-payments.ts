@@ -55,7 +55,7 @@ export async function createFeePayment(payment: {
     reference_no?: string;
     notes?: string;
     payment_date?: string;
-}): Promise<{ success: boolean; error?: string }> {
+}): Promise<{ success: boolean; paymentId?: string; error?: string }> {
     const { supabase, organizationId, user, error } = await getAuthContext();
     if (error || !organizationId || !user) return { success: false, error: error || 'Yetkilendirme hatası' };
 
@@ -234,20 +234,7 @@ export async function createFeePayment(payment: {
         }
     }
 
-    // 3. Hesap bakiyesini güncelle
-    const { data: account } = await supabase
-        .from('finance_accounts')
-        .select('balance')
-        .eq('id', payment.account_id)
-        .single();
+    // 3. Hesap bakiyesini güncelleme (DB Trigger tarafından otomatik yapılır)
 
-    if (account) {
-        const newBalance = Number(account.balance) + payment.amount;
-        await supabase
-            .from('finance_accounts')
-            .update({ balance: newBalance })
-            .eq('id', payment.account_id);
-    }
-
-    return { success: true };
+    return { success: true, paymentId: insertedPayment?.id };
 }

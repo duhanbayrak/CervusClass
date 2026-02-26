@@ -311,19 +311,7 @@ export async function registerStudent(data: RegistrationFormData) {
 
                         if (paymentError) throw new Error(`Peşinat ödemesi kaydedilemedi: ${paymentError.message}`);
 
-                        // Kasa Bakiyesini artır
-                        const { data: account } = await supabaseAdmin
-                            .from('finance_accounts')
-                            .select('balance')
-                            .eq('id', service.downPaymentAccountId)
-                            .single();
-
-                        if (account) {
-                            await supabaseAdmin
-                                .from('finance_accounts')
-                                .update({ balance: Number(account.balance) + Number(service.downPayment) })
-                                .eq('id', service.downPaymentAccountId);
-                        }
+                        // Kasa Bakiyesini artırma işlemi DB Trigger tarafından otomatik yapılır.
 
                         // Muhasebe geliri
                         const { data: existingCat } = await supabaseAdmin

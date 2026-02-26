@@ -196,24 +196,7 @@ export async function createFinanceTransaction(transaction: {
 
     if (insertError) return { success: false, error: insertError.message };
 
-    // 2. Hesap bakiyesini güncelle (amount = KDV dahil toplam)
-    const { data: account } = await supabase
-        .from('finance_accounts')
-        .select('balance')
-        .eq('id', transaction.account_id)
-        .single();
-
-    if (account) {
-        const currentBalance = Number(account.balance);
-        const newBalance = transaction.type === 'income'
-            ? currentBalance + transaction.amount
-            : currentBalance - transaction.amount;
-
-        await supabase
-            .from('finance_accounts')
-            .update({ balance: newBalance })
-            .eq('id', transaction.account_id);
-    }
+    // 2. Hesap bakiyesini güncelleme işlemi DB Trigger (fn_update_account_balance_on_transaction) tarafından otomatik yapılır.
 
     return { success: true };
 }

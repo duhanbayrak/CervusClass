@@ -61,6 +61,7 @@ export function AccountsContent({ accounts }: AccountsContentProps) {
                 name: name.trim(),
                 account_type: accountType,
                 balance: parseFloat(initialBalance) || 0,
+                initial_balance: parseFloat(initialBalance) || 0,
                 currency,
             });
 
