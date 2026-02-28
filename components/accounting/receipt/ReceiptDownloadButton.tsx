@@ -1,9 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { pdf } from '@react-pdf/renderer';
 import { FileText, Loader2 } from 'lucide-react';
-import { ReceiptPDF, registerFonts } from './ReceiptPDF';
 import { getReceiptData } from '@/lib/actions/receipt';
 
 interface ReceiptDownloadButtonProps {
@@ -45,7 +43,13 @@ export function ReceiptDownloadButton({ paymentId, installmentId, variant = 'ful
                 return;
             }
 
-            // 2. Fontları data URL olarak yükle (CORS + glyph sorunlarını tamamen çözer)
+            // 2. @react-pdf/renderer'ı lazy yükle — başlangıç bundle'ına dahil olmaz (~400kb kazanç)
+            const [{ pdf }, { ReceiptPDF, registerFonts }] = await Promise.all([
+                import('@react-pdf/renderer'),
+                import('./ReceiptPDF'),
+            ]);
+
+            // 3. Fontları data URL olarak yükle (CORS + glyph sorunlarını tamamen çözer)
             const origin = window.location.origin;
             const [regular, bold, italic] = await Promise.all([
                 fetchFontAsDataUrl(`${origin}/fonts/NotoSans-Regular.woff`),
@@ -54,10 +58,10 @@ export function ReceiptDownloadButton({ paymentId, installmentId, variant = 'ful
             ]);
             registerFonts({ regular, bold, italic });
 
-            // 3. PDF blob'u oluştur
+            // 4. PDF blob'u oluştur
             const blob = await pdf(<ReceiptPDF data={result.data} />).toBlob();
 
-            // 4. Yeni sekmede aç
+            // 5. Yeni sekmede aç
             const url = URL.createObjectURL(blob);
             window.open(url, '_blank');
 
@@ -69,6 +73,7 @@ export function ReceiptDownloadButton({ paymentId, installmentId, variant = 'ful
             setIsLoading(false);
         }
     };
+
 
     if (variant === 'icon') {
         return (

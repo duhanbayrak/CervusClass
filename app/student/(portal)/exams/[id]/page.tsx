@@ -24,7 +24,7 @@ import {
 import Link from 'next/link'
 import { getExamDetailData } from '@/lib/actions/exam-stats'
 import { flattenExamDetails } from '@/lib/utils'
-import { ExamDetailCharts } from '@/components/student/exams/exam-detail-charts'
+import { DynamicExamDetailCharts } from '@/components/student/exams/student-charts-wrapper'
 
 async function getExamDetails(examId: string, userId: string) {
     const cookieStore = await cookies()
@@ -268,7 +268,7 @@ export default async function ExamDetailPage({
 
             {/* Grafik Karşılaştırmaları */}
             {detailData && (
-                <ExamDetailCharts
+                <DynamicExamDetailCharts
                     scores={exam.scores}
                     examType={exam.exam_type}
                     totalNet={exam.total_net}
