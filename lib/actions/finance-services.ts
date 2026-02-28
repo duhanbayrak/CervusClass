@@ -1,7 +1,48 @@
 'use server';
 
+import { revalidateTag, unstable_cache } from 'next/cache';
 import { getAuthContext } from '@/lib/auth-context';
+import { createClient } from '@supabase/supabase-js';
 import type { FinanceService, CategoryType } from '@/types/accounting';
+
+/**
+ * Hizmet/ürün listesini getiren cache'li iç fonksiyon.
+ * organization_id ve filtreler cache key'inin parçasıdır.
+ */
+const getCachedFinanceServices = unstable_cache(
+    async (
+        organizationId: string,
+        type?: CategoryType,
+        is_active?: boolean
+    ): Promise<FinanceService[]> => {
+        // Cache içinde auth context kullanamıyoruz — service role client kullanıyoruz
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        let query = supabase
+            .from('finance_services')
+            .select(`
+                *,
+                category:finance_categories!category_id(name, icon)
+            `)
+            .eq('organization_id', organizationId)
+            .order('name');
+
+        if (type) query = query.eq('type', type);
+        if (is_active !== undefined) query = query.eq('is_active', is_active);
+
+        const { data, error } = await query;
+        if (error) throw error;
+        return (data || []) as FinanceService[];
+    },
+    ['finance-services-list'],
+    {
+        tags: ['finance-services'],
+        revalidate: 300, // 5 dakika — hizmetler nadiren değişir
+    }
+);
 
 /**
  * Hizmet/ürün listesini getirir.
@@ -11,24 +52,18 @@ export async function getFinanceServices(filters?: {
     type?: CategoryType;
     is_active?: boolean;
 }): Promise<FinanceService[]> {
-    const { supabase, error } = await getAuthContext();
-    if (error) return [];
+    const { organizationId, error } = await getAuthContext();
+    if (error || !organizationId) return [];
 
-    let query = supabase
-        .from('finance_services')
-        .select(`
-            *,
-            category:finance_categories!category_id(name, icon)
-        `)
-        .order('name');
-
-    // Filtreler
-    if (filters?.type) query = query.eq('type', filters.type);
-    if (filters?.is_active !== undefined) query = query.eq('is_active', filters.is_active);
-
-    const { data, error: fetchError } = await query;
-    if (fetchError) return [];
-    return (data || []) as FinanceService[];
+    try {
+        return await getCachedFinanceServices(
+            organizationId,
+            filters?.type,
+            filters?.is_active
+        );
+    } catch {
+        return [];
+    }
 }
 
 /**
@@ -93,6 +128,9 @@ export async function createFinanceService(data: {
         .single();
 
     if (insertError) return { success: false, error: insertError.message };
+    // Yeni hizmet eklendi — listeyi geçersiz kıl
+    // @ts-ignore
+    revalidateTag('finance-services');
     return { success: true, data: inserted as FinanceService };
 }
 
@@ -138,6 +176,9 @@ export async function updateFinanceService(
         .eq('id', id);
 
     if (updateError) return { success: false, error: updateError.message };
+    // Güncelleme oldu — listeyi geçersiz kıl
+    // @ts-ignore
+    revalidateTag('finance-services');
     return { success: true };
 }
 
@@ -173,5 +214,8 @@ export async function deleteFinanceService(id: string): Promise<{ success: boole
         .eq('id', id);
 
     if (deleteError) return { success: false, error: deleteError.message };
+    // Silindi — listeyi geçersiz kıl
+    // @ts-ignore
+    revalidateTag('finance-services');
     return { success: true };
 }
