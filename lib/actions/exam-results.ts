@@ -56,7 +56,7 @@ export async function uploadExamResult(prevState: unknown, formData: FormData) {
     // Organize by Organization ID for security and RLS
     const filePath = `${organizationId}/${timestamp}-${cleanFileName}`
 
-    const { data: storageData, error: storageError } = await supabase
+    const { error: storageError } = await supabase
         .storage
         .from(EXAM_FILES_BUCKET)
         .upload(filePath, file)

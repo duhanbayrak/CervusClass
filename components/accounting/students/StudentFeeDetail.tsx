@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     ArrowLeft, Calendar, CreditCard, CheckCircle2, Clock,
-    AlertTriangle, XCircle, Loader2, Receipt, Box
+    AlertTriangle, XCircle, Receipt, Box
 } from 'lucide-react';
 import type { StudentFee, FeeInstallment, FeePayment } from '@/types/accounting';
 import { CancelFeeDialog } from './CancelFeeDialog';
@@ -58,7 +58,7 @@ function getInstallmentStatusStyle(status: string) {
 
 export function StudentFeeDetail({ fees, installments, payments, currency, studentId }: StudentFeeDetailProps) {
     const router = useRouter();
-    const [isPending, startTransition] = useTransition();
+    const isPending = false;
     const [showPaymentDialog, setShowPaymentDialog] = useState(false);
     const [showCancelDialog, setShowCancelDialog] = useState(false);
     const [showFeeDialog, setShowFeeDialog] = useState(false);
@@ -74,7 +74,9 @@ export function StudentFeeDetail({ fees, installments, payments, currency, stude
     const cancelledFees = validFees.filter(f => f.status === 'cancelled');
 
     // Aktif sekme state'i (önce activeFees hesaplansın)
-    const defaultTab = activeFees.length > 0 ? activeFees[0].id : (cancelledFees.length > 0 ? 'cancelled_fees_tab' : null);
+    let defaultTab: string | null = null;
+    if (activeFees.length > 0) defaultTab = activeFees[0].id;
+    else if (cancelledFees.length > 0) defaultTab = 'cancelled_fees_tab';
     const [activeTab, setActiveTab] = useState<string | null>(defaultTab);
 
     if (validFees.length === 0) {
@@ -202,9 +204,9 @@ export function StudentFeeDetail({ fees, installments, payments, currency, stude
                                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{serviceName}</h3>
                                         <div className="flex flex-col gap-0.5 mt-1">
                                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                {fee.status === 'active' ? 'Durum: Aktif' :
-                                                    fee.status === 'completed' ? 'Durum: Tamamlandı' :
-                                                        'Durum: İptal Edildi'}
+                                                {fee.status === 'active' && 'Durum: Aktif'}
+                                                {fee.status === 'completed' && 'Durum: Tamamlandı'}
+                                                {fee.status !== 'active' && fee.status !== 'completed' && 'Durum: İptal Edildi'}
                                             </p>
                                             {fee.status === 'cancelled' && fee.notes && (
                                                 <p className="text-xs text-red-500 font-medium">
@@ -404,9 +406,10 @@ export function StudentFeeDetail({ fees, installments, payments, currency, stude
                                             {/* Makbuz indirme ikonu */}
                                             <ReceiptDownloadButton paymentId={payment.id} variant="icon" />
                                             <span className="text-[11px] uppercase tracking-wider font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2.5 py-1 rounded-md">
-                                                {payment.payment_method === 'cash' ? 'Nakit' :
-                                                    payment.payment_method === 'bank_transfer' ? 'Havale' :
-                                                        payment.payment_method === 'credit_card' ? 'Kredi Kartı' : 'Diğer'}
+                                                {payment.payment_method === 'cash' && 'Nakit'}
+                                                {payment.payment_method === 'bank_transfer' && 'Havale'}
+                                                {payment.payment_method === 'credit_card' && 'Kredi Kartı'}
+                                                {payment.payment_method !== 'cash' && payment.payment_method !== 'bank_transfer' && payment.payment_method !== 'credit_card' && 'Diğer'}
                                             </span>
                                         </div>
                                         {payment.reference_no && (

@@ -120,7 +120,7 @@ export async function getMonthlyTrends(period: string = 'yearly'): Promise<Month
     if (error) return [];
 
     const { startDate: periodStart } = getDateRange(period);
-    const currentYear = parseInt(periodStart.substring(0, 4), 10);
+    const currentYear = Number.parseInt(periodStart.substring(0, 4), 10);
 
     const startDate = `${currentYear}-01-01`;
     const endDate = `${currentYear}-12-31`;

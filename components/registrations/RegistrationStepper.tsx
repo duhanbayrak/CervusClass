@@ -32,9 +32,8 @@ export function RegistrationStepper() {
                             {/* Icon Circle */}
                             <div className={cn(
                                 "relative z-10 flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors duration-300",
-                                isActive ? "border-primary bg-primary text-primary-foreground shadow-md" :
-                                    isCompleted ? "border-primary bg-primary text-primary-foreground" :
-                                        "border-gray-200 bg-white text-gray-400"
+                                (isActive || isCompleted) ? "border-primary bg-primary text-primary-foreground" : "border-gray-200 bg-white text-gray-400",
+                                isActive && "shadow-md"
                             )}>
                                 <s.icon className="w-5 h-5" />
                             </div>

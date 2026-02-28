@@ -8,7 +8,6 @@ import {
     subMonths,
     startOfYear,
     endOfYear,
-    format,
     formatISO,
 } from 'date-fns';
 

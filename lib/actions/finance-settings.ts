@@ -18,7 +18,7 @@ export async function getFinanceSettings(): Promise<FinanceSettings | null> {
         .eq('organization_id', organizationId)
         .single();
 
-    if (fetchError && fetchError.code === 'PGRST116') {
+    if (fetchError?.code === 'PGRST116') {
         // Kayıt yok — varsayılan oluştur
         const { data: newSettings, error: insertError } = await supabase
             .from('finance_settings')

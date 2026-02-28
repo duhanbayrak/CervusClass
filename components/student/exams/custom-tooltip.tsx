@@ -3,7 +3,7 @@
 import React from 'react'
 
 export const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
+    if (active && payload?.length) {
         return (
             <div
                 className="border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl p-4 min-w-[200px] z-50"
@@ -23,8 +23,8 @@ export const CustomTooltip = ({ active, payload, label }: any) => {
                     </span>
                 </p>
                 <div className="space-y-2">
-                    {payload.map((entry: any, index: number) => (
-                        <div key={index} className="flex items-center justify-between gap-4 text-sm">
+                    {payload.map((entry: any) => (
+                        <div key={entry.dataKey ?? entry.name} className="flex items-center justify-between gap-4 text-sm">
                             <div className="flex items-center gap-2">
                                 <span
                                     className="w-2.5 h-2.5 rounded-full shadow-sm"

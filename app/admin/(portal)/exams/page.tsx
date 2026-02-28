@@ -1,12 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import {
     FileText,
-    Users,
-    TrendingUp,
     Calendar,
     ChevronRight,
     Plus,
@@ -167,18 +164,6 @@ export default async function AdminExamsPage({ searchParams }: { searchParams: {
     const { exams, total } = await getExams(page, limit)
     const totalPages = Math.ceil(total / limit)
 
-    // Calculate summary stats (based on current page, or total? Ideally real stats should be a separate query)
-    // For now showing stats for "visible exams" or maybe we should remove the top summary cards if they are misleading?
-    // Let's keep them as "Page Summary" or maybe implement a global stats RPC later.
-    // For now, let's call them "Görüntülenen Sınav Özeti" implicitly.
-    const visibleExamsCount = exams.length
-    const visibleClassesCount = exams.reduce((sum, exam) => sum + exam.classes.length, 0)
-    const visibleAvgNet = visibleClassesCount > 0
-        ? exams.reduce((sum, exam) =>
-            sum + exam.classes.reduce((s, c) => s + c.avgNet, 0), 0
-        ) / visibleClassesCount
-        : 0
-
     return (
         <div className="container py-8 max-w-7xl mx-auto space-y-6">
             {/* Header */}
@@ -303,7 +288,7 @@ export default async function AdminExamsPage({ searchParams }: { searchParams: {
                             if (p < 1) p = 1
 
                             return (
-                                <Link key={i} href={`/admin/exams?page=${p}`}>
+                                <Link key={p} href={`/admin/exams?page=${p}`}>
                                     <Button
                                         variant={p === page ? "default" : "outline"}
                                         size="sm"

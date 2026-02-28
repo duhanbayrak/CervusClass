@@ -18,112 +18,104 @@ const adminClient = createSupabaseClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false }
 })
 
+async function testStudentDataIsolation(
+    supabaseUrl: string,
+    passStudent: string
+): Promise<{ passed: number; failed: number }> {
+    console.log('\n--- TC_SEC_003: Student Data Isolation ---')
+    const emailStudent = 'barisozturk@cervus.com'
+    const studentClient = createSupabaseClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+    const { data: { session: studentSession }, error: loginError } = await studentClient.auth.signInWithPassword({
+        email: emailStudent,
+        password: passStudent
+    })
+
+    if (loginError) {
+        console.error('Student Login Failed:', loginError.message)
+        return { passed: 0, failed: 1 }
+    }
+
+    console.log('Student Logged In:', studentSession.user.id)
+    const { data: results, error: fetchError } = await studentClient.from('exam_results').select('student_id')
+
+    if (fetchError) {
+        console.error('Error fetching exam results:', fetchError)
+        return { passed: 0, failed: 1 }
+    }
+
+    const otherStudents = results.filter((r: Record<string, unknown>) => r.student_id !== studentSession.user.id)
+    if (otherStudents.length > 0) {
+        console.error(`FAIL: Student accessed ${otherStudents.length} records of others!`)
+        return { passed: 0, failed: 1 }
+    }
+
+    console.log(`PASS: Student see only their own records (Total: ${results.length})`)
+
+    const { error: invalidError } = await studentClient.auth.signInWithPassword({
+        email: emailStudent,
+        password: 'invalid-password-for-testing'
+    })
+
+    if (invalidError?.message === 'Invalid login credentials') {
+        console.log('PASS: Correct error for invalid credentials')
+        return { passed: 2, failed: 0 }
+    }
+
+    console.error('FAIL: Unexpected behavior for invalid login:', invalidError)
+    return { passed: 1, failed: 1 }
+}
+
+async function testTeacherAccessControl(
+    supabaseUrl: string,
+    passTea: string
+): Promise<{ passed: number; failed: number }> {
+    console.log('\n--- TC_SEC_002: Teacher Access Control ---')
+    const emailTea = 'cervusteacher@gmail.com'
+    const teacherClient = createSupabaseClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+    const { data: { session: teacherSession }, error: tLoginError } = await teacherClient.auth.signInWithPassword({
+        email: emailTea,
+        password: passTea
+    })
+
+    if (tLoginError) {
+        console.error('Teacher Login Failed:', tLoginError.message)
+        return { passed: 0, failed: 1 }
+    }
+
+    console.log('Teacher Logged In:', teacherSession.user.id)
+    const { error: insertError } = await teacherClient
+        .from('classes')
+        .insert({ name: 'Hacker Class', grade: 12, organization_id: '283442f5-d8c2-45da-94be-0c3770c96870' })
+
+    if (insertError) {
+        console.log(`PASS: Teacher cannot create class (Error: ${insertError.message})`)
+        return { passed: 1, failed: 0 }
+    }
+
+    console.error('FAIL: Teacher was able to create a class!')
+    await adminClient.from('classes').delete().eq('name', 'Hacker Class')
+    return { passed: 0, failed: 1 }
+}
+
 async function runTests() {
     console.log('Starting Security & RLS Tests...')
+
+    const passStudent = process.env.TEST_STUDENT_PASSWORD
+    if (!passStudent) throw new Error('Missing TEST_STUDENT_PASSWORD env variable')
+    const passTea = process.env.TEST_TEACHER_PASSWORD
+    if (!passTea) throw new Error('Missing TEST_TEACHER_PASSWORD env variable')
+
     let passed = 0
     let failed = 0
 
     try {
-        // 0. Setup: Get Test Users
-        console.log('\n--- Setup ---')
-        // We expect these users to exist from previous phases or we verify their roles
-        const emailStudent = 'barisozturk@cervus.com'
-        const passStudent = process.env.TEST_STUDENT_PASSWORD
-        if (!passStudent) throw new Error('Missing TEST_STUDENT_PASSWORD env variable')
+        const studentResult = await testStudentDataIsolation(supabaseUrl!, passStudent)
+        passed += studentResult.passed
+        failed += studentResult.failed
 
-        const emailTea = 'cervusteacher@gmail.com'
-        const passTea = process.env.TEST_TEACHER_PASSWORD
-        if (!passTea) throw new Error('Missing TEST_TEACHER_PASSWORD env variable')
-
-        const emailAdmin = 'admin@cervus.com'
-        const passAdmin = process.env.TEST_ADMIN_PASSWORD
-        if (!passAdmin) throw new Error('Missing TEST_ADMIN_PASSWORD env variable')
-
-        // 1. TC_SEC_001: Student accessing Admin Data (e.g. users table via RPC or direct select if possible, generally restricted)
-        // Actually, checking if they can select from a table they shouldn't, like 'profiles' of other orgs or 'secrets' if any.
-        // Better check: Can student see other students' grades?
-
-        console.log('\n--- TC_SEC_003: Student Data Isolation ---')
-        const studentClient = createSupabaseClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-        const { data: { session: studentSession }, error: loginError } = await studentClient.auth.signInWithPassword({
-            email: emailStudent,
-            password: passStudent
-        })
-
-        if (loginError) {
-            console.error('Student Login Failed:', loginError.message)
-            failed++
-        } else {
-            console.log('Student Logged In:', studentSession.user.id)
-
-            // Try to fetch ALL exam results (RLS should restrict to only their own)
-            const { data: results, error: fetchError } = await studentClient
-                .from('exam_results')
-                .select('student_id')
-
-            if (fetchError) {
-                console.error('Error fetching exam results:', fetchError)
-            } else {
-                const otherStudents = results.filter((r: any) => r.student_id !== studentSession.user.id)
-                if (otherStudents.length > 0) {
-                    console.error(`FAIL: Student accessed ${otherStudents.length} records of others!`)
-                    failed++
-                } else {
-                    console.log(`PASS: Student see only their own records (Total: ${results.length})`)
-                    passed++
-                }
-            }
-        }
-
-        // 2. TC_SEC_002: Teacher accessing Admin Data
-        console.log('\n--- TC_SEC_002: Teacher Access Control ---')
-        const teacherClient = createSupabaseClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-        const { data: { session: teacherSession }, error: tLoginError } = await teacherClient.auth.signInWithPassword({
-            email: emailTea,
-            password: passTea
-        })
-
-        if (tLoginError) {
-            console.error('Teacher Login Failed:', tLoginError.message)
-            failed++
-        } else {
-            console.log('Teacher Logged In:', teacherSession.user.id)
-            // Teacher SHOULD see students in their classes
-            // But Teacher SHOULD NOT be able to delete a Class (Admin only)
-
-            // Try to delete a random class (mock ID or one that exists)
-            // We won't actually delete a real one, we'll try to insert a class (Admin only usually)
-            // Or update a critical table
-
-            const { error: insertError } = await teacherClient
-                .from('classes')
-                .insert({ name: 'Hacker Class', grade: 12, organization_id: '283442f5-d8c2-45da-94be-0c3770c96870' })
-
-            if (insertError) {
-                console.log(`PASS: Teacher cannot create class (Error: ${insertError.message})`)
-                passed++
-            } else {
-                console.error('FAIL: Teacher was able to create a class!')
-                // Cleanup if it actually worked
-                await adminClient.from('classes').delete().eq('name', 'Hacker Class')
-                failed++
-            }
-        }
-
-        // 3. TC_AUTH_004: Invalid Login
-        console.log('\n--- TC_AUTH_004: Invalid Login Handling ---')
-        const { error: invalidError } = await studentClient.auth.signInWithPassword({
-            email: emailStudent,
-            password: 'invalid-password-for-testing' // nosonar: intentional wrong password for negative test case
-        })
-
-        if (invalidError && invalidError.message === 'Invalid login credentials') {
-            console.log('PASS: Correct error for invalid credentials')
-            passed++
-        } else {
-            console.error('FAIL: Unexpected behavior for invalid login:', invalidError)
-            failed++
-        }
+        const teacherResult = await testTeacherAccessControl(supabaseUrl!, passTea)
+        passed += teacherResult.passed
+        failed += teacherResult.failed
 
     } catch (err) {
         console.error('Test Suite Error:', err)

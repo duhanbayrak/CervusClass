@@ -161,7 +161,7 @@ export function PaymentRecordDialog({
                                     <option value="">Hesap seçin...</option>
                                     {accounts.map(a => (
                                         <option key={a.id} value={a.id}>
-                                            {a.name} ({a.account_type === 'cash' ? 'Nakit' : a.account_type === 'bank' ? 'Banka' : 'POS'})
+                                            {a.name} ({a.account_type === 'cash' && 'Nakit'}{a.account_type === 'bank' && 'Banka'}{a.account_type !== 'cash' && a.account_type !== 'bank' && 'POS'})
                                         </option>
                                     ))}
                                 </select>

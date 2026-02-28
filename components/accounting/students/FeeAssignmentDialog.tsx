@@ -313,8 +313,8 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Fee
                         {/* Öğrenci/Sınıf Seçim */}
                         <div className="bg-gray-50 dark:bg-white/5 p-4 rounded-xl border border-gray-100 dark:border-white/5 space-y-4">
                             <div>
-                                <label className={labelClass}>Akademik Dönem</label>
-                                <input type="text" {...register('academicPeriod')} className={inputClass} />
+                                <label htmlFor="academicPeriod" className={labelClass}>Akademik Dönem</label>
+                                <input id="academicPeriod" type="text" {...register('academicPeriod')} className={inputClass} />
                             </div>
 
                             {/* defaultStudentId gelmişse sınıf ve öğrenci seçimini gizle */}
@@ -341,15 +341,16 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Fee
                                     {mode === 'single' ? (
                                         <>
                                             <div>
-                                                <label className={labelClass}>Sınıfa Göre Filtrele (Opsiyonel)</label>
-                                                <select {...register('classId')} className={inputClass} onChange={(e) => setValue('classId', e.target.value)}>
+                                                <label htmlFor="classIdFilter" className={labelClass}>Sınıfa Göre Filtrele (Opsiyonel)</label>
+                                                <select id="classIdFilter" {...register('classId')} className={inputClass} onChange={(e) => setValue('classId', e.target.value)}>
                                                     <option value="">Tüm Sınıflar</option>
                                                     {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className={labelClass}>Öğrenci Ara / Seç *</label>
+                                                <label htmlFor="studentSearch" className={labelClass}>Öğrenci Ara / Seç *</label>
                                                 <input
+                                                    id="studentSearch"
                                                     type="text"
                                                     placeholder="İsim ara..."
                                                     value={studentSearch}
@@ -374,8 +375,8 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Fee
                                         </>
                                     ) : (
                                         <div>
-                                            <label className={labelClass}>Sınıf Seç *</label>
-                                            <select {...register('classId')} className={inputClass}>
+                                            <label htmlFor="classIdBulk" className={labelClass}>Sınıf Seç *</label>
+                                            <select id="classIdBulk" {...register('classId')} className={inputClass}>
                                                 <option value="">Sınıf seçin...</option>
                                                 {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                             </select>
@@ -443,8 +444,9 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Fee
                                             {/* Hizmet & Fiyat */}
                                             <div className="col-span-1 md:col-span-2 space-y-3">
                                                 <div>
-                                                    <label className={labelClass}>Hizmet/Ürün *</label>
+                                                    <label htmlFor={`serviceId-${index}`} className={labelClass}>Hizmet/Ürün *</label>
                                                     <select
+                                                        id={`serviceId-${index}`}
                                                         className={inputClass}
                                                         value={watchServices[index]?.serviceId || ''}
                                                         onChange={e => handleServiceSelect(index, e.target.value)}
@@ -456,15 +458,15 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Fee
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <div>
-                                                        <label className={labelClass}>Birim Fiyat</label>
+                                                        <label htmlFor={`unitPrice-${index}`} className={labelClass}>Birim Fiyat</label>
                                                         <div className="relative">
-                                                            <input type="number" step="0.01" {...register(`services.${index}.unitPrice`)} className={`${inputClass} pr-8`} />
+                                                            <input id={`unitPrice-${index}`} type="number" step="0.01" {...register(`services.${index}.unitPrice`)} className={`${inputClass} pr-8`} />
                                                             <span className="absolute right-3 top-2 text-xs text-muted-foreground">{currency}</span>
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <label className={labelClass}>KDV Oranı (%)</label>
-                                                        <input type="number" step="1" {...register(`services.${index}.vatRate`)} className={inputClass} />
+                                                        <label htmlFor={`vatRate-${index}`} className={labelClass}>KDV Oranı (%)</label>
+                                                        <input id={`vatRate-${index}`} type="number" step="1" {...register(`services.${index}.vatRate`)} className={inputClass} />
                                                     </div>
                                                 </div>
                                             </div>
@@ -472,19 +474,19 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Fee
                                             {/* İndirim */}
                                             <div className="col-span-1 border-l border-gray-200 dark:border-white/10 pl-4 space-y-3">
                                                 <div>
-                                                    <label className={labelClass}>İndirim Tipi</label>
-                                                    <select {...register(`services.${index}.discountType`)} className={inputClass}>
+                                                    <label htmlFor={`discountType-${index}`} className={labelClass}>İndirim Tipi</label>
+                                                    <select id={`discountType-${index}`} {...register(`services.${index}.discountType`)} className={inputClass}>
                                                         <option value="fixed">Tutar ({currency})</option>
                                                         <option value="percentage">Yüzde (%)</option>
                                                     </select>
                                                 </div>
                                                 <div>
-                                                    <label className={labelClass}>İndirim Miktarı</label>
-                                                    <input type="number" step="0.01" {...register(`services.${index}.discountAmount`)} className={inputClass} />
+                                                    <label htmlFor={`discountAmount-${index}`} className={labelClass}>İndirim Miktarı</label>
+                                                    <input id={`discountAmount-${index}`} type="number" step="0.01" {...register(`services.${index}.discountAmount`)} className={inputClass} />
                                                 </div>
                                                 <div>
-                                                    <label className={labelClass}>İnd. Sebebi</label>
-                                                    <input type="text" placeholder="opsiyonel" {...register(`services.${index}.discountReason`)} className={inputClass} />
+                                                    <label htmlFor={`discountReason-${index}`} className={labelClass}>İnd. Sebebi</label>
+                                                    <input id={`discountReason-${index}`} type="text" placeholder="opsiyonel" {...register(`services.${index}.discountReason`)} className={inputClass} />
                                                 </div>
                                             </div>
 
@@ -492,15 +494,15 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Fee
                                             <div className="col-span-1 border-l border-gray-200 dark:border-white/10 pl-4 space-y-3">
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <div className="col-span-2">
-                                                        <label className={labelClass}>Alınan Peşinat ({currency})</label>
-                                                        <input type="number" step="0.01" {...register(`services.${index}.downPayment`)} className={inputClass} />
+                                                        <label htmlFor={`downPayment-${index}`} className={labelClass}>Alınan Peşinat ({currency})</label>
+                                                        <input id={`downPayment-${index}`} type="number" step="0.01" {...register(`services.${index}.downPayment`)} className={inputClass} />
                                                         {svcErrors?.downPayment && <p className="text-red-500 text-[10px] mt-1 break-words">{svcErrors.downPayment.message}</p>}
                                                     </div>
 
                                                     {Number(watchServices[index]?.downPayment) > 0 && (
                                                         <div className="col-span-2">
-                                                            <label className={labelClass}>Peşinat Kasası *</label>
-                                                            <select {...register(`services.${index}.downPaymentAccountId`)} className={inputClass}>
+                                                            <label htmlFor={`downPaymentAccountId-${index}`} className={labelClass}>Peşinat Kasası *</label>
+                                                            <select id={`downPaymentAccountId-${index}`} {...register(`services.${index}.downPaymentAccountId`)} className={inputClass}>
                                                                 <option value="">Seçiniz...</option>
                                                                 {accountsData.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                                                             </select>
@@ -511,17 +513,17 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Fee
 
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <div>
-                                                        <label className={labelClass}>Taksit Sy.</label>
-                                                        <input type="number" min="1" {...register(`services.${index}.installmentCount`)} className={inputClass} />
+                                                        <label htmlFor={`installmentCount-${index}`} className={labelClass}>Taksit Sy.</label>
+                                                        <input id={`installmentCount-${index}`} type="number" min="1" {...register(`services.${index}.installmentCount`)} className={inputClass} />
                                                     </div>
                                                     <div>
-                                                        <label className={labelClass}>Vade Günü</label>
-                                                        <input type="number" min="1" max="31" {...register(`services.${index}.paymentDueDay`)} className={inputClass} />
+                                                        <label htmlFor={`paymentDueDay-${index}`} className={labelClass}>Vade Günü</label>
+                                                        <input id={`paymentDueDay-${index}`} type="number" min="1" max="31" {...register(`services.${index}.paymentDueDay`)} className={inputClass} />
                                                     </div>
                                                 </div>
                                                 <div>
-                                                    <label className={labelClass}>Taksit Baş. Ayı (Opsiyonel)</label>
-                                                    <input type="month" {...register(`services.${index}.startMonth`)} className={inputClass} />
+                                                    <label htmlFor={`startMonth-${index}`} className={labelClass}>Taksit Baş. Ayı (Opsiyonel)</label>
+                                                    <input id={`startMonth-${index}`} type="month" {...register(`services.${index}.startMonth`)} className={inputClass} />
                                                     <span className="text-[10px] text-muted-foreground leading-tight">Girilmezse form tarihi (bu ay) baz alınır.</span>
                                                 </div>
                                             </div>

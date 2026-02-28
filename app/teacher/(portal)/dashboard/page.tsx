@@ -6,7 +6,7 @@ import { PendingSessionsCard } from '@/components/dashboard/teacher/pending-sess
 import { PendingHomeworkCard } from '@/components/dashboard/teacher/pending-homework-card';
 import { PendingStudyRequestsList } from '@/components/dashboard/teacher/pending-study-requests-list';
 import { getAuthContext } from '@/lib/auth-context';
-import { Schedule, StudySession, Homework, HomeworkSubmission } from '@/types/database';
+import { StudySession, HomeworkSubmission } from '@/types/database';
 import { MissingAttendanceAlert } from '@/components/dashboard/teacher/missing-attendance-alert';
 import { format } from 'date-fns';
 

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { NavItem } from '@/lib/navigation';
-import { School, LogOut, ChevronUp, Loader2 } from 'lucide-react';
+import { LogOut, ChevronUp, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useUserRole } from '@/components/providers/auth-provider';
 import { Button } from '@/components/ui/button';

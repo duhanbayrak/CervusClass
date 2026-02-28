@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase-server'
 import { WeeklyScheduler } from "@/components/schedule/WeeklyScheduler";
-import { ScheduleEvent, StudySessionEvent } from "@/types/schedule";
 import { Card, CardContent } from '@/components/ui/card'
 
 export default async function StudentSchedulePage() {

@@ -28,6 +28,13 @@ import { flattenExamDetails } from '@/lib/utils'
 import { TeacherExamCharts } from '@/components/teacher/exams/teacher-exam-charts'
 
 
+function getRankBadgeClass(rank: number): string {
+    if (rank === 1) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
+    if (rank === 2) return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400';
+    if (rank === 3) return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
+    return 'bg-muted text-muted-foreground';
+}
+
 interface StudentExamData {
     studentId: string
     fullName: string
@@ -261,11 +268,7 @@ export default async function ClassExamDetailPage({
                             return (
                                 <TableRow key={student.studentId} className="hover:bg-muted/50">
                                     <TableCell className="text-center">
-                                        <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${student.rank === 1 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                            student.rank === 2 ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400' :
-                                                student.rank === 3 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                                                    'bg-muted text-muted-foreground'
-                                            }`}>
+                                        <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${getRankBadgeClass(student.rank)}`}>
                                             {student.rank}
                                         </div>
                                     </TableCell>

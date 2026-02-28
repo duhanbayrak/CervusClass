@@ -67,7 +67,7 @@ function formatDate(date: string): string {
 /** Ay adı (kısa) */
 function monthLabel(monthStr: string): string {
     const monthNames = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
-    const monthNum = parseInt(monthStr.split('-')[1], 10);
+    const monthNum = Number.parseInt(monthStr.split('-')[1], 10);
     return monthNames[monthNum - 1] || monthStr;
 }
 
@@ -293,15 +293,14 @@ export default function DashboardContent({
                             {['income', 'expense'].map((tabKey) => {
                                 const isIncome = tabKey === 'income';
                                 const isActive = distributionTab === tabKey;
+                                let activeTabClass = 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white';
+                                if (isActive) activeTabClass = isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400';
 
                                 return (
                                     <button
                                         key={tabKey}
                                         onClick={() => setDistributionTab(tabKey as 'income' | 'expense')}
-                                        className={`relative px-4 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer z-0 ${isActive
-                                            ? isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'
-                                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                                            }`}
+                                        className={`relative px-4 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer z-0 ${activeTabClass}`}
                                     >
                                         {isActive && (
                                             <motion.div

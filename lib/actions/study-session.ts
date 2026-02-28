@@ -1,6 +1,5 @@
 'use server'
 
-import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { revalidatePath } from 'next/cache'
 import { type SupabaseClient } from '@supabase/supabase-js'
@@ -17,7 +16,7 @@ async function getStatusId(supabase: SupabaseClient, name: string) {
 // Öğretmenleri getir
 export async function getTeachers() {
     try {
-        const { supabase, organizationId, error } = await getAuthContext();
+        const { organizationId, error } = await getAuthContext();
         if (error || !organizationId) return { error: error || 'Oturum bulunamadı' };
 
         if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {

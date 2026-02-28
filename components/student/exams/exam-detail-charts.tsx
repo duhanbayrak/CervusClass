@@ -58,7 +58,11 @@ function computeYAxisConfig(values: number[]) {
 
     // Has negative values - compute tight domain & ticks
     const yMin = Math.floor(min) // e.g. -0.75 → -1
-    const step = max > 20 ? 10 : max > 10 ? 5 : max > 5 ? 2 : 1
+    let step: number;
+    if (max > 20) step = 10;
+    else if (max > 10) step = 5;
+    else if (max > 5) step = 2;
+    else step = 1;
     const yMax = Math.ceil(max / step) * step
 
     // Generate ticks: include yMin, 0, then positive steps
@@ -79,7 +83,7 @@ const TRACKS = {
 };
 
 const CustomSubjectTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
+    if (active && payload?.length) {
         return (
             <div
                 className="border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl p-4 min-w-[200px] z-50"
@@ -94,11 +98,11 @@ const CustomSubjectTooltip = ({ active, payload, label }: any) => {
                     {label}
                 </p>
                 <div className="space-y-2">
-                    {payload.map((entry: any, index: number) => {
+                    {payload.map((entry: any) => {
                         const num = typeof entry.value === 'number' ? entry.value : parseFloat(String(entry.value ?? '0'))
                         const formattedValue = isNaN(num) ? '-' : num.toFixed(2)
                         return (
-                            <div key={index} className="flex items-center justify-between gap-4 text-sm">
+                            <div key={entry.dataKey ?? entry.name} className="flex items-center justify-between gap-4 text-sm">
                                 <div className="flex items-center gap-2">
                                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.fill || entry.color }} />
                                     <span className="text-muted-foreground">{entry.name}:</span>
@@ -311,9 +315,9 @@ export function ExamDetailCharts({
                                                         { key: 'student', color: COLORS.student },
                                                         { key: 'class', color: COLORS.class },
                                                         { key: 'school', color: COLORS.school }
-                                                    ].map((s, i) => (
+                                                    ].map((s) => (
                                                         // Only render if visible, effectively hiding/showing bars
-                                                        <rect key={i} fill={s.color} className={visibleSeries[s.key as keyof typeof visibleSeries] ? 'opacity-100' : 'opacity-0'} />
+                                                        <rect key={s.key} fill={s.color} className={visibleSeries[s.key as keyof typeof visibleSeries] ? 'opacity-100' : 'opacity-0'} />
                                                     ))}
                                                 </Bar>
                                             </BarChart>
@@ -459,8 +463,8 @@ export function ExamDetailCharts({
                                                 {hasNeg && <ReferenceLine y={0} stroke="#999" strokeWidth={1.5} />}
                                                 <Tooltip content={<CustomSubjectTooltip />} cursor={{ fill: 'transparent' }} />
                                                 <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={80}>
-                                                    {[COLORS.student, COLORS.class, COLORS.school].map((color, i) => (
-                                                        <rect key={i} fill={color} />
+                                                    {[COLORS.student, COLORS.class, COLORS.school].map((color) => (
+                                                        <rect key={color} fill={color} />
                                                     ))}
                                                 </Bar>
                                             </BarChart>

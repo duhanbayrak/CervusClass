@@ -68,7 +68,10 @@ export function StudentFinancialTab({ data }: FinancialTabProps) {
 
     // En az 1 tane aktif ücret varsa genel durumu Aktif göster
     const isAnyActive = fees.some(f => f.status === 'active');
-    const displayStatus = remainingAmount <= 0 ? 'completed' : isAnyActive ? 'active' : 'pending';
+    let displayStatus: 'completed' | 'active' | 'pending';
+    if (remainingAmount <= 0) displayStatus = 'completed';
+    else if (isAnyActive) displayStatus = 'active';
+    else displayStatus = 'pending';
 
     return (
         <div className="space-y-6">

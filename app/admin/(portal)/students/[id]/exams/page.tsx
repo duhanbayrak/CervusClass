@@ -79,7 +79,7 @@ export default async function AdminStudentExamsPage({
             </div>
 
             {/* Toplam Net Gelişim Grafiği */}
-            {overviewData && overviewData.studentExams && overviewData.studentExams.length > 0 && (
+            {overviewData?.studentExams && overviewData.studentExams.length > 0 && (
                 <DynamicExamOverviewChart
                     studentExams={overviewData.studentExams}
                     classAverages={overviewData.classAverages}
@@ -88,7 +88,7 @@ export default async function AdminStudentExamsPage({
             )}
 
             {/* Ders Bazlı Net Gelişimi */}
-            {overviewData && overviewData.studentExams && overviewData.studentExams.length > 0 && (
+            {overviewData?.studentExams && overviewData.studentExams.length > 0 && (
                 <DynamicSubjectOverviewCharts
                     studentExams={overviewData.studentExams}
                     classSubjectOverview={overviewData.classSubjectOverview ?? []}

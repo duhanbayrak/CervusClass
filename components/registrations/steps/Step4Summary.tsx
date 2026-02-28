@@ -123,7 +123,7 @@ export function Step4Summary() {
                                     {formData.studentNumber ? 'Öğrenci No:' : 'Öğrenci No (Otomatik):'}
                                 </span>
                                 <span className="text-xs mt-0.5 text-blue-600 bg-blue-50/50 px-1 py-0.5 rounded border border-blue-100 dark:border-blue-900 flex items-center w-fit">
-                                    {formData.studentNumber ? formData.studentNumber : (nextStudentNumber ? nextStudentNumber : 'Hesaplanıyor...')}
+                                    {formData.studentNumber || nextStudentNumber || 'Hesaplanıyor...'}
                                 </span>
                             </div>
                             <div className="grid grid-cols-2">
@@ -240,7 +240,7 @@ export function Step4Summary() {
                                     const perInst = rem > 0 ? rem / inst : 0;
 
                                     return (
-                                        <div key={i} className="flex flex-col md:flex-row gap-4 p-4 border rounded-lg bg-card hover:bg-muted/30 transition-colors">
+                                        <div key={svc.serviceName ?? i} className="flex flex-col md:flex-row gap-4 p-4 border rounded-lg bg-card hover:bg-muted/30 transition-colors">
                                             <div className="flex-1 space-y-1">
                                                 <h4 className="font-semibold text-primary">{svc.serviceName || 'İsimsiz Hizmet'}</h4>
                                                 <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">

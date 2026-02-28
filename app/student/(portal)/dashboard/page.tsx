@@ -6,7 +6,7 @@ import { BookOpen, Calendar as CalendarIcon, Clock, TrendingUp, CheckCircle2, Ch
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getAuthContext } from '@/lib/auth-context';
-import { Schedule, Homework, ExamResult, StudySession } from '@/types/database';
+import type { ExamResult } from '@/types/database';
 
 export default async function StudentDashboardPage() {
     // Merkezi auth context — tek supabase client
@@ -294,23 +294,27 @@ export default async function StudentDashboardPage() {
                         <div className="space-y-3">
                             {etuts.map((etut: any) => {
                                 const status = etut.study_session_statuses?.name || 'pending';
+                                let barColor = 'bg-slate-300';
+                                if (status === 'pending') barColor = 'bg-yellow-400';
+                                else if (status === 'approved') barColor = 'bg-green-500';
+                                else if (status === 'rejected') barColor = 'bg-red-500';
+                                let badgeClass = 'text-slate-500';
+                                if (status === 'approved') badgeClass = 'text-green-600 border-green-200 bg-green-50';
+                                else if (status === 'pending') badgeClass = 'text-yellow-600 border-yellow-200 bg-yellow-50';
+                                let statusLabel = 'Reddedildi';
+                                if (status === 'approved') statusLabel = 'Onaylandı';
+                                else if (status === 'pending') statusLabel = 'Bekliyor';
                                 return (
                                     <div key={etut.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
-                                        <div className={`w-2 h-full min-h-[40px] rounded-full ${status === 'pending' ? 'bg-yellow-400' :
-                                            status === 'approved' ? 'bg-green-500' :
-                                                status === 'rejected' ? 'bg-red-500' : 'bg-slate-300'
-                                            }`}></div>
+                                        <div className={`w-2 h-full min-h-[40px] rounded-full ${barColor}`}></div>
                                         <div className="flex-1">
                                             <h5 className="text-sm font-bold text-slate-800 dark:text-slate-200">{etut.topic}</h5>
                                             <p className="text-xs text-slate-500">
                                                 {etut.teacher?.full_name} • {new Date(etut.scheduled_at).toLocaleDateString('tr-TR')}
                                             </p>
                                         </div>
-                                        <Badge variant="outline" className={`capitalize text-[10px] ${status === 'pending' ? 'text-yellow-600 border-yellow-200 bg-yellow-50' :
-                                            status === 'approved' ? 'text-green-600 border-green-200 bg-green-50' :
-                                                'text-slate-500'
-                                            }`}>
-                                            {status === 'pending' ? 'Bekliyor' : status === 'approved' ? 'Onaylandı' : 'Reddedildi'}
+                                        <Badge variant="outline" className={`capitalize text-[10px] ${badgeClass}`}>
+                                            {statusLabel}
                                         </Badge>
                                     </div>
                                 )

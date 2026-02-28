@@ -153,7 +153,7 @@ export function GeneralSettings({ settings, onSave }: GeneralSettingsProps) {
                     <div className="space-y-2 mb-4">
                         {academicPeriods.map((period, index) => (
                             <div
-                                key={index}
+                                key={period.name ?? index}
                                 className="flex items-center justify-between rounded-lg border border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/[0.02] px-4 py-3"
                             >
                                 <div className="flex items-center gap-3">

@@ -8,9 +8,9 @@ import { Profile, ProfileRole } from '@/types/database';
  * @returns ProfileRole ('student', 'teacher', 'admin', 'super_admin') veya null
  */
 export function getUserRole(profile: Partial<Profile> | null): ProfileRole | null {
-    const profileAny = profile as Record<string, any> | null;
-    if (!profileAny || !profileAny.roles) {
-        return null; // Rol bilgisi yok
+    const profileAny = profile as Record<string, unknown> | null;
+    if (!profileAny?.roles) {
+        return null;
     }
 
     const rolesData = profileAny.roles as any;

@@ -87,7 +87,7 @@ export function StudentExamChart({ data }: StudentExamChartProps) {
                             />
                             <Tooltip
                                 content={({ active, payload }) => {
-                                    if (active && payload && payload.length) {
+                                    if (active && payload?.length) {
                                         const data = payload[0].payload;
                                         return (
                                             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-lg shadow-lg text-xs">

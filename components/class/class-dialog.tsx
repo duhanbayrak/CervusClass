@@ -105,7 +105,7 @@ export function ClassDialog({ open, onOpenChange, cls, onSave }: ClassDialogProp
                         <Label htmlFor="grade">Kademe</Label>
                         <Select
                             value={formData.grade_level.toString()}
-                            onValueChange={(val) => setFormData({ ...formData, grade_level: parseInt(val) })}
+                            onValueChange={(val) => setFormData({ ...formData, grade_level: Number.parseInt(val) })}
                         >
                             <SelectTrigger id="grade">
                                 <SelectValue placeholder="Kademe Seçin" />

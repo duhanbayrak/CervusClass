@@ -42,38 +42,119 @@ export interface ReceiptData {
     };
 }
 
+type SupabaseClient = Awaited<ReturnType<typeof getAuthContext>>['supabase'];
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+    cash: 'Nakit',
+    bank_transfer: 'Havale / EFT',
+    credit_card: 'Kredi Kartı',
+    other: 'Diğer',
+};
+
+async function resolvePaymentId(
+    supabase: SupabaseClient,
+    paymentId?: string,
+    installmentId?: string
+): Promise<{ id: string } | { error: string }> {
+    if (paymentId) return { id: paymentId };
+    if (!installmentId) return { error: 'paymentId veya installmentId gerekli.' };
+
+    const { data: latestPayment, error: lpErr } = await supabase
+        .from('fee_payments')
+        .select('id')
+        .eq('installment_id', installmentId)
+        .order('payment_date', { ascending: false })
+        .limit(1)
+        .single();
+
+    if (lpErr || !latestPayment) return { error: 'Bu taksit için ödeme kaydı bulunamadı.' };
+    return { id: latestPayment.id };
+}
+
+async function fetchLogoBase64(logoUrl: string): Promise<string | null> {
+    try {
+        const logoResponse = await fetch(logoUrl);
+        if (!logoResponse.ok) return null;
+        const buffer = await logoResponse.arrayBuffer();
+        const base64 = Buffer.from(buffer).toString('base64');
+        const contentType = logoResponse.headers.get('content-type') || 'image/png';
+        return `data:${contentType};base64,${base64}`;
+    } catch {
+        return null;
+    }
+}
+
+async function buildReceiptResult(
+    supabase: SupabaseClient,
+    organizationId: string,
+    paymentData: Record<string, unknown>
+): Promise<ReceiptData> {
+    const orgData = await supabase
+        .from('organizations')
+        .select('name, logo_url, address, phone')
+        .eq('id', organizationId)
+        .single()
+        .then(r => r.data) as Record<string, unknown> | null;
+
+    const logoBase64 = orgData?.logo_url ? await fetchLogoBase64(orgData.logo_url as string) : null;
+
+    const { count } = await supabase
+        .from('fee_payments')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .lte('payment_date', paymentData.payment_date as string);
+
+    const sequence = count ? String(count).padStart(6, '0') : '000001';
+    const year = new Date(paymentData.payment_date as string).getFullYear();
+    const receiptNumber = `MKB-${year}-${sequence}`;
+
+    const { totalDebt, totalPaid, remainingDebt, serviceName, academicPeriod } = await calcReceiptFinancials(supabase, paymentData);
+
+    const student = paymentData.student as Record<string, unknown> | null;
+    const operator = paymentData.operator as Record<string, unknown> | null;
+
+    return {
+        receiptNumber,
+        dateFormatted: format(new Date(paymentData.payment_date as string), 'dd MMMM yyyy HH:mm', { locale: tr }),
+        organization: {
+            name: (orgData?.name as string) || 'Kurum Adı',
+            logo_url: (orgData?.logo_url as string) || null,
+            logo_base64: logoBase64,
+            address: (orgData?.address as string) || null,
+            phone: (orgData?.phone as string) || null,
+        },
+        student: {
+            fullName: (student?.full_name as string) || 'Bilinmiyor',
+            parentName: (student?.parent_name as string) || null,
+            tcNo: (student?.tc_no as string) || null,
+        },
+        payment: {
+            id: paymentData.id as string,
+            amount: Number(paymentData.amount),
+            amountWords: numberToWordsTR(Number(paymentData.amount)),
+            method: PAYMENT_METHOD_LABELS[paymentData.payment_method as string] || 'Diğer',
+            referenceNo: (paymentData.reference_no as string) || null,
+            notes: (paymentData.notes as string) || null,
+        },
+        details: { serviceName, academicPeriod },
+        financials: { totalDebt, totalPaid, remainingDebt },
+        operator: { fullName: (operator?.full_name as string) || 'Bilinmiyor' },
+    };
+}
+
 export async function getReceiptData(
     paymentId?: string,
     installmentId?: string
 ): Promise<{ success: boolean; data?: ReceiptData; error?: string }> {
     const { supabase, organizationId, error } = await getAuthContext();
 
-    if (error || !organizationId) {
-        return { success: false, error: 'Yetkilendirme hatası' };
-    }
-
-    if (!paymentId && !installmentId) {
-        return { success: false, error: 'paymentId veya installmentId gerekli.' };
-    }
+    if (error || !organizationId) return { success: false, error: 'Yetkilendirme hatası' };
+    if (!paymentId && !installmentId) return { success: false, error: 'paymentId veya installmentId gerekli.' };
 
     try {
-        // installmentId verilmişse, o taksitteki en son ödemeyi bul
-        let resolvedPaymentId = paymentId;
-        if (!resolvedPaymentId && installmentId) {
-            const { data: latestPayment, error: lpErr } = await supabase
-                .from('fee_payments')
-                .select('id')
-                .eq('installment_id', installmentId)
-                .order('payment_date', { ascending: false })
-                .limit(1)
-                .single();
+        const resolved = await resolvePaymentId(supabase, paymentId, installmentId);
+        if ('error' in resolved) return { success: false, error: resolved.error };
 
-            if (lpErr || !latestPayment) {
-                return { success: false, error: 'Bu taksit için ödeme kaydı bulunamadı.' };
-            }
-            resolvedPaymentId = latestPayment.id;
-        }
-        // 1. Ödeme, Taksit, Öğrenci, Onaylayan bilgisini çek
         const { data: paymentData, error: paymentError } = await supabase
             .from('fee_payments')
             .select(`
@@ -91,95 +172,12 @@ export async function getReceiptData(
                 student:profiles!student_id (full_name, parent_name, tc_no),
                 operator:profiles!created_by (full_name)
             `)
-            .eq('id', resolvedPaymentId!)
-            .single() as any;
+            .eq('id', resolved.id)
+            .single() as { data: Record<string, unknown> | null; error: unknown };
 
-        if (paymentError || !paymentData) {
-            return { success: false, error: 'Ödeme kaydı bulunamadı.' };
-        }
+        if (paymentError || !paymentData) return { success: false, error: 'Ödeme kaydı bulunamadı.' };
 
-        // 2. Organizasyon bilgisini çek
-        const { data: orgData } = await supabase
-            .from('organizations')
-            .select('name, logo_url, address, phone')
-            .eq('id', organizationId)
-            .single() as any;
-
-        // Logo URL'yi server-side'da base64'e çevir (CORS sorununu önler)
-        let logoBase64: string | null = null;
-        if (orgData?.logo_url) {
-            try {
-                const logoResponse = await fetch(orgData.logo_url);
-                if (logoResponse.ok) {
-                    const buffer = await logoResponse.arrayBuffer();
-                    const base64 = Buffer.from(buffer).toString('base64');
-                    const contentType = logoResponse.headers.get('content-type') || 'image/png';
-                    logoBase64 = `data:${contentType};base64,${base64}`;
-                }
-            } catch {
-                // Logo çekilemezse null kalacak, PDF'de gösterilmeyecek
-                logoBase64 = null;
-            }
-        }
-
-        // 4. Makbuz numarası
-        const { count } = await supabase
-            .from('fee_payments')
-            .select('id', { count: 'exact', head: true })
-            .eq('organization_id', organizationId)
-            .lte('payment_date', paymentData.payment_date);
-
-        const sequence = count ? String(count).padStart(6, '0') : '000001';
-        const year = new Date(paymentData.payment_date).getFullYear();
-        const receiptNumber = `MKB-${year}-${sequence}`;
-
-        const financialSummary = await calcReceiptFinancials(supabase, paymentData)
-        const { totalDebt, totalPaid, remainingDebt, serviceName, academicPeriod } = financialSummary
-
-        const methodMap: Record<string, string> = {
-            'cash': 'Nakit',
-            'bank_transfer': 'Havale / EFT',
-            'credit_card': 'Kredi Kartı',
-            'other': 'Diğer'
-        };
-
-        const result: ReceiptData = {
-            receiptNumber,
-            dateFormatted: format(new Date(paymentData.payment_date), 'dd MMMM yyyy HH:mm', { locale: tr }),
-            organization: {
-                name: orgData?.name || 'Kurum Adı',
-                logo_url: orgData?.logo_url || null,
-                logo_base64: logoBase64,
-                address: orgData?.address || null,
-                phone: orgData?.phone || null,
-            },
-            student: {
-                fullName: paymentData.student?.full_name || 'Bilinmiyor',
-                parentName: paymentData.student?.parent_name || null,
-                tcNo: paymentData.student?.tc_no || null,
-            },
-            payment: {
-                id: paymentData.id,
-                amount: Number(paymentData.amount),
-                amountWords: numberToWordsTR(Number(paymentData.amount)),
-                method: methodMap[paymentData.payment_method] || 'Diğer',
-                referenceNo: paymentData.reference_no || null,
-                notes: paymentData.notes || null,
-            },
-            details: {
-                serviceName,
-                academicPeriod,
-            },
-            financials: {
-                totalDebt,
-                totalPaid,
-                remainingDebt,
-            },
-            operator: {
-                fullName: paymentData.operator?.full_name || 'Bilinmiyor',
-            }
-        };
-
+        const result = await buildReceiptResult(supabase, organizationId, paymentData);
         return { success: true, data: result };
 
     } catch (err: unknown) {

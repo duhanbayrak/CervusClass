@@ -8,7 +8,6 @@ import {
     Clock,
     CheckCircle2,
     AlertTriangle,
-    XCircle,
     Loader2,
 } from 'lucide-react';
 import type { StudentFee, FeeInstallment } from '@/types/accounting';
@@ -56,6 +55,14 @@ function feeStatusColor(status: string) {
         case 'cancelled': return 'bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-400';
         default: return 'bg-gray-100 text-gray-500';
     }
+}
+
+/** Taksit durumuna göre metin rengi */
+function installmentStatusColor(status: string): string {
+    if (status === 'paid') return 'text-emerald-600 dark:text-emerald-400';
+    if (status === 'overdue') return 'text-red-500 dark:text-red-400';
+    if (status === 'partial') return 'text-amber-600 dark:text-amber-400';
+    return 'text-gray-500';
 }
 
 /** Taksit durumuna göre ikon */
@@ -286,14 +293,7 @@ function FeeCard({ fee }: { fee: StudentFee }) {
                                             <p className="text-sm font-semibold text-gray-900 dark:text-white">
                                                 {formatCurrency(inst.amount)}
                                             </p>
-                                            <span className={`text-xs font-medium ${inst.status === 'paid'
-                                                    ? 'text-emerald-600 dark:text-emerald-400'
-                                                    : inst.status === 'overdue'
-                                                        ? 'text-red-500 dark:text-red-400'
-                                                        : inst.status === 'partial'
-                                                            ? 'text-amber-600 dark:text-amber-400'
-                                                            : 'text-gray-500'
-                                                }`}>
+                                            <span className={`text-xs font-medium ${installmentStatusColor(inst.status)}`}>
                                                 {INSTALLMENT_STATUS_LABELS[inst.status]}
                                                 {inst.status === 'partial' && ` (${formatCurrency(inst.paid_amount)})`}
                                             </span>

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { Schedule } from '@/types/database'
 import { Loader2, CalendarPlus, User, Plus, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
@@ -8,7 +8,7 @@ import { CreateAvailabilityDialog } from './create-availability-dialog'
 import { Button } from '../ui/button'
 
 // Extended type with relations
-import { DAYS, HOURS, HOUR_HEIGHT, getPosition, getStudySessionPosition, getEventClasses } from '@/lib/utils/schedule-helpers'
+import { HOURS, HOUR_HEIGHT, getPosition, getStudySessionPosition, getEventClasses } from '@/lib/utils/schedule-helpers'
 import { ScheduleEvent, StudySessionEvent } from '@/types/schedule'
 
 interface WeeklySchedulerProps {

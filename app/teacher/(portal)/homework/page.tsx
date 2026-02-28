@@ -125,8 +125,6 @@ export default async function TeacherHomeworkPage() {
             derivedStatus = 'completed';
         } else if (isPastDue) {
             derivedStatus = 'expired';
-        } else {
-            derivedStatus = 'active';
         }
 
         const enrichedAssignment = {

@@ -31,7 +31,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye } from 'lucide-react'
 
 import {
     Select,
@@ -62,6 +62,16 @@ interface SubjectOverviewChartsProps {
     studentExams: ExamResult[]
     classSubjectOverview: SubjectOverview[]
     schoolSubjectOverview: SubjectOverview[]
+}
+
+function sortExamsByDate(a: ExamResult, b: ExamResult): number {
+    const dateA = a.exam_date ? new Date(a.exam_date).getTime() : 0;
+    const dateB = b.exam_date ? new Date(b.exam_date).getTime() : 0;
+    if (dateA !== dateB) return dateA - dateB;
+    const createdA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const createdB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    if (createdA !== createdB) return createdA - createdB;
+    return String(a.id).localeCompare(String(b.id));
 }
 
 const COLORS = {
@@ -99,7 +109,11 @@ function computeYAxisConfig(data: any[], dataKeys: string[]) {
 
     // Has negative values - compute tight domain & ticks
     const yMin = Math.floor(min) // e.g. -0.75 → -1
-    const step = max > 20 ? 10 : max > 10 ? 5 : max > 5 ? 2 : 1
+    let step: number;
+    if (max > 20) step = 10;
+    else if (max > 10) step = 5;
+    else if (max > 5) step = 2;
+    else step = 1;
     const yMax = Math.ceil(max / step) * step
 
     // Generate ticks: include yMin, 0, then positive steps
@@ -228,16 +242,7 @@ export function SubjectOverviewCharts({
         return Array.from(allSubjects).map(subject => {
             const data = filteredExams
                 .filter(e => e.exam_date)
-                .sort((a, b) => {
-                    const dateA = a.exam_date ? new Date(a.exam_date).getTime() : 0;
-                    const dateB = b.exam_date ? new Date(b.exam_date).getTime() : 0;
-                    if (dateA !== dateB) return dateA - dateB;
-                    // Secondary sort by created_at
-                    const createdA = a.created_at ? new Date(a.created_at).getTime() : 0;
-                    const createdB = b.created_at ? new Date(b.created_at).getTime() : 0;
-                    if (createdA !== createdB) return createdA - createdB;
-                    return String(a.id).localeCompare(String(b.id));
-                })
+                .sort(sortExamsByDate)
                 .map(exam => {
                     const flatScores = flattenExamScores(exam.scores, activeTab)
                     const studentNet = flatScores[subject] ?? null

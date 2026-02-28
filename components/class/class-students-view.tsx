@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
     Loader2,
     ChevronLeft,
@@ -100,20 +99,21 @@ export function ClassStudentsView({ classId, className }: ClassStudentsViewProps
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {loading ? (
+                        {loading && (
                             <TableRow>
                                 <TableCell colSpan={4} className="h-24 text-center">
                                     <Loader2 className="mx-auto h-6 w-6 animate-spin text-slate-400" />
                                 </TableCell>
                             </TableRow>
-                        ) : students.length === 0 ? (
+                        )}
+                        {!loading && students.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={4} className="h-24 text-center text-slate-400">
                                     {search ? "Aramayla eşleşen öğrenci bulunamadı." : "Bu sınıfta henüz öğrenci yok."}
                                 </TableCell>
                             </TableRow>
-                        ) : (
-                            students.map((student) => (
+                        )}
+                        {!loading && students.length > 0 && students.map((student) => (
                                 <TableRow
                                     key={student.id}
                                     className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 group"
@@ -162,8 +162,7 @@ export function ClassStudentsView({ classId, className }: ClassStudentsViewProps
                                         )}
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        )}
+                        ))}
                     </TableBody>
                 </Table>
             </div>

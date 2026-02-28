@@ -63,6 +63,38 @@ export type CreateHomeworkState = {
     message?: string;
 } | undefined;
 
+type SupabaseClient = Awaited<ReturnType<typeof import('@/lib/auth-context').getAuthContext>>['supabase'];
+
+async function resolveTargetStudentIds(
+    supabase: SupabaseClient,
+    assignment_mode: string,
+    studentIdsArray: string[] | null,
+    class_id: string
+): Promise<string[]> {
+    if (assignment_mode === 'selected_students' && studentIdsArray) {
+        return studentIdsArray;
+    }
+    const { data: roleData } = await supabase.from('roles').select('id').eq('name', 'student').single();
+    if (!roleData?.id) return [];
+    const { data: students } = await supabase.from('profiles').select('id').eq('class_id', class_id).eq('role_id', roleData.id);
+    return students?.map(s => s.id) ?? [];
+}
+
+async function notifyStudentsAboutHomework(
+    studentIds: string[],
+    description: string,
+    due_date: string
+): Promise<void> {
+    const dueDateStr = new Date(due_date).toLocaleDateString('tr-TR');
+    const shortDesc = description.substring(0, 50) + (description.length > 50 ? '...' : '');
+    await createBulkNotifications(studentIds.map(studentId => ({
+        userId: studentId,
+        title: 'Yeni Ödev 📝',
+        message: `Yeni bir ödev tanımlandı: ${shortDesc} (Teslim: ${dueDateStr})`,
+        type: 'info' as const,
+    })));
+}
+
 // FormAction — withAction kullanılamaz (prevState imzası farklı), logger ile korunur
 export async function createHomework(prevState: CreateHomeworkState, formData: FormData): Promise<CreateHomeworkState> {
     const { getAuthContext } = await import('@/lib/auth-context');
@@ -87,7 +119,7 @@ export async function createHomework(prevState: CreateHomeworkState, formData: F
 
     try {
         const studentIdsArray = assignment_mode === 'selected_students' && assigned_student_ids
-            ? JSON.parse(assigned_student_ids)
+            ? JSON.parse(assigned_student_ids) as string[]
             : null;
 
         const { data: homeworkData, error } = await supabase
@@ -98,17 +130,7 @@ export async function createHomework(prevState: CreateHomeworkState, formData: F
 
         if (error) return { message: 'Veritabanı hatası: Ödev oluşturulamadı.' };
 
-        let targetStudentIds: string[] = [];
-
-        if (assignment_mode === 'selected_students' && studentIdsArray) {
-            targetStudentIds = studentIdsArray;
-        } else {
-            const { data: roleData } = await supabase.from('roles').select('id').eq('name', 'student').single();
-            if (roleData?.id) {
-                const { data: students } = await supabase.from('profiles').select('id').eq('class_id', class_id).eq('role_id', roleData.id);
-                if (students) targetStudentIds = students.map(s => s.id);
-            }
-        }
+        const targetStudentIds = await resolveTargetStudentIds(supabase, assignment_mode, studentIdsArray, class_id);
 
         if (targetStudentIds.length > 0) {
             const { error: submissionError } = await supabase.from('homework_submissions').insert(
@@ -119,13 +141,7 @@ export async function createHomework(prevState: CreateHomeworkState, formData: F
                 logger.warn('Ödev submission oluşturulamadı', { userId: user.id, organizationId, action: 'createHomework' });
             }
 
-            const dueDateStr = new Date(due_date).toLocaleDateString('tr-TR');
-            await createBulkNotifications(targetStudentIds.map(studentId => ({
-                userId: studentId,
-                title: 'Yeni Ödev 📝',
-                message: `Yeni bir ödev tanımlandı: ${description.substring(0, 50)}${description.length > 50 ? '...' : ''} (Teslim: ${dueDateStr})`,
-                type: 'info' as const,
-            })));
+            await notifyStudentsAboutHomework(targetStudentIds, description, due_date);
         }
 
         revalidatePath('/teacher/homework');

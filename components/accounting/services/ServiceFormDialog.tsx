@@ -123,6 +123,7 @@ export function ServiceFormDialog({ service, currency, onClose }: ServiceFormDia
 
     const inputClass = 'w-full rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors';
     const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5';
+    const serviceActionLabel = service ? 'Güncelle' : 'Kaydet';
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -271,7 +272,7 @@ export function ServiceFormDialog({ service, currency, onClose }: ServiceFormDia
                         className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors cursor-pointer"
                     >
                         {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                        {isPending ? 'Kaydediliyor...' : service ? 'Güncelle' : 'Kaydet'}
+                        {isPending ? 'Kaydediliyor...' : serviceActionLabel}
                     </button>
                 </div>
             </div>

@@ -131,8 +131,9 @@ export function CancelFeeDialog({ fee, installments, currency, onClose }: Cancel
                     {/* İade seçeneği (ödeme varsa göster) */}
                     {totalPaid > 0 && (
                         <div className="space-y-3">
-                            <label className="flex items-center gap-3 cursor-pointer group">
+                            <label htmlFor="refundCheckbox" className="flex items-center gap-3 cursor-pointer group">
                                 <input
+                                    id="refundCheckbox"
                                     type="checkbox"
                                     checked={refund}
                                     onChange={e => setRefund(e.target.checked)}
@@ -152,10 +153,11 @@ export function CancelFeeDialog({ fee, installments, currency, onClose }: Cancel
                             {/* İade hesabı seçimi */}
                             {refund && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                    <label htmlFor="refundAccountId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                                         İade Hesabı
                                     </label>
                                     <select
+                                        id="refundAccountId"
                                         value={refundAccountId}
                                         onChange={e => setRefundAccountId(e.target.value)}
                                         className={inputClass}
@@ -175,10 +177,11 @@ export function CancelFeeDialog({ fee, installments, currency, onClose }: Cancel
 
                     {/* İptal sebebi */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                        <label htmlFor="cancelReason" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                             İptal Sebebi (opsiyonel)
                         </label>
                         <input
+                            id="cancelReason"
                             type="text"
                             placeholder="Örn: Hatalı kayıt, öğrenci ayrıldı..."
                             value={reason}

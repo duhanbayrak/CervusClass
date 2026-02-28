@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import {
-    Mail, Phone, Calendar, ChevronLeft, TrendingUp, Check, X, Clock, LineChart,
+    Mail, Phone, ChevronLeft, TrendingUp, Check, X, Clock,
     User, Users, Hash, Cake, Pencil
 } from 'lucide-react';
 import { cn, formatPhone } from '@/lib/utils';

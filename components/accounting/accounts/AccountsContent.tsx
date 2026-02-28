@@ -44,7 +44,7 @@ export function AccountsContent({ accounts }: AccountsContentProps) {
     const [name, setName] = useState('');
     const [accountType, setAccountType] = useState<'cash' | 'bank' | 'pos'>('cash');
     const [initialBalance, setInitialBalance] = useState('');
-    const [currency, setCurrency] = useState('TRY');
+    const currency = 'TRY';
 
     // Toplam bakiye
     const totalBalance = accounts.reduce((sum, a) => sum + Number(a.balance), 0);

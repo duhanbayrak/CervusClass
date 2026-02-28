@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import Image from "next/image";
-import { Badge, Lock, ArrowRight, Eye, EyeOff, Mail, KeyRound, AlertCircle } from 'lucide-react';
+import { Lock, ArrowRight, Eye, EyeOff, Mail, KeyRound, AlertCircle } from 'lucide-react';
 import ForcePasswordResetModal from './force-password-reset-modal';
 
 interface AuthFormProps {
@@ -130,9 +130,6 @@ export default function AuthForm({ role }: AuthFormProps) {
             }
 
             if (data.user) {
-                // Her halükarda kodu kullanarak giriş yapan kullanıcılarda, öğretmense ya da adminse bir kereliğine şifresini yenilemesini zorunlu tutmalıyız ki tekrar normal şifreyle girebilsin.
-                const isFirstLogin = data.user.user_metadata?.is_first_login !== false;
-
                 // Şimdilik OTP ile gelen herkesin şifre yenilemesini isteyelim daha güvenli.
                 setShowPasswordModal(true);
             } else {

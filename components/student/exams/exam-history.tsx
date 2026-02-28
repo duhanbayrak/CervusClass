@@ -22,6 +22,12 @@ interface ExamResults {
     scores: any
 }
 
+function getExamHref(role: string | undefined, examName: string, examId: string, studentId?: string): string {
+    if (role === 'teacher') return `/teacher/exams/${encodeURIComponent(examName)}/students/${studentId}`;
+    if (role === 'admin') return `/admin/exams/${encodeURIComponent(examName)}/students/${studentId}`;
+    return `/student/exams/${examId}`;
+}
+
 interface ExamHistoryProps {
     exams: ExamResults[]
     role?: 'student' | 'teacher' | 'admin'
@@ -71,12 +77,7 @@ export function ExamHistory({ exams, role = 'student', studentId }: ExamHistoryP
                     filteredExams.map((exam) => (
                         <Link
                             key={exam.id}
-                            href={role === 'teacher'
-                                ? `/teacher/exams/${encodeURIComponent(exam.exam_name)}/students/${studentId}`
-                                : role === 'admin'
-                                    ? `/admin/exams/${encodeURIComponent(exam.exam_name)}/students/${studentId}`
-                                    : `/student/exams/${exam.id}`
-                            }
+                            href={getExamHref(role, exam.exam_name, exam.id, studentId)}
                             className="block group"
                         >
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border bg-card hover:bg-accent/50 transition-all cursor-pointer shadow-sm hover:shadow-md gap-4">

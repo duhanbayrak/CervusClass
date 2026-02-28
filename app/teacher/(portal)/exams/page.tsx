@@ -202,8 +202,8 @@ export default async function TeacherExamsPage() {
                         </p>
                     </div>
                 ) : (
-                    exams.map((exam, idx) => (
-                        <div key={idx} className="border rounded-xl overflow-hidden bg-card">
+                    exams.map((exam) => (
+                        <div key={exam.examName} className="border rounded-xl overflow-hidden bg-card">
                             {/* Exam Header */}
                             <div className="p-6 border-b bg-muted/30">
                                 <div className="flex items-start justify-between">

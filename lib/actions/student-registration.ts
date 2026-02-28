@@ -61,11 +61,49 @@ export type RegistrationFormData = {
     services: RegistrationServiceItem[];
 };
 
+async function resolveStudentNumber(organizationId: string, studentNumber?: string): Promise<string> {
+    const currentYear = new Date().getFullYear();
+    const yearPrefix = currentYear.toString().slice(-2);
+
+    if (studentNumber?.trim()) {
+        const { count } = await supabaseAdmin
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .eq('organization_id', organizationId)
+            .eq('student_number', studentNumber.trim());
+        if (count && count > 0) {
+            throw new Error(`"${studentNumber.trim()}" öğrenci numarası bu kurumda zaten kullanımda. Lütfen benzersiz bir numara girin.`);
+        }
+        return studentNumber.trim();
+    }
+
+    const generated = await getNextStudentNumber(organizationId);
+    return generated ?? `${yearPrefix}001`;
+}
+
+async function createAuthUser(
+    email: string,
+    password: string,
+    fullName: string,
+    organizationId: string
+): Promise<string> {
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: fullName, role: 'student', organization_id: organizationId },
+    });
+    if (authError) {
+        if (authError.message.includes('already registered')) throw new Error("Bu e-posta adresi sistemde zaten kayıtlı.");
+        throw new Error(`Kullanıcı oluşturulamadı: ${authError.message}`);
+    }
+    return authData.user.id;
+}
+
 export async function registerStudent(data: RegistrationFormData) {
-    const { supabase, organizationId, user, error } = await getAuthContext();
+    const { organizationId, user, error } = await getAuthContext();
     if (error || !organizationId || !user) return { success: false, error: error || "Unauthorized" };
 
-    // Yetki Kontrolü
     const userRole = user.app_metadata?.role || user.user_metadata?.role;
     if (userRole !== 'admin' && userRole !== 'super_admin') {
         return { success: false, error: "Bu işlem için yetkiniz bulunmamaktadır." };
@@ -74,120 +112,51 @@ export async function registerStudent(data: RegistrationFormData) {
     const fullName = `${data.firstName} ${data.lastName}`.trim();
     const rollbackActions: Array<() => Promise<void>> = [];
     let newUserId: string | null = null;
-    let feeId: string | null = null;
 
     try {
-        // Öğrenci rolünü bul
-        const { data: role } = await supabaseAdmin
-            .from('roles')
-            .select('id')
-            .eq('name', 'student')
-            .single();
-
+        const { data: role } = await supabaseAdmin.from('roles').select('id').eq('name', 'student').single();
         if (!role) throw new Error("Öğrenci rolü (student) sistemde tanımlı değil.");
 
-        // ==========================================
-        // 1. KULLANICI OLUŞTURMA VE ÖĞRENCİ NO ATAMA (Auth)
-        // ==========================================
+        const finalStudentNumber = await resolveStudentNumber(organizationId, data.studentNumber);
 
-        let finalStudentNumber = data.studentNumber?.trim();
-
-        if (finalStudentNumber) {
-            // Manuel girilmiş, backend tarafında da benzersizliği son kes teyit edelim
-            const { count } = await supabaseAdmin
-                .from('profiles')
-                .select('*', { count: 'exact', head: true })
-                .eq('organization_id', organizationId)
-                .eq('student_number', finalStudentNumber);
-
-            if (count && count > 0) {
-                throw new Error(`"${finalStudentNumber}" öğrenci numarası bu kurumda zaten kullanımda. Lütfen benzersiz bir numara girin.`);
-            }
-        } else {
-            // Öğrenci numarasını otomatik hesapla (Örn: 2026 -> 26xxx)
-            const currentYear = new Date().getFullYear();
-            const yearPrefix = currentYear.toString().slice(-2); //"26"
-
-            let generatedStudentNumber = await getNextStudentNumber(organizationId);
-
-            if (!generatedStudentNumber) {
-                generatedStudentNumber = `${yearPrefix}001`; // Fallback
-            }
-            finalStudentNumber = generatedStudentNumber;
-        }
-
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-            email: data.email,
-            password: data.tcNo, // Varsayılan parola TC Kimlik No
-            email_confirm: true,
-            user_metadata: {
-                full_name: fullName,
-                role: 'student',
-                organization_id: organizationId
-            }
-        });
-
-        if (authError) {
-            if (authError.message.includes('already registered')) {
-                throw new Error("Bu e-posta adresi sistemde zaten kayıtlı.");
-            }
-            throw new Error(`Kullanıcı oluşturulamadı: ${authError.message}`);
-        }
-
-        newUserId = authData.user.id;
-
-        // Hata durumunda Auth User silinecek
+        newUserId = await createAuthUser(data.email, data.tcNo, fullName, organizationId);
         rollbackActions.push(async () => {
-            if (newUserId) {
-                await supabaseAdmin.auth.admin.deleteUser(newUserId);
-            }
+            if (newUserId) await supabaseAdmin.auth.admin.deleteUser(newUserId);
         });
 
-        // ==========================================
-        // 2. PROFİL OLUŞTURMA
-        // ==========================================
-        const { error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .upsert({
-                id: newUserId,
-                full_name: fullName,
-                email: data.email,
-                class_id: data.classId,
-                tc_no: data.tcNo,
-                phone: data.phone || null,
-                student_number: finalStudentNumber,
-                parent_name: (data.parentFirstName || data.parentLastName) ? `${data.parentFirstName || ''} ${data.parentLastName || ''}`.trim() : null,
-                parent_phone: data.parentPhone || null,
-                parent_email: data.parentEmail || null,
-                parent_tc: data.parentTcNo || null,
-                parent_relationship: data.parentRelationship || null,
-                parent_address: data.parentAddress || null,
-                birth_date: data.birthDate || null,
-                organization_id: organizationId,
-                role_id: role.id
-            });
+        const parentName = (data.parentFirstName || data.parentLastName)
+            ? `${data.parentFirstName || ''} ${data.parentLastName || ''}`.trim()
+            : null;
+
+        const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
+            id: newUserId,
+            full_name: fullName,
+            email: data.email,
+            class_id: data.classId,
+            tc_no: data.tcNo,
+            phone: data.phone || null,
+            student_number: finalStudentNumber,
+            parent_name: parentName,
+            parent_phone: data.parentPhone || null,
+            parent_email: data.parentEmail || null,
+            parent_tc: data.parentTcNo || null,
+            parent_relationship: data.parentRelationship || null,
+            parent_address: data.parentAddress || null,
+            birth_date: data.birthDate || null,
+            organization_id: organizationId,
+            role_id: role.id,
+        });
 
         if (profileError) throw new Error(`Profil oluşturulamadı: ${profileError.message}`);
-
-        // Profil manuel silinme rollback'i (cascade silmezse diye önlem)
         rollbackActions.push(async () => {
             await supabaseAdmin.from('profiles').delete().eq('id', newUserId);
         });
 
-        // ==========================================
-        // 3. SINIF KAYDI BÜTÜNLÜĞÜ (Opsiyonel class_students tablosu varsa)
-        // class_id profilde tutuluyor, bu nedenle standart sistemde yeterli.
-        // İhtiyaç varsa buraya class_students insert'ü eklenebilir.
-        // ==========================================
-
-
-        // 4 & 5. FİNANSAL ÜCRET, TAKSİT VE PEŞİNAT PLANLARI
         for (const service of (data.services || [])) {
-            const feeId = await createServiceFeeAndInstallments(
+            await createServiceFeeAndInstallments(
                 supabaseAdmin, organizationId, newUserId!, data.classId, data.academicPeriod,
                 service, user.id, fullName, rollbackActions
-            )
-            void feeId
+            );
         }
 
         revalidatePath('/admin/students');
@@ -196,15 +165,10 @@ export async function registerStudent(data: RegistrationFormData) {
 
     } catch (err: unknown) {
         logger.error('Öğrenci kayıt hatası — rollback başlatılıyor', { action: 'registerStudent' }, err);
-
         for (let i = rollbackActions.length - 1; i >= 0; i--) {
-            try {
-                await rollbackActions[i]();
-            } catch (rollbackErr) {
-                logger.error('Rollback başarısız', { action: 'registerStudent.rollback' }, rollbackErr);
-            }
+            try { await rollbackActions[i](); }
+            catch (rollbackErr) { logger.error('Rollback başarısız', { action: 'registerStudent.rollback' }, rollbackErr); }
         }
-
         return { success: false, error: err instanceof Error ? err.message : 'Kayıt sırasında beklenmeyen bir hata oluştu.' };
     }
 }
@@ -233,11 +197,11 @@ export async function getNextStudentNumber(orgId?: string) {
 
     let generatedStudentNumber = `${yearPrefix}001`;
 
-    if (latestStudent && latestStudent.student_number) {
+    if (latestStudent?.student_number) {
         const currentNumberStr = latestStudent.student_number;
         // 26001 formatını kontrol et
         if (currentNumberStr.length === 5 && currentNumberStr.startsWith(yearPrefix)) {
-            const numPart = parseInt(currentNumberStr.slice(2), 10);
+            const numPart = Number.parseInt(currentNumberStr.slice(2), 10);
             if (!isNaN(numPart)) {
                 generatedStudentNumber = `${yearPrefix}${String(numPart + 1).padStart(3, '0')}`;
             }
@@ -245,6 +209,37 @@ export async function getNextStudentNumber(orgId?: string) {
     }
 
     return generatedStudentNumber;
+}
+
+function buildRegInstallmentRows(
+    feeId: string,
+    organizationId: string,
+    service: RegistrationServiceItem,
+    totalAmountWithVat: number,
+    startNum: number
+): object[] {
+    const remainingAmount = totalAmountWithVat - (service.downPayment || 0)
+    if (remainingAmount <= 0 || service.installmentCount <= 0) return []
+
+    const amountPerInstallment = Number.parseFloat((remainingAmount / service.installmentCount).toFixed(2))
+    const { startYear, startMonthIndex } = parseStartMonthReg(service.startMonth)
+    const rows: object[] = []
+    let num = startNum
+
+    for (let i = 0; i < service.installmentCount; i++) {
+        let dueMonth = startMonthIndex + i
+        let dueYear = startYear
+        if (dueMonth > 11) { dueYear += Math.floor((startMonthIndex + i) / 12); dueMonth = dueMonth % 12 }
+        const daysInMonth = new Date(dueYear, dueMonth + 1, 0).getDate()
+        const safeDueDay = Math.min(service.paymentDueDay || 5, daysInMonth)
+        const dueDateStr = `${dueYear}-${String(dueMonth + 1).padStart(2, '0')}-${String(safeDueDay).padStart(2, '0')}`
+        rows.push({
+            fee_id: feeId, organization_id: organizationId,
+            installment_number: num++, amount: amountPerInstallment,
+            due_date: dueDateStr, status: 'pending', paid_amount: 0, paid_at: null,
+        })
+    }
+    return rows
 }
 
 async function createServiceFeeAndInstallments(
@@ -304,24 +299,7 @@ async function createServiceFeeAndInstallments(
         })
     }
 
-    const remainingAmount = totalAmountWithVat - (service.downPayment || 0)
-    if (remainingAmount > 0 && service.installmentCount > 0) {
-        const amountPerInstallment = parseFloat((remainingAmount / service.installmentCount).toFixed(2))
-        const { startYear, startMonthIndex } = parseStartMonthReg(service.startMonth)
-        for (let i = 0; i < service.installmentCount; i++) {
-            let dueMonth = startMonthIndex + i
-            let dueYear = startYear
-            if (dueMonth > 11) { dueYear += Math.floor((startMonthIndex + i) / 12); dueMonth = dueMonth % 12 }
-            const daysInMonth = new Date(dueYear, dueMonth + 1, 0).getDate()
-            const safeDueDay = Math.min(service.paymentDueDay || 5, daysInMonth)
-            const dueDateStr = `${dueYear}-${String(dueMonth + 1).padStart(2, '0')}-${String(safeDueDay).padStart(2, '0')}`
-            installmentsToInsert.push({
-                fee_id: feeId, organization_id: organizationId,
-                installment_number: nextNum++, amount: amountPerInstallment,
-                due_date: dueDateStr, status: 'pending', paid_amount: 0, paid_at: null,
-            })
-        }
-    }
+    installmentsToInsert.push(...buildRegInstallmentRows(feeId, organizationId, service, totalAmountWithVat, nextNum))
 
     if (installmentsToInsert.length > 0) {
         const { data: insertedInstallments, error: installmentError } = await client
@@ -340,7 +318,7 @@ function parseStartMonthReg(startMonth?: string): { startYear: number; startMont
     const now = new Date()
     if (!startMonth) return { startYear: now.getFullYear(), startMonthIndex: now.getMonth() }
     const parts = startMonth.split('-')
-    return { startYear: parseInt(parts[0]), startMonthIndex: parseInt(parts[1]) - 1 }
+    return { startYear: Number.parseInt(parts[0]), startMonthIndex: Number.parseInt(parts[1]) - 1 }
 }
 
 async function recordRegistrationDownPayment(

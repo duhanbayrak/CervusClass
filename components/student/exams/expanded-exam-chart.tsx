@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import {
     LineChart,
     Line,
@@ -13,7 +13,6 @@ import {
     Legend,
     Brush,
     ResponsiveContainer,
-    TooltipProps,
 } from 'recharts'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
@@ -30,7 +29,6 @@ import {
 } from '@/components/ui/popover'
 import { ChartToggle } from './chart-toggle'
 import { CustomTooltip } from './custom-tooltip'
-import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent'
 
 // --- Types ---
 
@@ -141,18 +139,14 @@ export function ExpandedExamChart({ data }: ExpandedExamChartProps) {
     }
 
     // Derived state for DatePicker button text
-    const dateButtonText = dateRange?.from ? (
-        dateRange.to ? (
-            <>
-                {format(dateRange.from, "d MMM", { locale: tr })} -{" "}
-                {format(dateRange.to, "d MMM", { locale: tr })}
-            </>
-        ) : (
-            format(dateRange.from, "d MMM", { locale: tr })
-        )
-    ) : (
-        <span>Tarih Seç</span>
-    )
+    let dateButtonText: React.ReactNode;
+    if (!dateRange?.from) {
+        dateButtonText = <span>Tarih Seç</span>;
+    } else if (dateRange.to) {
+        dateButtonText = <>{format(dateRange.from, "d MMM", { locale: tr })} - {format(dateRange.to, "d MMM", { locale: tr })}</>;
+    } else {
+        dateButtonText = format(dateRange.from, "d MMM", { locale: tr });
+    }
 
 
     // Chart Rendering Helper (Internal)

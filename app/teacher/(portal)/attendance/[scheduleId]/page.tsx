@@ -162,13 +162,14 @@ export default async function TakeAttendancePage({ params }: { params: any }) {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {isFuture ? (
+                    {isFuture && (
                         <div className="text-center py-12 text-amber-500 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
                             <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
                             <h3 className="text-lg font-medium text-amber-700 dark:text-amber-400 mb-2">Henüz Zamanı Gelmedi</h3>
                             <p className="text-amber-600 dark:text-amber-500">Gelecekteki günlerin yoklaması alınamaz. Yoklama alabilmek için ders gününün gelmesini beklemelisiniz.</p>
                         </div>
-                    ) : students.length > 0 ? (
+                    )}
+                    {!isFuture && students.length > 0 && (
                         <AttendanceForm
                             scheduleId={scheduleId}
                             classId={schedule.class_id}
@@ -176,7 +177,8 @@ export default async function TakeAttendancePage({ params }: { params: any }) {
                             attendanceMap={attendanceMap}
                             date={date!}
                         />
-                    ) : (
+                    )}
+                    {!isFuture && students.length === 0 && (
                         <div className="text-center py-12 text-slate-400">
                             <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
                             <p>Bu sınıfta kayıtlı öğrenci bulunmamaktadır.</p>

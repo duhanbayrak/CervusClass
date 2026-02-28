@@ -11,10 +11,8 @@ import {
     CartesianGrid,
     Tooltip,
     Legend,
-    Brush,
     ResponsiveContainer,
     ReferenceLine,
-    TooltipProps,
 } from 'recharts'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
@@ -24,7 +22,6 @@ import { ChartModal, ExpandableChartWrapper } from './chart-modal'
 import { ChartPagination, usePaginatedData } from './chart-pagination'
 import { ExpandedExamChart } from './expanded-exam-chart'
 import { CustomTooltip } from './custom-tooltip'
-import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface ExamResult {

@@ -6,7 +6,7 @@ alwaysApply: true
 # TypeScript Standartları
 
 ## `any` Kesinlikle Yasak
-
+## yazılan kod sonarqube standartlarına uygun yazılmalı
 ```typescript
 // ❌ YASAK
 const data: any = await fetchSomething()

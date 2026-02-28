@@ -159,6 +159,36 @@ const ScheduleRowSchema = z.object({
     path: ['Öğretmen Email'],
 });
 
+type ScheduleRowData = ReturnType<typeof ScheduleRowSchema.parse>;
+
+function resolveScheduleRow(
+    rowIndex: number,
+    data: ScheduleRowData,
+    classMap: Map<string, string>,
+    teacherMap: Map<string | undefined, string>,
+    courseMap: Map<string, string>
+): { error: string } | { class_id: string; teacher_id: string; course_id: string; day_of_week: number; start_time: string; end_time: string; room_name: string | undefined } {
+    const className = data['Sınıf Adı'].trim();
+    const teacherEmail = (data['Öğretmen Email'] || data['Öğretmen Maili'])?.trim();
+    const courseName = data['Ders Adı'].trim();
+    const dayStr = data['Gün'].trim();
+
+    const classId = classMap.get(className.toLowerCase());
+    if (!classId) return { error: `Satır ${rowIndex}: Sınıf bulunamadı (${className})` };
+    if (!teacherEmail) return { error: `Satır ${rowIndex}: Öğretmen emaili eksik.` };
+    const teacherId = teacherMap.get(teacherEmail.toLowerCase());
+    if (!teacherId) return { error: `Satır ${rowIndex}: Öğretmen bulunamadı (${teacherEmail})` };
+    const courseId = courseMap.get(courseName.toLowerCase());
+    if (!courseId) return { error: `Satır ${rowIndex}: Ders ID bulunamadı (${courseName})` };
+    const dayOfWeek = DAYS_MAP[dayStr] || DAYS_MAP[Object.keys(DAYS_MAP).find(k => k.toLowerCase() === dayStr.toLowerCase()) ?? ''];
+    if (!dayOfWeek) return { error: `Satır ${rowIndex}: Geçersiz gün (${dayStr})` };
+    const startTime = parseTime(data['Başlangıç Saati']);
+    const endTime = parseTime(data['Bitiş Saati']);
+    if (!startTime || !endTime) return { error: `Satır ${rowIndex}: Saat formatı hatalı.` };
+
+    return { class_id: classId, teacher_id: teacherId, course_id: courseId, day_of_week: dayOfWeek, start_time: startTime, end_time: endTime, room_name: data['Oda'] };
+}
+
 // Excel'den ders programı yükle — FormAction olduğu için withAction kullanılamaz, logger ile korunur
 export async function uploadSchedule(prevState: unknown, formData: FormData) {
     const { getAuthContext } = await import('@/lib/auth-context');
@@ -234,25 +264,9 @@ export async function uploadSchedule(prevState: unknown, formData: FormData) {
 
         const rowsToInsert = [];
         for (const { rowIndex, data } of parsedRows) {
-            const className = data['Sınıf Adı'].trim();
-            const teacherEmail = (data['Öğretmen Email'] || data['Öğretmen Maili'])?.trim();
-            const courseName = data['Ders Adı'].trim();
-            const dayStr = data['Gün'].trim();
-
-            const classId = classMap.get(className.toLowerCase());
-            if (!classId) { errors.push(`Satır ${rowIndex}: Sınıf bulunamadı (${className})`); continue; }
-            if (!teacherEmail) { errors.push(`Satır ${rowIndex}: Öğretmen emaili eksik.`); continue; }
-            const teacherId = teacherMap.get(teacherEmail.toLowerCase());
-            if (!teacherId) { errors.push(`Satır ${rowIndex}: Öğretmen bulunamadı (${teacherEmail})`); continue; }
-            const courseId = courseMap.get(courseName.toLowerCase());
-            if (!courseId) { errors.push(`Satır ${rowIndex}: Ders ID bulunamadı (${courseName})`); continue; }
-            const dayOfWeek = DAYS_MAP[dayStr] || DAYS_MAP[Object.keys(DAYS_MAP).find(k => k.toLowerCase() === dayStr.toLowerCase()) || ''];
-            if (!dayOfWeek) { errors.push(`Satır ${rowIndex}: Geçersiz gün (${dayStr})`); continue; }
-            const startTime = parseTime(data['Başlangıç Saati']);
-            const endTime = parseTime(data['Bitiş Saati']);
-            if (!startTime || !endTime) { errors.push(`Satır ${rowIndex}: Saat formatı hatalı.`); continue; }
-
-            rowsToInsert.push({ organization_id: organizationId, class_id: classId, teacher_id: teacherId, course_id: courseId, day_of_week: dayOfWeek, start_time: startTime, end_time: endTime, room_name: data['Oda'] });
+            const rowResult = resolveScheduleRow(rowIndex, data, classMap, teacherMap, courseMap);
+            if ('error' in rowResult) { errors.push(rowResult.error); continue; }
+            rowsToInsert.push({ organization_id: organizationId, ...rowResult });
         }
 
         if (errors.length > 0) {

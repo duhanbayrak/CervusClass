@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import { approveSession, cancelSession } from "@/lib/actions/study-session"
 import { updateStudySessionStatus } from "@/lib/actions/study-session-admin"
-import { Check, X, Ban } from "lucide-react"
+import { Check, Ban } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { StudySessionEvent } from "@/types/schedule";

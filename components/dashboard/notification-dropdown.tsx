@@ -141,12 +141,12 @@ export function NotificationDropdown() {
 
                     {/* Notification List */}
                     <div className="max-h-96 overflow-y-auto">
-                        {isLoading ? (
+                        {isLoading && (
                             <div className="flex justify-center py-8">
                                 <div className="w-6 h-6 border-2 border-slate-200 border-t-[#135bec] rounded-full animate-spin"></div>
                             </div>
-                        ) : notifications.length > 0 ? (
-                            notifications.map((notification) => (
+                        )}
+                        {!isLoading && notifications.length > 0 && notifications.map((notification) => (
                                 <div
                                     key={notification.id}
                                     onClick={() => !notification.is_read && handleMarkAsRead(notification.id)}
@@ -175,8 +175,8 @@ export function NotificationDropdown() {
                                         </div>
                                     </div>
                                 </div>
-                            ))
-                        ) : (
+                        ))}
+                        {!isLoading && notifications.length === 0 && (
                             <div className="text-center py-12 text-slate-400">
                                 <Bell className="w-10 h-10 mx-auto mb-2 opacity-20" />
                                 <p className="text-sm">Henüz bildiriminiz yok.</p>

@@ -306,20 +306,21 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {loading ? (
+                        {loading && (
                             <TableRow>
                                 <TableCell colSpan={6} className="h-24 text-center">
                                     <Loader2 className="mx-auto h-6 w-6 animate-spin text-slate-400" />
                                 </TableCell>
                             </TableRow>
-                        ) : students.length === 0 ? (
+                        )}
+                        {!loading && students.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={6} className="h-24 text-center text-slate-400">
                                     Öğrenci bulunamadı.
                                 </TableCell>
                             </TableRow>
-                        ) : (
-                            students.map((student, index) => (
+                        )}
+                        {!loading && students.length > 0 && students.map((student, index) => (
                                 <TableRow
                                     key={student.id}
                                     className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 group"
