@@ -1,3 +1,4 @@
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- Fix RLS policies for accounting tables - v3
 -- Fixes:
 -- 1. Correctly accesses 'organization_id' and 'role' from JWT 'app_metadata'

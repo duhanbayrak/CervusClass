@@ -1,3 +1,4 @@
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- Migration Chunk 1 generated at 2026-02-12T07:19:32.962Z
 
 -- Function to create user if not exists

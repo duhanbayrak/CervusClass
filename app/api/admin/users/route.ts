@@ -5,36 +5,34 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getUserRole } from '@/lib/auth-helpers'
 import { Profile } from '@/types/database'
 
-export async function POST(request: Request) {
-    // 1. Verify Request: Check if caller is Admin
+async function verifyAdminRequest() {
     const cookieStore = await cookies()
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() }
-            }
-        }
+        { cookies: { getAll() { return cookieStore.getAll() } } }
     )
-
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    if (!user) return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
 
-    // Check if user is admin or super_admin AND Get Organization ID
-    const { data: requesterProfile } = await supabase
-        .from('profiles')
-        .select('roles(name), organization_id')
-        .eq('id', user.id)
-        .single();
+    const { data: requesterProfile } = await supabase.from('profiles').select('roles(name), organization_id').eq('id', user.id).single()
+    const roleName = getUserRole(requesterProfile as unknown as Profile)
+    if (roleName !== 'admin' && roleName !== 'super_admin') return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
 
-    const roleName = getUserRole(requesterProfile as unknown as Profile);
+    return { user, requesterProfile }
+}
 
-    if (roleName !== 'admin' && roleName !== 'super_admin') {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+async function resolveOrCreateBranch(branchName: string): Promise<string | null> {
+    const { data: existing } = await supabaseAdmin.from('branches').select('id').eq('name', branchName).single()
+    if (existing) return existing.id
+    const { data: newBranch } = await supabaseAdmin.from('branches').insert({ name: branchName }).select('id').single()
+    return newBranch?.id || null
+}
+
+export async function POST(request: Request) {
+    const auth = await verifyAdminRequest()
+    if ('error' in auth) return auth.error
+    const { requesterProfile } = auth
 
     // 2. Parse Body
     const body = await request.json()
@@ -88,30 +86,9 @@ export async function POST(request: Request) {
         start_date: new Date().toISOString() // Set default start date to now
     };
 
-    // Handle Branch for teachers (convert name to ID)
     if (branch && role === 'teacher') {
-        const { data: existingBranch } = await supabaseAdmin
-            .from('branches')
-            .select('id')
-            .eq('name', branch)
-            .single();
-
-        if (existingBranch) {
-            profileData.branch_id = existingBranch.id;
-        } else {
-            // Create new branch automatically if not exists
-            const { data: newBranch, error: branchError } = await supabaseAdmin
-                .from('branches')
-                .insert({ name: branch })
-                .select('id')
-                .single();
-
-            if (!branchError && newBranch) {
-                profileData.branch_id = newBranch.id;
-            } else {
-                console.error("Failed to create branch:", branchError);
-            }
-        }
+        const branchId = await resolveOrCreateBranch(branch)
+        if (branchId) profileData.branch_id = branchId
     }
 
     // 4. Upsert Profile
@@ -129,31 +106,8 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    // 1. Verify Admin (Copy logic)
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() }
-            }
-        }
-    )
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    const { data: requesterProfile } = await supabase
-        .from('profiles')
-        .select('roles(name)')
-        .eq('id', user.id)
-        .single();
-
-    const roleName = getUserRole(requesterProfile as unknown as Profile);
-
-    if (roleName !== 'admin' && roleName !== 'super_admin') {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    const auth = await verifyAdminRequest()
+    if ('error' in auth) return auth.error
 
     // 2. Get User ID from URL
     const { searchParams } = new URL(request.url)
@@ -178,31 +132,8 @@ export async function DELETE(request: Request) {
 }
 
 export async function PUT(request: Request) {
-    // 1. Verify Admin (Copy logic)
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() }
-            }
-        }
-    )
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    const { data: requesterProfile } = await supabase
-        .from('profiles')
-        .select('roles(name)')
-        .eq('id', user.id)
-        .single();
-
-    const roleName = getUserRole(requesterProfile as unknown as Profile);
-
-    if (roleName !== 'admin' && roleName !== 'super_admin') {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    const auth = await verifyAdminRequest()
+    if ('error' in auth) return auth.error
 
     // 2. Parse Body
     const body = await request.json()
@@ -234,28 +165,9 @@ export async function PUT(request: Request) {
     if (title !== undefined) profileUpdates.title = title
     if (bio !== undefined) profileUpdates.bio = bio
 
-    // Handle Branch
     if (branch) {
-        const { data: existingBranch } = await supabaseAdmin
-            .from('branches')
-            .select('id')
-            .eq('name', branch)
-            .single();
-
-        if (existingBranch) {
-            profileUpdates.branch_id = existingBranch.id;
-        } else {
-            // Create new branch
-            const { data: newBranch, error: branchError } = await supabaseAdmin
-                .from('branches')
-                .insert({ name: branch })
-                .select('id')
-                .single();
-
-            if (!branchError && newBranch) {
-                profileUpdates.branch_id = newBranch.id;
-            }
-        }
+        const branchId = await resolveOrCreateBranch(branch)
+        if (branchId) profileUpdates.branch_id = branchId
     }
 
     const { error: profileError } = await supabaseAdmin

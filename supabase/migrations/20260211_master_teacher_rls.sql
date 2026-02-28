@@ -1,3 +1,4 @@
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- 20260211_master_teacher_rls.sql
 
 -- 1. ATTENDANCE (Yoklama)

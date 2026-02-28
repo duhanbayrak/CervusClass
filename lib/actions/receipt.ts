@@ -133,38 +133,8 @@ export async function getReceiptData(
         const year = new Date(paymentData.payment_date).getFullYear();
         const receiptNumber = `MKB-${year}-${sequence}`;
 
-        // 4. İlgili sepetteki ödeme durumunu hesapla
-        let totalDebt = 0;
-        let totalPaid = 0;
-        let remainingDebt = 0;
-        let serviceName = 'Belirtilmiyor';
-        let academicPeriod = 'Belirtilmiyor';
-
-        if (paymentData.installment && paymentData.installment.student_fees) {
-            const fee = paymentData.installment.student_fees;
-            totalDebt = Number(fee.net_amount) || 0;
-            academicPeriod = fee.academic_period || 'Belirtilmiyor';
-
-            if (fee.finance_services) {
-                serviceName = fee.finance_services.name || 'Öğrenci Ücreti';
-            }
-
-            // Toplam ödeneni bul
-            const { data: allInstallments } = await supabase
-                .from('fee_installments')
-                .select('paid_amount')
-                .eq('fee_id', paymentData.installment.fee_id);
-
-            totalPaid = (allInstallments || []).reduce((sum, inst) => sum + Number(inst.paid_amount || 0), 0);
-            remainingDebt = totalDebt - totalPaid;
-            if (remainingDebt < 0) remainingDebt = 0;
-        } else {
-            // Sadece genel bir avans/ödeme ise
-            totalDebt = Number(paymentData.amount);
-            totalPaid = Number(paymentData.amount);
-            serviceName = 'Genel Tahsilat';
-            remainingDebt = 0;
-        }
+        const financialSummary = await calcReceiptFinancials(supabase, paymentData)
+        const { totalDebt, totalPaid, remainingDebt, serviceName, academicPeriod } = financialSummary
 
         const methodMap: Record<string, string> = {
             'cash': 'Nakit',
@@ -212,7 +182,23 @@ export async function getReceiptData(
 
         return { success: true, data: result };
 
-    } catch (err: any) {
-        return { success: false, error: err.message };
+    } catch (err: unknown) {
+        return { success: false, error: err instanceof Error ? err.message : 'Beklenmedik hata' };
     }
+}
+
+async function calcReceiptFinancials(supabase: Awaited<ReturnType<typeof import('@/lib/auth-context').getAuthContext>>['supabase'], paymentData: Record<string, unknown>) {
+    const installment = paymentData.installment as { fee_id?: string; student_fees?: { net_amount?: number; academic_period?: string; finance_services?: { name?: string } } } | null
+    if (installment?.student_fees) {
+        const fee = installment.student_fees
+        const totalDebt = Number(fee.net_amount) || 0
+        const academicPeriod = fee.academic_period || 'Belirtilmiyor'
+        const serviceName = fee.finance_services?.name || 'Öğrenci Ücreti'
+        const { data: allInstallments } = await supabase.from('fee_installments').select('paid_amount').eq('fee_id', installment.fee_id!)
+        const totalPaid = (allInstallments || []).reduce((sum, inst) => sum + Number(inst.paid_amount || 0), 0)
+        const remainingDebt = Math.max(0, totalDebt - totalPaid)
+        return { totalDebt, totalPaid, remainingDebt, serviceName, academicPeriod }
+    }
+    const amount = Number(paymentData.amount)
+    return { totalDebt: amount, totalPaid: amount, remainingDebt: 0, serviceName: 'Genel Tahsilat', academicPeriod: 'Belirtilmiyor' }
 }

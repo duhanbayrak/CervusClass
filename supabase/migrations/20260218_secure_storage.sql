@@ -1,3 +1,4 @@
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- Secure 'exam-files' bucket and add strict RLS policies
 
 -- 1. Make the bucket PRIVATE

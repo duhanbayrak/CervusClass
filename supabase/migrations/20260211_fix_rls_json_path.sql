@@ -1,3 +1,4 @@
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- 20260211_fix_rls_json_path.sql
 
 -- Helper to make policies readable (Optional, but clean)

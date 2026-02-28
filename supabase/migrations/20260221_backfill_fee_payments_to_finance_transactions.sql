@@ -1,3 +1,4 @@
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- Mevcut fee_payments kayıtlarını finance_transactions tablosuna aktarma
 -- Bu migration bir kerelik çalıştırılmalıdır.
 

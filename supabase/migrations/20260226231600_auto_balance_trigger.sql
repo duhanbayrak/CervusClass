@@ -1,3 +1,4 @@
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- Kasa hesapları (finance_accounts) için bakiye tutarlılık otomasyonu.
 -- finance_transactions (işlemler) tablosuna bağlı bir TRIGGER ile bakiyenin atomik (race-condition engelli) şekilde güncellenmesini sağlar.
 

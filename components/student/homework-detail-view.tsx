@@ -47,34 +47,30 @@ export default function HomeworkDetailView({ homework, submissions }: HomeworkDe
     const [feedbackText, setFeedbackText] = useState('');
     const [isRevisionRequired, setIsRevisionRequired] = useState(false);
 
+    const showAssessToast = (status: 'approved' | 'rejected' | 'pending', studentName: string, error?: string) => {
+        if (error) { toast({ variant: "destructive", title: "Hata", description: error }); return }
+        const titles = { pending: "Revizyon İstendi", approved: "Ödev Onaylandı", rejected: "Ödev Reddedildi" }
+        const descriptions = {
+            pending: `${studentName} isimli öğrenciye revizyon talebi iletildi.`,
+            approved: `${studentName} isimli öğrencinin ödevi onaylandı.`,
+            rejected: `${studentName} isimli öğrencinin ödevi reddedildi.`,
+        }
+        toast({
+            title: titles[status],
+            description: descriptions[status],
+            variant: status === 'rejected' ? "destructive" : "default",
+            className: status === 'approved' ? "bg-green-600 text-white border-none" : ""
+        })
+    }
+
     const handleAssess = async (submissionId: string, status: 'approved' | 'rejected' | 'pending', studentName: string, feedback?: string) => {
         setLoadingMap(prev => ({ ...prev, [submissionId]: true }));
         try {
             const result = await assessHomework({ submissionId, status, feedback });
-
-            if (result.success) {
-                toast({
-                    title: status === 'pending' ? "Revizyon İstendi" : (status === 'approved' ? "Ödev Onaylandı" : "Ödev Reddedildi"),
-                    description: status === 'pending'
-                        ? `${studentName} isimli öğrenciye revizyon talebi iletildi.`
-                        : `${studentName} isimli öğrencinin ödevi ${status === 'approved' ? 'onaylandı' : 'reddedildi'}.`,
-                    variant: status === 'rejected' ? "destructive" : "default",
-                    className: status === 'approved' ? "bg-green-600 text-white border-none" : ""
-                });
-                router.refresh();
-            } else {
-                toast({
-                    variant: "destructive",
-                    title: "Hata",
-                    description: result.error || "İşlem başarısız."
-                });
-            }
-        } catch (error) {
-            toast({
-                variant: "destructive",
-                title: "Hata",
-                description: "Beklenmedik bir hata oluştu."
-            });
+            showAssessToast(status, studentName, result.success ? undefined : (result.error || "İşlem başarısız."))
+            if (result.success) router.refresh();
+        } catch {
+            toast({ variant: "destructive", title: "Hata", description: "Beklenmedik bir hata oluştu." });
         } finally {
             setLoadingMap(prev => ({ ...prev, [submissionId]: false }));
         }

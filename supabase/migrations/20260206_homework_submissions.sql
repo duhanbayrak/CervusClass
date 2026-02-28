@@ -1,3 +1,4 @@
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- Create ENUM for submission status
 CREATE TYPE submission_status AS ENUM ('pending', 'submitted', 'approved', 'rejected');
 

@@ -117,104 +117,12 @@ export async function uploadStudents(prevState: { message: string; success: bool
         // strictly keeping sequential for safety against rate limits for now.
 
         for (let i = 0; i < jsonData.length; i++) {
-            const row = jsonData[i];
-            const rowIndex = i + 2;
-
-            // Normalize keys
-            const normalizedRow: Record<string, unknown> = {};
-            Object.keys(row).forEach(key => {
-                normalizedRow[key.trim()] = (row as Record<string, unknown>)[key];
-            });
-
-            const fullNameVal = normalizedRow['Ad Soyad'];
-            const fullName = (typeof fullNameVal === 'string' || typeof fullNameVal === 'number') ? String(fullNameVal).trim() : undefined;
-
-            const emailVal = normalizedRow['Email'];
-            const email = (typeof emailVal === 'string') ? String(emailVal).trim() : undefined;
-
-            const classNameVal = normalizedRow['Sınıf'];
-            const className = (typeof classNameVal === 'string' || typeof classNameVal === 'number') ? String(classNameVal).trim() : undefined;
-
-            const passwordVal = normalizedRow['Parola'];
-            const password = (typeof passwordVal === 'string' || typeof passwordVal === 'number') ? String(passwordVal).trim() : '123456';
-
-            // Optional fields
-            const studentNumber = normalizedRow['Öğrenci No'] ? String(normalizedRow['Öğrenci No']).trim() : undefined;
-            const phone = normalizedRow['Öğrenci Telefon'] ? String(normalizedRow['Öğrenci Telefon']).trim() : undefined;
-            const parentName = normalizedRow['Veli Adı'] ? String(normalizedRow['Veli Adı']).trim() : undefined;
-            const parentPhone = normalizedRow['Veli Telefon'] ? String(normalizedRow['Veli Telefon']).trim() : undefined;
-            const birthDate = normalizedRow['Doğum Tarihi'] ? String(normalizedRow['Doğum Tarihi']).trim() : undefined;
-
-
-            if (!fullName || !email || !className) {
-                errors.push(`Satır ${rowIndex}: Eksik bilgi (Ad Soyad, Email veya Sınıf)`);
-                continue;
-            }
-
-            // Resolve Class
-            const classId = classMap.get(className.toLowerCase());
-            if (!classId) {
-                errors.push(`Satır ${rowIndex}: Sınıf bulunamadı (${className})`);
-                continue;
-            }
-
-            let userId = existingProfileMap.get(email.toLowerCase());
-
-            // Check if user needs to be created in Auth
-            // Note: We blindly try to create if we don't have it mapped? 
-            // OR even if we have it mapped, we might need to update password? (Skipping password update for existing)
-
-            if (!userId) {
-                // Try create
-                const { data: createdUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-                    email: email,
-                    password: password,
-                    email_confirm: true,
-                    user_metadata: {
-                        full_name: fullName,
-                        organization_id: organization_id
-                    }
-                });
-
-                if (createError) {
-                    if (createError.message.includes('already registered')) {
-                        // Edge case: Email exists in Auth but NOT in profiles (pre-fetch miss).
-                        // Fallback to fetch single (rare race condition or data anomaly)
-                        // Or maybe our pre-fetch missed it due to case sensitivity? (Handled by toLowerCase map)
-
-                        // Try to find if we can get ID? 
-                        // Admin API doesn't return ID on 'already registered' error sadly.
-                        // We must assume it's lost or requires manual intervention if not in 'profiles'.
-                        // BUT, if it's in Auth but not profiles, we can't get ID easily without listUsers.
-                        // Let's log error.
-                        errors.push(`Satır ${rowIndex}: Kullanıcı Auth'da var ama Profil tablosunda ve önbellekte bulunamadı.`);
-                        continue;
-                    } else {
-                        errors.push(`Satır ${rowIndex}: Kullanıcı oluşturulamadı (${createError.message})`);
-                        continue;
-                    }
-                } else {
-                    userId = createdUser.user.id;
-                }
-            }
-
-            if (userId) {
-                // Add to batch
-                profilesToUpsert.push({
-                    id: userId,
-                    organization_id: organization_id,
-                    full_name: fullName,
-                    email: email,
-                    class_id: classId,
-                    role_id: studentRoleId,
-                    student_number: studentNumber || null,
-                    phone: phone || null,
-                    parent_name: parentName || null,
-                    parent_phone: parentPhone || null,
-                    birth_date: birthDate || null,
-                    updated_at: new Date().toISOString() // Good practice
-                });
-            }
+            const rowResult = await processStudentRow(
+                jsonData[i], i + 2, organization_id, studentRoleId,
+                classMap, existingProfileMap
+            )
+            if (rowResult.error) { errors.push(rowResult.error); continue }
+            if (rowResult.profile) profilesToUpsert.push(rowResult.profile)
         }
 
         // 4. Batch Upsert Profiles
@@ -245,5 +153,74 @@ export async function uploadStudents(prevState: { message: string; success: bool
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Bilinmeyen hata';
         return { message: 'Beklenmeyen bir hata oluştu: ' + message, success: false };
+    }
+}
+
+function normalizeRow(row: unknown): Record<string, unknown> {
+    const normalized: Record<string, unknown> = {}
+    Object.keys(row as Record<string, unknown>).forEach(key => {
+        normalized[key.trim()] = (row as Record<string, unknown>)[key]
+    })
+    return normalized
+}
+
+function extractStudentFields(row: unknown) {
+    const r = normalizeRow(row)
+    const fullNameVal = r['Ad Soyad']
+    const emailVal = r['Email']
+    const classNameVal = r['Sınıf']
+    const passwordVal = r['Parola']
+    return {
+        fullName: (typeof fullNameVal === 'string' || typeof fullNameVal === 'number') ? String(fullNameVal).trim() : undefined,
+        email: typeof emailVal === 'string' ? String(emailVal).trim() : undefined,
+        className: (typeof classNameVal === 'string' || typeof classNameVal === 'number') ? String(classNameVal).trim() : undefined,
+        password: (typeof passwordVal === 'string' || typeof passwordVal === 'number') ? String(passwordVal).trim() : '123456',
+        studentNumber: r['Öğrenci No'] ? String(r['Öğrenci No']).trim() : undefined,
+        phone: r['Öğrenci Telefon'] ? String(r['Öğrenci Telefon']).trim() : undefined,
+        parentName: r['Veli Adı'] ? String(r['Veli Adı']).trim() : undefined,
+        parentPhone: r['Veli Telefon'] ? String(r['Veli Telefon']).trim() : undefined,
+        birthDate: r['Doğum Tarihi'] ? String(r['Doğum Tarihi']).trim() : undefined,
+    }
+}
+
+async function processStudentRow(
+    row: unknown,
+    rowIndex: number,
+    organizationId: string,
+    studentRoleId: string,
+    classMap: Map<string, string>,
+    existingProfileMap: Map<string, string>
+): Promise<{ error?: string; profile?: Record<string, unknown> }> {
+    const { fullName, email, className, password, studentNumber, phone, parentName, parentPhone, birthDate } = extractStudentFields(row)
+
+    if (!fullName || !email || !className) return { error: `Satır ${rowIndex}: Eksik bilgi (Ad Soyad, Email veya Sınıf)` }
+
+    const classId = classMap.get(className.toLowerCase())
+    if (!classId) return { error: `Satır ${rowIndex}: Sınıf bulunamadı (${className})` }
+
+    let userId = existingProfileMap.get(email.toLowerCase())
+
+    if (!userId) {
+        const { data: createdUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+            email, password, email_confirm: true,
+            user_metadata: { full_name: fullName, organization_id: organizationId }
+        })
+        if (createError) {
+            if (createError.message.includes('already registered')) return { error: `Satır ${rowIndex}: Kullanıcı Auth'da var ama Profil tablosunda bulunamadı.` }
+            return { error: `Satır ${rowIndex}: Kullanıcı oluşturulamadı (${createError.message})` }
+        }
+        userId = createdUser.user.id
+    }
+
+    if (!userId) return { error: `Satır ${rowIndex}: Kullanıcı ID alınamadı.` }
+
+    return {
+        profile: {
+            id: userId, organization_id: organizationId, full_name: fullName, email,
+            class_id: classId, role_id: studentRoleId,
+            student_number: studentNumber || null, phone: phone || null,
+            parent_name: parentName || null, parent_phone: parentPhone || null,
+            birth_date: birthDate || null, updated_at: new Date().toISOString(),
+        }
     }
 }

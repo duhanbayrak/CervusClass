@@ -1,3 +1,4 @@
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 
 -- Create Enum for Status if it doesn't exist
 DO $$ BEGIN

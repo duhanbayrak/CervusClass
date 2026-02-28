@@ -26,54 +26,25 @@ interface ManageSessionDialogProps {
 export function ManageSessionDialog({ session, open, onOpenChange, onClose }: ManageSessionDialogProps) {
     const [loading, setLoading] = useState(false)
 
-
     if (!session) return null;
 
-    const handleApprove = async () => {
+    const runAction = async (action: () => Promise<{ error?: string } | null | undefined>, successMsg: string) => {
         setLoading(true)
         try {
-            const res = await approveSession(session.id)
-            if (res.error) toast.error(res.error)
-            else {
-                toast.success("Talep onaylandı")
-                onClose()
-            }
-        } catch (e) { toast.error("Hata oluştu") }
-        finally { setLoading(false) }
-    }
-
-    const handleReject = async () => {
-        if (!confirm("Bu talebi reddetmek/silmek istediğinize emin misiniz?")) return;
-        setLoading(true)
-        try {
-            const res = await cancelSession(session.id)
-            if (res.error) toast.error(res.error)
-            else {
-                toast.success("Talep silindi")
-                onClose()
-            }
-        } catch (e) { toast.error("Hata oluştu") }
-        finally { setLoading(false) }
-    }
-
-    const handleStatusUpdate = async (newStatus: 'completed' | 'no_show') => {
-
-        setLoading(true)
-        try {
-
-            const res = await updateStudySessionStatus(session.id, newStatus)
-
+            const res = await action()
             if (res?.error) toast.error(res.error)
-            else {
-                toast.success("Durum güncellendi")
-                onClose()
-            }
-        } catch (e) {
-
-            toast.error("Hata oluştu")
-        }
+            else { toast.success(successMsg); onClose() }
+        } catch { toast.error("Hata oluştu") }
         finally { setLoading(false) }
     }
+
+    const handleApprove = () => runAction(() => approveSession(session.id), "Talep onaylandı")
+    const handleReject = () => {
+        if (!confirm("Bu talebi reddetmek/silmek istediğinize emin misiniz?")) return Promise.resolve()
+        return runAction(() => cancelSession(session.id), "Talep silindi")
+    }
+    const handleStatusUpdate = (newStatus: 'completed' | 'no_show') =>
+        runAction(() => updateStudySessionStatus(session.id, newStatus), "Durum güncellendi")
 
     const studentName = session.profiles?.full_name || "Öğrenci";
     const dateStr = session.scheduled_at ? new Date(session.scheduled_at).toLocaleString('tr-TR') : '';

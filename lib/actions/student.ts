@@ -106,6 +106,19 @@ export const addStudent = withAction(studentFormSchema, async (formData, ctx) =>
     return { success: true, data: authData.user };
 });
 
+function buildStudentUpdatePayload(formData: Partial<{ full_name: string; email: string; class_id: string; phone: string; student_number: string; parent_name: string; parent_phone: string; birth_date: string; password: string }>): Record<string, string | null> {
+    const p: Record<string, string | null> = {}
+    if (formData.full_name) p.full_name = formData.full_name
+    if (formData.email) p.email = formData.email
+    if (formData.class_id) p.class_id = formData.class_id
+    if (formData.phone !== undefined) p.phone = formData.phone || null
+    if (formData.student_number !== undefined) p.student_number = formData.student_number || null
+    if (formData.parent_name !== undefined) p.parent_name = formData.parent_name || null
+    if (formData.parent_phone !== undefined) p.parent_phone = formData.parent_phone || null
+    if (formData.birth_date !== undefined) p.birth_date = formData.birth_date || null
+    return p
+}
+
 // Öğrenci güncelle
 export const updateStudent = withAction(
     z.object({ id: z.string().uuid(), formData: studentFormSchema.partial() }),
@@ -115,22 +128,12 @@ export const updateStudent = withAction(
             return { success: false, error: 'Bu işlem için yetkiniz bulunmamaktadır.' };
         }
 
-        const updatePayload: Record<string, string | null> = {};
-        if (formData.full_name) updatePayload.full_name = formData.full_name;
-        if (formData.email) updatePayload.email = formData.email;
-        if (formData.class_id) updatePayload.class_id = formData.class_id;
-        if (formData.phone !== undefined) updatePayload.phone = formData.phone || null;
-        if (formData.student_number !== undefined) updatePayload.student_number = formData.student_number || null;
-        if (formData.parent_name !== undefined) updatePayload.parent_name = formData.parent_name || null;
-        if (formData.parent_phone !== undefined) updatePayload.parent_phone = formData.parent_phone || null;
-        if (formData.birth_date !== undefined) updatePayload.birth_date = formData.birth_date || null;
-
+        const updatePayload = buildStudentUpdatePayload(formData)
         const { data: updatedRows, error: updateError } = await supabaseAdmin.from('profiles').update(updatePayload).eq('id', id).select('email');
         if (updateError) return { success: false, error: 'Profil güncellenirken hata: ' + updateError.message };
         if (!updatedRows || updatedRows.length === 0) return { success: false, error: 'Güncellenecek profil bulunamadı.' };
 
-        const currentEmail = updatedRows[0]?.email;
-        const emailChanged = formData.email && formData.email !== currentEmail;
+        const emailChanged = formData.email && formData.email !== updatedRows[0]?.email;
         const passwordProvided = formData.password && formData.password.length > 0;
 
         if (emailChanged || passwordProvided) {

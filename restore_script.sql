@@ -1,3 +1,4 @@
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 
 INSERT INTO exam_results (id, organization_id, student_id, exam_name, exam_date, scores, total_net, created_at, details, deleted_at, exam_type)
 VALUES 

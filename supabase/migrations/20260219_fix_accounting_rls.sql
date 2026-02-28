@@ -1,3 +1,4 @@
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- Fix RLS policies for accounting tables created in previous migrations
 
 -- 1. finance_accounts
