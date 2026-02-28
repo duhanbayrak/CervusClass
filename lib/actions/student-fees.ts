@@ -446,8 +446,6 @@ export async function cancelStudentFee(
     return { success: true, refundedAmount };
 }
 
-type SupabaseClient = Awaited<ReturnType<typeof getAuthContext>>['supabase'];
-
 async function processRefund(
     supabase: SupabaseClient,
     organizationId: string,
@@ -541,7 +539,7 @@ async function assignServiceToStudent(
     service: Record<string, unknown>,
     academicPeriod = '2024-2025'
 ): Promise<void> {
-    const netAmount = calcNetAmount(service.unitPrice as number, (service.discountAmount as number) || 0, (service.discountType as string) || 'fixed')
+    const netAmount = calcNetAmount(service.unitPrice as number, (service.discountAmount as number) || 0, ((service.discountType as string) || 'fixed') as 'fixed' | 'percentage')
     const vatAmount = netAmount * ((service.vatRate as number) / 100)
     const totalAmountWithVat = netAmount + vatAmount
     const hasDownPayment = (service.downPayment as number) > 0
@@ -584,7 +582,7 @@ async function assignServiceToStudent(
         })
     }
 
-    installmentsToInsert.push(...buildInstallmentRows(feeId, organizationId, service as Parameters<typeof buildInstallmentRows>[3], totalAmountWithVat, nextNum))
+    installmentsToInsert.push(...buildInstallmentRows(feeId, organizationId, service as ServiceInput, totalAmountWithVat, nextNum))
 
     if (installmentsToInsert.length > 0) {
         const { data: insertedInstallments, error: installmentError } = await supabase
@@ -594,7 +592,7 @@ async function assignServiceToStudent(
         if (hasDownPayment && insertedInstallments) {
             const dpInst = insertedInstallments.find(i => i.installment_number === 1)
             if (dpInst) {
-                await recordDownPaymentTransaction(supabase, organizationId, userId, service as Parameters<typeof recordDownPaymentTransaction>[4], dpInst.id, studentId, feeId)
+                await recordDownPaymentTransaction(supabase, organizationId, userId, service as ServiceInput, dpInst.id, studentId, feeId)
             }
         }
     }

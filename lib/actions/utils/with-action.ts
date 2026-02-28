@@ -1,5 +1,3 @@
-'use server'
-
 import { z } from 'zod'
 import { getAuthContext } from '@/lib/auth-context'
 import { logger } from '@/lib/logger'

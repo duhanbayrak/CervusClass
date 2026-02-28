@@ -1,5 +1,16 @@
-import { getAdminDashboardStats, EMPTY_STATS } from '@/lib/actions/dashboard';
+import { getAdminDashboardStats } from '@/lib/actions/dashboard';
+import type { DashboardStats } from '@/lib/actions/dashboard';
 import { DashboardGrid } from '@/components/dashboard/admin/dashboard-grid';
+
+const EMPTY_STATS: DashboardStats = {
+    totalStudents: 0,
+    totalTeachers: 0,
+    totalClasses: 0,
+    delayedPayments: 0,
+    expectedCollectionThisMonth: 0,
+    totalActiveBalance: 0,
+    newRegistrations: 0,
+};
 
 export default async function AdminDashboardPage() {
     const result = await getAdminDashboardStats();

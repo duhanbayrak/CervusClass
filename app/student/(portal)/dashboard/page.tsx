@@ -71,11 +71,31 @@ export default async function StudentDashboardPage() {
             .order('scheduled_at', { ascending: true })
     ]);
 
-    const schedule = (scheduleResult.data || []) as any[];
-    const homework = (homeworkResult.data || []) as any[];
-    const exams = (examsResult.data || []) as unknown as ExamResult[];
+    type ScheduleItem = {
+        id: string;
+        start_time: string;
+        end_time: string;
+        courses: { name: string } | null;
+        teacher: { full_name: string } | null;
+    };
+    type HomeworkItem = {
+        id: string;
+        due_date: string | null;
+        description: string | null;
+        teacher: { full_name: string } | null;
+    };
+    type EtutItem = {
+        id: string;
+        topic: string | null;
+        scheduled_at: string;
+        teacher: { full_name: string } | null;
+        study_session_statuses: { name: string } | null;
+    };
 
-    const etuts = (etutsResult.data || []) as any[];
+    const schedule = (scheduleResult.data || []) as unknown as ScheduleItem[];
+    const homework = (homeworkResult.data || []) as unknown as HomeworkItem[];
+    const exams = (examsResult.data || []) as unknown as ExamResult[];
+    const etuts = (etutsResult.data || []) as unknown as EtutItem[];
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -292,7 +312,7 @@ export default async function StudentDashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-3">
-                            {etuts.map((etut: any) => {
+                            {etuts.map((etut) => {
                                 const status = etut.study_session_statuses?.name || 'pending';
                                 let barColor = 'bg-slate-300';
                                 if (status === 'pending') barColor = 'bg-yellow-400';

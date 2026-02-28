@@ -320,7 +320,7 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
                                 </TableCell>
                             </TableRow>
                         )}
-                        {!loading && students.length > 0 && students.map((student, index) => (
+                        {!loading && students.length > 0 && students.map((student) => (
                                 <TableRow
                                     key={student.id}
                                     className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 group"
@@ -417,8 +417,7 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
                                         </DropdownMenu>
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        )}
+                        ))}
                     </TableBody>
                 </Table>
             </div>

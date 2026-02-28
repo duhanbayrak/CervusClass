@@ -13,16 +13,6 @@ export interface DashboardStats {
     newRegistrations: number;
 }
 
-const EMPTY_STATS: DashboardStats = {
-    totalStudents: 0,
-    totalTeachers: 0,
-    totalClasses: 0,
-    delayedPayments: 0,
-    expectedCollectionThisMonth: 0,
-    totalActiveBalance: 0,
-    newRegistrations: 0,
-};
-
 // Dashboard istatistikleri — tüm sorgular paralel çalışıyor
 export const getAdminDashboardStats = withAction(async (ctx) => {
     const now = new Date();
@@ -66,4 +56,3 @@ export const getAdminDashboardStats = withAction(async (ctx) => {
     };
 });
 
-export { EMPTY_STATS };

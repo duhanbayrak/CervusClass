@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { getAuthContext } from "@/lib/auth-context";
 import { logger } from "@/lib/logger";
@@ -243,7 +243,7 @@ function buildRegInstallmentRows(
 }
 
 async function createServiceFeeAndInstallments(
-    client: ReturnType<typeof createClient>,
+    client: SupabaseClient,
     organizationId: string,
     studentId: string,
     classId: string,
@@ -322,7 +322,7 @@ function parseStartMonthReg(startMonth?: string): { startYear: number; startMont
 }
 
 async function recordRegistrationDownPayment(
-    client: ReturnType<typeof createClient>,
+    client: SupabaseClient,
     organizationId: string,
     studentId: string,
     service: RegistrationServiceItem,
