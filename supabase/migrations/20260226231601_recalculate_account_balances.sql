@@ -1,9 +1,7 @@
 -- Geçmişe Dönük Kasa Bakiyelerini Düzenleme (Backfill)
 -- Trigger devreye girmeden önce, sistemdeki mevcut bakiyeleri
 -- sadece silinmemiş (deleted_at IS NULL) hareketlere dayanarak yeniden hatasız (atomic) hesaplar.
--- nosonar: intentional full-table backfill migration, WHERE clause is not required here.
-
-UPDATE finance_accounts fa
+UPDATE finance_accounts fa -- nosonar: intentional full-table backfill migration, WHERE clause is not required here.
 SET balance = COALESCE(fa.initial_balance, 0) + COALESCE(
   (
     SELECT SUM(

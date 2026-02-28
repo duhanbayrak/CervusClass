@@ -114,7 +114,7 @@ async function runTests() {
         console.log('\n--- TC_AUTH_004: Invalid Login Handling ---')
         const { error: invalidError } = await studentClient.auth.signInWithPassword({
             email: emailStudent,
-            password: 'wrongpassword'
+            password: 'invalid-password-for-testing' // nosonar: intentional wrong password for negative test case
         })
 
         if (invalidError && invalidError.message === 'Invalid login credentials') {
