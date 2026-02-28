@@ -3,6 +3,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { getAuthContext } from "@/lib/auth-context";
+import { logger } from "@/lib/logger";
 import { format } from "date-fns";
 
 // Admin client - Auth API (kullanıcı oluşturma) ve Rol bypass için gerekli
@@ -365,19 +366,18 @@ export async function registerStudent(data: RegistrationFormData) {
         revalidatePath('/admin/accounting/students');
         return { success: true, message: "Kayıt başarıyla tamamlandı.", userId: newUserId };
 
-    } catch (err: any) {
-        console.error("Öğrenci Kayıt Hatası - İşlem İptal Ediliyor:", err.message);
+    } catch (err: unknown) {
+        logger.error('Öğrenci kayıt hatası — rollback başlatılıyor', { action: 'registerStudent' }, err);
 
-        // ROLLBACK
         for (let i = rollbackActions.length - 1; i >= 0; i--) {
             try {
                 await rollbackActions[i]();
             } catch (rollbackErr) {
-                console.error("Rollback failed:", rollbackErr);
+                logger.error('Rollback başarısız', { action: 'registerStudent.rollback' }, rollbackErr);
             }
         }
 
-        return { success: false, error: err.message || "Kayıt sırasında beklenmeyen bir hata oluştu." };
+        return { success: false, error: err instanceof Error ? err.message : 'Kayıt sırasında beklenmeyen bir hata oluştu.' };
     }
 }
 
@@ -430,7 +430,7 @@ export async function checkStudentNumberUnique(studentNumber: string): Promise<b
         .eq('student_number', studentNumber.trim());
 
     if (error) {
-        console.error("Öğrenci numarası kontrol hatası:", error);
+        logger.error('Öğrenci numarası kontrol hatası', { action: 'checkStudentNumberUnique' }, error);
         return false;
     }
 

@@ -59,7 +59,7 @@ export function ClassDialog({ open, onOpenChange, cls, onSave }: ClassDialogProp
 
         try {
             if (cls) {
-                const res = await updateClass(cls.id, formData);
+                const res = await updateClass({ id: cls.id, formData });
                 if (res.success) {
                     toast({ description: "Sınıf güncellendi." });
                     onSave();

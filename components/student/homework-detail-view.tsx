@@ -50,7 +50,7 @@ export default function HomeworkDetailView({ homework, submissions }: HomeworkDe
     const handleAssess = async (submissionId: string, status: 'approved' | 'rejected' | 'pending', studentName: string, feedback?: string) => {
         setLoadingMap(prev => ({ ...prev, [submissionId]: true }));
         try {
-            const result = await assessHomework(submissionId, status, feedback);
+            const result = await assessHomework({ submissionId, status, feedback });
 
             if (result.success) {
                 toast({

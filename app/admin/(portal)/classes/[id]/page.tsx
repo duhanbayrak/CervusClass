@@ -9,7 +9,7 @@ export default async function ClassDetailPage(props: { params: Promise<{ id: str
     const params = await props.params;
     const { id } = params;
 
-    const res = await getClassById(id);
+    const res = await getClassById({ id });
 
     if (!res.success || !res.data) {
         notFound();

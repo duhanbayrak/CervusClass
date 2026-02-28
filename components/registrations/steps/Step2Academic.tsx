@@ -41,7 +41,7 @@ export function Step2Academic() {
         async function fetchClasses() {
             setLoading(true);
             const res = await getClasses();
-            if (res.success) {
+            if (res.success && res.data) {
                 setClasses(res.data);
             }
             setLoading(false);

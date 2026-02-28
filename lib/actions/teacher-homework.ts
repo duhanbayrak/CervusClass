@@ -1,23 +1,25 @@
 'use server'
 
+import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { getAuthContext } from '@/lib/auth-context';
+import { withAction } from '@/lib/actions/utils/with-action';
 
 // Ödev değerlendir
-export async function assessHomework(submissionId: string, status: 'approved' | 'rejected' | 'pending', feedback?: string) {
-    const { supabase, user, error } = await getAuthContext();
-    if (error || !user) return { error: error || 'Unauthorized' };
+export const assessHomework = withAction(
+    z.object({
+        submissionId: z.string().uuid(),
+        status: z.enum(['approved', 'rejected', 'pending']),
+        feedback: z.string().optional(),
+    }),
+    async ({ submissionId, status, feedback }, ctx) => {
+        const { error: dbError } = await ctx.supabase
+            .from('homework_submissions')
+            .update({ status, teacher_feedback: feedback })
+            .eq('id', submissionId);
 
-    const { error: dbError } = await supabase
-        .from('homework_submissions')
-        .update({
-            status: status,
-            teacher_feedback: feedback
-        })
-        .eq('id', submissionId);
+        if (dbError) return { success: false, error: 'İşlem sırasında hata oluştu.' };
 
-    if (dbError) return { error: 'İşlem sırasında hata oluştu.' };
-
-    revalidatePath('/teacher/homework');
-    return { success: true };
-}
+        revalidatePath('/teacher/homework');
+        return { success: true };
+    }
+);

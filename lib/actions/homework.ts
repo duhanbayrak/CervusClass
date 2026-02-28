@@ -1,20 +1,21 @@
 'use server'
 
+import { z } from 'zod';
 import { revalidatePath } from "next/cache";
-import { getAuthContext } from "@/lib/auth-context";
+import { withAction } from "@/lib/actions/utils/with-action";
 
 // Ödev sil
-export async function deleteHomework(id: string) {
-    const { supabase, error } = await getAuthContext();
-    if (error) return { success: false, error };
+export const deleteHomework = withAction(
+    z.object({ id: z.string().uuid() }),
+    async ({ id }, ctx) => {
+        const { error: dbError } = await ctx.supabase
+            .from('homework')
+            .update({ deleted_at: new Date().toISOString() })
+            .eq('id', id);
 
-    const { error: dbError } = await supabase
-        .from('homework')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id);
+        if (dbError) return { success: false, error: dbError.message };
 
-    if (dbError) return { success: false, error: dbError.message };
-
-    revalidatePath('/teacher/homework');
-    return { success: true };
-}
+        revalidatePath('/teacher/homework');
+        return { success: true };
+    }
+);

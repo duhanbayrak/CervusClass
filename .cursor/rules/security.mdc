@@ -1,0 +1,130 @@
+---
+description: Güvenlik kuralları — Supabase auth, RLS, admin client, env vars, multi-tenant izolasyon
+alwaysApply: true
+---
+
+# Güvenlik Kuralları
+
+## `supabaseAdmin` — Sadece Server-Side
+
+`supabaseAdmin` (service role key) RLS'yi bypass eder. Client Component'e asla geçirilmez.
+
+```typescript
+// ❌ KESİNLİKLE YASAK — service role key tarayıcıya sızar
+'use client'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+
+// ✅ DOĞRU — sadece Server Action veya API Route
+'use server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+```
+
+`supabaseAdmin` yalnızca şu durumlarda kullanılır:
+- Auth kullanıcısı oluşturma/güncelleme (`auth.admin.createUser`)
+- RLS politikasının kasıtlı olarak bypass edilmesi gerektiği admin işlemleri
+
+## Auth Doğrulama — `getUser()` Zorunlu
+
+```typescript
+// ❌ GÜVENSİZ — token doğrulanmaz, manipüle edilebilir
+const { data: { session } } = await supabase.auth.getSession()
+const user = session?.user
+
+// ✅ GÜVENLİ — Supabase Auth API'ye doğrulama isteği yapar
+const { data: { user } } = await supabase.auth.getUser()
+```
+
+Her Server Action `getAuthContext()` ile başlar:
+
+```typescript
+'use server'
+import { getAuthContext } from '@/lib/auth-context'
+
+export async function myAction() {
+    const { supabase, user, organizationId, error } = await getAuthContext()
+    if (error || !organizationId) return { success: false, error: error || 'Unauthorized' }
+    // ...
+}
+```
+
+## Rol Kontrolü — `app_metadata` Kullan
+
+```typescript
+// ❌ GÜVENSİZ — user_metadata kullanıcı tarafından değiştirilebilir
+const role = user.user_metadata?.role
+
+// ✅ GÜVENLİ — app_metadata yalnızca service role ile değiştirilebilir
+const role = user.app_metadata?.role as ProfileRole
+```
+
+Yetki gerektiren işlemlerde her zaman rol kontrolü yap:
+
+```typescript
+if (role !== 'admin' && role !== 'super_admin') {
+    return { success: false, error: 'Bu işlem için yetkiniz bulunmamaktadır.' }
+}
+```
+
+## Multi-Tenant İzolasyon — `organization_id` Zorunlu
+
+Her veri sorgusuna `organization_id` filtresi eklenmesi zorunludur:
+
+```typescript
+// ❌ YASAK — tüm organizasyonların verisi döner
+const { data } = await supabase.from('profiles').select('*')
+
+// ✅ ZORUNLU
+const { data } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('organization_id', organizationId)
+```
+
+## Ortam Değişkenleri
+
+| Değişken | Kullanım |
+|----------|----------|
+| `NEXT_PUBLIC_*` | Client + Server — tarayıcıya açık |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yalnızca server-side — asla `NEXT_PUBLIC_` yapma |
+
+```typescript
+// ❌ KESİNLİKLE YASAK
+NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY=...
+
+// ✅
+SUPABASE_SERVICE_ROLE_KEY=...  // sadece server'da erişilir
+```
+
+## Input Doğrulama — Zod Zorunlu
+
+Server Action'a gelen tüm kullanıcı girdileri Zod ile doğrulanır:
+
+```typescript
+import { z } from 'zod'
+
+const schema = z.object({
+    full_name: z.string().min(2).max(100),
+    email: z.email(),
+    class_id: z.uuid(),
+})
+
+export async function createStudent(formData: unknown) {
+    const parsed = schema.safeParse(formData)
+    if (!parsed.success) return { success: false, error: parsed.error.message }
+    // parsed.data artık tip-güvenli
+}
+```
+
+## API Route Güvenliği
+
+API Route'larda da auth kontrolü yapılır — middleware yeterli değildir:
+
+```typescript
+// app/api/admin/*/route.ts
+export async function GET() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    // ...
+}
+```

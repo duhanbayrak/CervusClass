@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { revalidatePath } from 'next/cache'
 import { createBulkNotifications } from '@/lib/actions/notifications'
+import { logger } from '@/lib/logger'
 
 const EXAM_FILES_BUCKET = 'exam-files'
 
@@ -66,7 +67,7 @@ export async function uploadExamResult(prevState: any, formData: FormData) {
         .upload(filePath, file)
 
     if (storageError) {
-        console.error('Storage Upload Error:', storageError)
+        logger.error('Storage Upload Error', { action: 'uploadExamResult' }, storageError)
         return { success: false, message: 'Dosya yüklenirken hata oluştu: ' + storageError.message }
     }
 
@@ -105,15 +106,15 @@ export async function uploadExamResult(prevState: any, formData: FormData) {
             })
 
             if (!response.ok) {
-                console.error('n8n Webhook Error:', await response.text())
+                logger.warn('n8n Webhook Error', { action: 'uploadExamResult' })
                 return { success: true, message: 'Dosya yüklendi fakat işlem sırasına alınamadı (Webhook Hatası).' }
             }
         } catch (webhookError) {
-            console.error('n8n Fetch Error:', webhookError)
+            logger.error('n8n Fetch Error', { action: 'uploadExamResult' }, webhookError)
             return { success: true, message: 'Dosya yüklendi fakat n8n tetiklenemedi.' }
         }
     } else {
-        console.warn('N8N_EXAM_WEBHOOK_URL is not defined.')
+        logger.warn('N8N_EXAM_WEBHOOK_URL tanımlı değil', { action: 'uploadExamResult' })
     }
 
     revalidatePath('/admin/exams')
@@ -145,7 +146,7 @@ export async function uploadExamResult(prevState: any, formData: FormData) {
             }
         }
     } catch (notifError) {
-        console.error('Exam notification error:', notifError);
+        logger.error('Sınav bildirimi gönderilemedi', { action: 'uploadExamResult' }, notifError);
     }
 
     return {

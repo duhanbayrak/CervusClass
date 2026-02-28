@@ -1,0 +1,135 @@
+---
+description: Performans kuralları — Supabase sorgu optimizasyonu, Server Actions, revalidation, component stratejisi
+alwaysApply: true
+---
+
+# Performans Kuralları
+
+## Supabase — Sadece İhtiyaç Duyulan Sütunları Seç
+
+```typescript
+// ❌ Tüm sütunları çeker — gereksiz veri transferi
+const { data } = await supabase.from('profiles').select('*')
+
+// ✅ Sadece gerekli sütunlar
+const { data } = await supabase
+    .from('profiles')
+    .select('id, full_name, email, class_id')
+```
+
+İlişkili tablolar için de aynı kural geçerlidir:
+
+```typescript
+// ✅ İlişkili tablo — sadece gerekli alanlar
+.select('id, full_name, class:classes(id, name)')
+```
+
+## N+1 Sorgu Yasak — Join Kullan
+
+```typescript
+// ❌ N+1 — her öğrenci için ayrı sorgu
+for (const student of students) {
+    const cls = await supabase.from('classes').select('*').eq('id', student.class_id)
+}
+
+// ✅ Tek sorguda join
+const { data } = await supabase
+    .from('profiles')
+    .select('*, class:classes(id, name, grade_level)')
+    .eq('organization_id', organizationId)
+```
+
+## `revalidatePath` — Mutasyon Sonrası Zorunlu
+
+Her Server Action mutasyonundan sonra etkilenen path'ler revalidate edilir:
+
+```typescript
+// ✅ Hem liste hem detay sayfasını revalidate et
+revalidatePath('/admin/students')
+revalidatePath(`/admin/students/${id}`)
+```
+
+Gereksiz geniş revalidation yapmaktan kaçın — `/` revalidate etme.
+
+## Server Component Önceliği
+
+Veri çekme işlemleri Server Component'te yapılır, Client Component'e prop olarak geçirilir:
+
+```typescript
+// ✅ Server Component — veriyi server'da çek
+export default async function StudentsPage() {
+    const result = await getStudents()
+    return <StudentList students={result.data} />
+}
+
+// ❌ Client Component'te veri çekme — gereksiz round-trip
+'use client'
+useEffect(() => { fetchStudents().then(setStudents) }, [])
+```
+
+`'use client'` yalnızca interaktivite gerektiren bileşenlere eklenir (form, state, event handler).
+
+## Sayfalama — Büyük Listeler İçin Zorunlu
+
+```typescript
+// ❌ Tüm kayıtları çeker
+const { data } = await supabase.from('profiles').select('*')
+
+// ✅ Sayfalama + count
+const { data, count } = await supabase
+    .from('profiles')
+    .select('id, full_name', { count: 'exact' })
+    .range((page - 1) * limit, page * limit - 1)
+    .order('full_name', { ascending: true })
+```
+
+## JWT Metadata — DB Sorgusu Yerine
+
+`organization_id` ve `role` için DB sorgusu yapma — JWT `app_metadata`'dan oku:
+
+```typescript
+// ❌ Gereksiz DB sorgusu
+const { data: profile } = await supabase
+    .from('profiles')
+    .select('organization_id, role')
+    .eq('id', user.id)
+    .single()
+
+// ✅ JWT'den oku — DB round-trip yok
+const organizationId = user.app_metadata?.organization_id
+const role = user.app_metadata?.role
+```
+
+## Paralel Sorgular — `Promise.all` Kullan
+
+```typescript
+// ❌ Sıralı — toplam süre = A + B
+const students = await getStudents()
+const classes = await getClasses()
+
+// ✅ Paralel — toplam süre = max(A, B)
+const [students, classes] = await Promise.all([
+    getStudents(),
+    getClasses(),
+])
+```
+
+## Image Optimizasyonu
+
+```typescript
+// ✅ Next.js Image component kullan
+import Image from 'next/image'
+<Image src={url} width={48} height={48} alt="..." />
+
+// ❌ <img> tag kullanma — optimizasyon yok
+<img src={url} />
+```
+
+## Soft Delete Filtresi — Index Performansı
+
+Sorgularda `.is('deleted_at', null)` her zaman eklenir — `deleted_at` sütunu index'li olmalıdır:
+
+```typescript
+.eq('organization_id', organizationId)
+.is('deleted_at', null)  // Index'li sütun — performanslı
+```

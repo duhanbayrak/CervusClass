@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import * as XLSX from 'xlsx'
+import { logger } from '@/lib/logger'
 
 interface ExamStats {
     correct: number;
@@ -192,8 +193,8 @@ export async function generateMockExamExcel(type: 'TYT' | 'AYT' = 'TYT') {
             filename: `mock_exam_${type}_${new Date().toISOString().split('T')[0]}.xlsx`
         };
 
-    } catch (error: any) {
-        console.error('Error generating mock exam:', error);
-        return { success: false, message: 'Hata: ' + error.message };
+    } catch (error: unknown) {
+        logger.error('Deneme sınavı oluşturma hatası', { action: 'generateMockExam' }, error);
+        return { success: false, message: 'Hata: ' + (error instanceof Error ? error.message : 'Beklenmedik hata') };
     }
 }

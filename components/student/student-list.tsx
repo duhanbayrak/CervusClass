@@ -100,7 +100,7 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
     useEffect(() => {
         const loadClasses = async () => {
             const res = await getClasses();
-            if (res.success) {
+            if (res.success && res.data) {
                 setClassList(res.data.map(c => ({ id: c.id, name: c.name })));
             }
         };
@@ -110,12 +110,10 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
     const loadStudents = async (page: number = currentPage) => {
         setLoading(true);
         const selectedClass = classFilter === 'all' ? undefined : classFilter;
-        const res = await getStudents(search, selectedClass, page, PAGE_SIZE);
+        const res = await getStudents({ search, classId: selectedClass, page, limit: PAGE_SIZE });
         if (res.success && res.data) {
-            // Assuming res.data is compatible, or we should validate. 
-            // For now, removing double cast.
-            setStudents(res.data as Student[]);
-            setTotalCount(res.count ?? 0);
+            setStudents(res.data.students as Student[]);
+            setTotalCount(res.data.count ?? 0);
         } else {
             toast({
                 variant: "destructive",
@@ -177,7 +175,7 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
     const handleDelete = async () => {
         if (!studentToDelete) return;
 
-        const res = await deleteStudent(studentToDelete);
+        const res = await deleteStudent({ id: studentToDelete });
         if (res.success) {
             toast({ description: "Öğrenci silindi." });
             loadStudents(currentPage);

@@ -27,7 +27,7 @@ export function Step4Summary() {
         }
         async function fetchClassInfo() {
             if (!formData.className && formData.classId) {
-                const res = await getClassById(formData.classId);
+                const res = await getClassById({ id: formData.classId });
                 if (res.success && res.data) {
                     setFetchedClassName(res.data.name);
                 }

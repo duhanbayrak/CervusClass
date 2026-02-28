@@ -36,7 +36,7 @@ export function PendingHomeworkCard({ initialHomeworks }: PendingHomeworkCardPro
     const handleApprove = async (id: string) => {
         setProcessing(id);
         try {
-            const result = await assessHomework(id, 'approved');
+            const result = await assessHomework({ submissionId: id, status: 'approved' });
             if (result.success) {
                 toast({
                     title: "Başarılı",
@@ -68,7 +68,7 @@ export function PendingHomeworkCard({ initialHomeworks }: PendingHomeworkCardPro
         setProcessing(rejectId);
         try {
             const status = isRevisionRequired ? 'pending' : 'rejected';
-            const result = await assessHomework(rejectId, status, feedback);
+            const result = await assessHomework({ submissionId: rejectId, status, feedback });
             if (result.success) {
                 toast({
                     title: status === 'pending' ? "Revizyon İstendi" : "Reddedildi",

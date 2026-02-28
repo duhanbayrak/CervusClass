@@ -92,7 +92,7 @@ export function EditScheduleDialog({ open, onOpenChange, event, teachers, course
         e.preventDefault();
         setIsLoading(true);
         try {
-            const result = await updateScheduleItem(event.id, formData);
+            const result = await updateScheduleItem({ id: event.id, formData });
             if (result.success) {
                 toast({
                     description: "Ders güncellendi."
@@ -121,7 +121,7 @@ export function EditScheduleDialog({ open, onOpenChange, event, teachers, course
 
         setIsDeleting(true);
         try {
-            const result = await deleteScheduleItem(event.id);
+            const result = await deleteScheduleItem({ id: event.id });
             if (result.success) {
                 toast({
                     description: "Ders silindi."

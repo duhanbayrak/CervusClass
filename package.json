@@ -28,6 +28,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-toast": "^1.2.15",
     "@react-pdf/renderer": "^4.3.2",
+    "@sentry/nextjs": "^10.40.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.93.3",
     "class-variance-authority": "^0.7.1",
@@ -52,7 +53,7 @@
   "devDependencies": {
     "@fontsource/noto-sans": "^5.2.10",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20.19.33",
+    "@types/node": "^20.19.35",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv": "^17.2.4",

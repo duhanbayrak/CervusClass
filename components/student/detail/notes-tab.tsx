@@ -28,7 +28,7 @@ export function StudentNotesTab({ role, notes, studentId }: StudentNotesTabProps
 
         setIsSubmitting(true);
         try {
-            const result = await addStudentNote(studentId, noteContent);
+            const result = await addStudentNote({ studentId, content: noteContent });
             if (result.success) {
                 toast({
                     description: "Not başarıyla eklendi.",
@@ -58,7 +58,7 @@ export function StudentNotesTab({ role, notes, studentId }: StudentNotesTabProps
 
         setIsDeleting(noteId);
         try {
-            const result = await deleteStudentNote(noteId, studentId);
+            const result = await deleteStudentNote({ noteId, studentId });
             if (result.success) {
                 toast({
                     description: "Not başarıyla silindi.",

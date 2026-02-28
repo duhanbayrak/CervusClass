@@ -87,7 +87,7 @@ export function ClassList({ initialData = [] }: ClassListProps) {
     const handleDelete = async (id: string) => {
         if (!confirm("Bu sınıfı silmek istediğinize emin misiniz?")) return;
 
-        const res = await deleteClass(id);
+        const res = await deleteClass({ id });
         if (res.success) {
             toast({ description: "Sınıf silindi." });
             loadClasses();

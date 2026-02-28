@@ -1,21 +1,10 @@
 'use server'
 
-import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { Profile } from "@/types/database";
-import { getAuthContext } from "@/lib/auth-context";
-
-// Admin client — Auth API (kullanıcı oluşturma/güncelleme) için gerekli
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false
-        }
-    }
-);
+import { withAction } from "@/lib/actions/utils/with-action";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export type StudentFormData = {
     full_name: string;
@@ -33,179 +22,144 @@ export type GetStudentsResponse =
     | { success: true; data: Profile[]; count: number }
     | { success: false; error: string };
 
+const studentFormSchema = z.object({
+    full_name: z.string().min(2, 'Ad soyad en az 2 karakter olmalıdır.'),
+    email: z.string().email('Geçerli bir e-posta giriniz.'),
+    password: z.string().optional(),
+    class_id: z.string().uuid(),
+    phone: z.string().optional(),
+    student_number: z.string().optional(),
+    parent_name: z.string().optional(),
+    parent_phone: z.string().optional(),
+    birth_date: z.string().optional(),
+});
+
 // Öğrencileri getir — arama, sınıf filtresi ve sayfalama destekli
-export async function getStudents(search?: string, classId?: string, page: number = 1, limit: number = 10): Promise<GetStudentsResponse> {
-    const { supabase, organizationId, error } = await getAuthContext();
-    if (error || !organizationId) return { success: false, error: error || "Unauthorized" };
+export const getStudents = withAction(
+    z.object({
+        search: z.string().optional(),
+        classId: z.string().optional(),
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(100).default(10),
+    }),
+    async ({ search, classId, page, limit }, ctx) => {
+        let query = ctx.supabase
+            .from('profiles')
+            .select('*, class:classes(id, name, grade_level), roles!inner(name)', { count: 'exact' })
+            .eq('organization_id', ctx.organizationId)
+            .eq('roles.name', 'student')
+            .is('deleted_at', null);
 
-    // Sorguyu oluştur — roles!inner ile sadece öğrencileri filtrele
-    let query = supabase
-        .from('profiles')
-        .select(`
-            *,
-            class:classes(id, name, grade_level),
-            roles!inner(name)
-        `, { count: 'exact' })
-        .eq('organization_id', organizationId)
-        .eq('organization_id', organizationId)
-        .eq('roles.name', 'student')
-        .is('deleted_at', null);
+        if (search) {
+            query = query.textSearch('search_vector', search, { config: 'turkish', type: 'plain' });
+        }
+        if (classId && classId !== 'all') {
+            query = query.eq('class_id', classId);
+        }
 
-    // Arama filtresi — Full Text Search (tsvector)
-    if (search) {
-        // 'turkish' config ile arama yapılıyor (migrasyondaki yapılandırmaya uygun)
-        query = query.textSearch('search_vector', search, {
-            config: 'turkish',
-            type: 'plain' // plainto_tsquery: girdiyi normalize eder
-        });
+        const from = (page - 1) * limit;
+        const { data, count, error: dbError } = await query
+            .range(from, from + limit - 1)
+            .order('full_name', { ascending: true });
+
+        if (dbError) return { success: false, error: dbError.message };
+        return { success: true, data: { students: data as Profile[], count: count || 0 } };
     }
-
-    // Sınıf filtresi
-    if (classId && classId !== 'all') {
-        query = query.eq('class_id', classId);
-    }
-
-    // Sayfalama
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
-
-    // Sıralama
-    // Eğer arama yapılıyorsa en iyi eşleşmeyi öne getirmek mantıklı olabilir ama
-    // şimdilik isme göre sıralamayı koruyoruz. İleride 'rank' eklenebilir.
-    const { data, count, error: dbError } = await query
-        .range(from, to)
-        .order('full_name', { ascending: true });
-
-    if (dbError) return { success: false, error: dbError.message };
-
-    return { success: true, data: data as Profile[], count: count || 0 };
-}
+);
 
 // Yeni öğrenci ekle
-export async function addStudent(formData: StudentFormData) {
-    const { supabase, organizationId, user, error } = await getAuthContext();
-    if (error || !organizationId || !user) return { success: false, error: error || "Unauthorized" };
-
-    // Yetki Kontrolü
-    const userRole = user.app_metadata?.role || user.user_metadata?.role;
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
-        return { success: false, error: "Bu işlem için yetkiniz bulunmamaktadır." };
+export const addStudent = withAction(studentFormSchema, async (formData, ctx) => {
+    const role = ctx.user.app_metadata?.role;
+    if (role !== 'admin' && role !== 'super_admin') {
+        return { success: false, error: 'Bu işlem için yetkiniz bulunmamaktadır.' };
     }
 
-    // Öğrenci rolünü bul
-    const { data: role } = await supabase
-        .from('roles')
-        .select('id')
-        .eq('name', 'student')
-        .single();
+    const { data: studentRole } = await ctx.supabase.from('roles').select('id').eq('name', 'student').single();
+    if (!studentRole) return { success: false, error: 'Öğrenci rolü bulunamadı.' };
 
-    if (!role) return { success: false, error: "Öğrenci rolü bulunamadı." };
-
-    // Auth kullanıcısı oluştur
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: formData.email,
         password: formData.password || 'temppass123',
         email_confirm: true,
-        user_metadata: {
-            full_name: formData.full_name,
-            role: 'student'
-        }
+        user_metadata: { full_name: formData.full_name, role: 'student' },
     });
 
     if (authError) return { success: false, error: authError.message };
 
-    // Profil oluştur
-    const { error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .upsert({
-            id: authData.user.id,
-            full_name: formData.full_name,
-            email: formData.email,
-            class_id: formData.class_id,
-            phone: formData.phone || null,
-            student_number: formData.student_number || null,
-            parent_name: formData.parent_name || null,
-            parent_phone: formData.parent_phone || null,
-            birth_date: formData.birth_date || null,
-            organization_id: organizationId,
-            role_id: role.id
-        });
+    const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
+        id: authData.user.id,
+        full_name: formData.full_name,
+        email: formData.email,
+        class_id: formData.class_id,
+        phone: formData.phone || null,
+        student_number: formData.student_number || null,
+        parent_name: formData.parent_name || null,
+        parent_phone: formData.parent_phone || null,
+        birth_date: formData.birth_date || null,
+        organization_id: ctx.organizationId,
+        role_id: studentRole.id,
+    });
 
     if (profileError) return { success: false, error: profileError.message };
 
     revalidatePath('/admin/students');
     return { success: true, data: authData.user };
-}
+});
 
-export async function updateStudent(id: string, formData: Partial<StudentFormData>) {
-    const { supabase, user, error } = await getAuthContext();
-    if (error || !user) return { success: false, error: error || "Unauthorized" };
+// Öğrenci güncelle
+export const updateStudent = withAction(
+    z.object({ id: z.string().uuid(), formData: studentFormSchema.partial() }),
+    async ({ id, formData }, ctx) => {
+        const role = ctx.user.app_metadata?.role;
+        if (role !== 'admin' && role !== 'super_admin') {
+            return { success: false, error: 'Bu işlem için yetkiniz bulunmamaktadır.' };
+        }
 
-    // Yetki Kontrolü
-    const userRole = user.app_metadata?.role || user.user_metadata?.role;
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
-        return { success: false, error: "Bu işlem için yetkiniz bulunmamaktadır." };
+        const updatePayload: Record<string, string | null> = {};
+        if (formData.full_name) updatePayload.full_name = formData.full_name;
+        if (formData.email) updatePayload.email = formData.email;
+        if (formData.class_id) updatePayload.class_id = formData.class_id;
+        if (formData.phone !== undefined) updatePayload.phone = formData.phone || null;
+        if (formData.student_number !== undefined) updatePayload.student_number = formData.student_number || null;
+        if (formData.parent_name !== undefined) updatePayload.parent_name = formData.parent_name || null;
+        if (formData.parent_phone !== undefined) updatePayload.parent_phone = formData.parent_phone || null;
+        if (formData.birth_date !== undefined) updatePayload.birth_date = formData.birth_date || null;
+
+        const { data: updatedRows, error: updateError } = await supabaseAdmin.from('profiles').update(updatePayload).eq('id', id).select('email');
+        if (updateError) return { success: false, error: 'Profil güncellenirken hata: ' + updateError.message };
+        if (!updatedRows || updatedRows.length === 0) return { success: false, error: 'Güncellenecek profil bulunamadı.' };
+
+        const currentEmail = updatedRows[0]?.email;
+        const emailChanged = formData.email && formData.email !== currentEmail;
+        const passwordProvided = formData.password && formData.password.length > 0;
+
+        if (emailChanged || passwordProvided) {
+            const updateData: Record<string, string> = {};
+            if (emailChanged) updateData.email = formData.email!;
+            if (passwordProvided) updateData.password = formData.password!;
+            const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, updateData);
+            if (authError) return { success: false, error: 'Profil güncellendi ancak Auth güncellemesi başarısız: ' + authError.message };
+        }
+
+        revalidatePath('/admin/students');
+        revalidatePath(`/admin/students/${id}`);
+        return { success: true };
     }
+);
 
-    // Profil güncelle — supabaseAdmin ile RLS bypass
-    const updatePayload: Record<string, string | null> = {};
-    if (formData.full_name) updatePayload.full_name = formData.full_name;
-    if (formData.email) updatePayload.email = formData.email;
-    if (formData.class_id) updatePayload.class_id = formData.class_id;
-    if (formData.phone !== undefined) updatePayload.phone = formData.phone || null;
-    if (formData.student_number !== undefined) updatePayload.student_number = formData.student_number || null;
-    if (formData.parent_name !== undefined) updatePayload.parent_name = formData.parent_name || null;
-    if (formData.parent_phone !== undefined) updatePayload.parent_phone = formData.parent_phone || null;
-    if (formData.birth_date !== undefined) updatePayload.birth_date = formData.birth_date || null;
+// Öğrenci sil (soft delete)
+export const deleteStudent = withAction(
+    z.object({ id: z.string().uuid() }),
+    async ({ id }, ctx) => {
+        const role = ctx.user.app_metadata?.role;
+        if (role !== 'admin' && role !== 'super_admin') {
+            return { success: false, error: 'Bu işlem için yetkiniz bulunmamaktadır.' };
+        }
 
-    const { data: updatedRows, error: updateError } = await supabaseAdmin
-        .from('profiles')
-        .update(updatePayload)
-        .eq('id', id)
-        .select('email');
+        const { error: dbError } = await supabaseAdmin.from('profiles').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+        if (dbError) return { success: false, error: dbError.message };
 
-    if (updateError) return { success: false, error: "Profil güncellenirken hata: " + updateError.message };
-
-    if (!updatedRows || updatedRows.length === 0) {
-        return { success: false, error: "Güncellenecek profil bulunamadı." };
+        revalidatePath('/admin/students');
+        return { success: true };
     }
-
-    // Auth Email/Password güncelleme — sadece değişiklik varsa
-    const currentEmail = updatedRows[0]?.email;
-    const emailChanged = formData.email && formData.email !== currentEmail;
-    const passwordProvided = formData.password && formData.password.length > 0;
-
-    if (emailChanged || passwordProvided) {
-        const updateData: Record<string, string> = {};
-        if (emailChanged) updateData.email = formData.email!;
-        if (passwordProvided) updateData.password = formData.password!;
-
-        const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, updateData);
-        if (authError) return { success: false, error: "Profil güncellendi ancak Auth güncellemesi başarısız: " + authError.message };
-    }
-
-    revalidatePath('/admin/students');
-    revalidatePath(`/admin/students/${id}`);
-    return { success: true };
-}
-
-export async function deleteStudent(id: string) {
-    const { supabase, user, error } = await getAuthContext();
-    if (error || !user) return { success: false, error: error || "Unauthorized" };
-
-    // Yetki Kontrolü
-    const userRole = user.app_metadata?.role || user.user_metadata?.role;
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
-        return { success: false, error: "Bu işlem için yetkiniz bulunmamaktadır." };
-    }
-
-    const { error: dbError } = await supabaseAdmin
-        .from('profiles')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id);
-
-    if (dbError) return { success: false, error: dbError.message };
-
-    revalidatePath('/admin/students');
-    return { success: true };
-}
+);

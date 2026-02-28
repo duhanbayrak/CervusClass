@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import * as Sentry from '@sentry/nextjs'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle } from 'lucide-react'
 
@@ -17,7 +18,7 @@ export default function Error({
             reset();
             return;
         }
-        console.error(error)
+        Sentry.captureException(error)
     }, [error, reset])
 
     return (

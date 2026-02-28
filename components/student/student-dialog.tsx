@@ -105,7 +105,7 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
 
         try {
             if (student) {
-                const res = await updateStudent(student.id, formData);
+                const res = await updateStudent({ id: student.id, formData });
                 if (res.success) {
                     toast({ description: "Öğrenci güncellendi." });
                     onSave();

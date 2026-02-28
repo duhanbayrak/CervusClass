@@ -12,9 +12,9 @@ export default async function StudentManagementPage() {
     if (!user) return null;
 
     // İlk sayfa öğrencilerini çek (Server-side)
-    const res = await getStudents("", undefined, 1, 20);
-    const students = res.success ? res.data : [];
-    const count = res.success ? (res.count || 0) : 0;
+    const res = await getStudents({ page: 1, limit: 20 });
+    const students = res.success && res.data ? res.data.students : [];
+    const count = res.success && res.data ? (res.data.count || 0) : 0;
 
     return (
         <div className="flex flex-col gap-4 p-0 md:p-0">

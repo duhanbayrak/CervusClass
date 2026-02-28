@@ -1,8 +1,9 @@
-import { getAdminDashboardStats } from '@/lib/actions/dashboard';
+import { getAdminDashboardStats, EMPTY_STATS } from '@/lib/actions/dashboard';
 import { DashboardGrid } from '@/components/dashboard/admin/dashboard-grid';
 
 export default async function AdminDashboardPage() {
-    const stats = await getAdminDashboardStats();
+    const result = await getAdminDashboardStats();
+    const stats = result.success && result.data ? result.data : EMPTY_STATS;
 
     return (
         <div className="space-y-6">

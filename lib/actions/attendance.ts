@@ -1,8 +1,8 @@
 'use server';
 
+import { z } from 'zod';
 import { revalidatePath } from "next/cache";
-import { getAuthContext } from "@/lib/auth-context";
-import { handleError } from "@/lib/utils/error";
+import { withAction } from "@/lib/actions/utils/with-action";
 import { createBulkNotifications } from "@/lib/actions/notifications";
 
 export type AttendanceItem = {
@@ -14,47 +14,46 @@ export type AttendanceItem = {
     id?: string;
 };
 
+const attendanceItemSchema = z.object({
+    student_id: z.string().uuid(),
+    schedule_id: z.string().uuid(),
+    date: z.string(),
+    status: z.string(),
+    late_minutes: z.number(),
+    id: z.string().uuid().optional(),
+});
+
+const saveAttendanceSchema = z.array(attendanceItemSchema).min(1, 'En az bir yoklama kaydı gereklidir.');
+
 // Yoklama kaydet (upsert)
-export async function saveAttendance(items: AttendanceItem[]) {
-    try {
-        const { supabase, organizationId, error } = await getAuthContext();
-        if (error || !organizationId) return { success: false, error: error || 'Oturum açmanız gerekiyor.' };
+export const saveAttendance = withAction(saveAttendanceSchema, async (items, ctx) => {
+    const upsertData = items.map(item => ({
+        ...item,
+        organization_id: ctx.organizationId,
+    }));
 
-        // Veriyi hazırla — organization_id ekle
-        const upsertData = items.map(item => ({
-            ...item,
-            organization_id: organizationId,
-        }));
+    const { error: upsertError } = await ctx.supabase
+        .from('attendance')
+        .upsert(upsertData, { onConflict: 'student_id, schedule_id, date' });
 
-        // Upsert
-        const { error: upsertError } = await supabase
-            .from('attendance')
-            .upsert(upsertData, { onConflict: 'student_id, schedule_id, date' });
-
-        if (upsertError) {
-            return { success: false, error: 'Veritabanı hatası: ' + upsertError.message };
-        }
-
-        // Bildirim gönder: devamsız veya geç kalan öğrencilere
-        const notifyItems = items.filter(i => i.status === 'absent' || i.status === 'late');
-        if (notifyItems.length > 0) {
-            const notifications = notifyItems.map(item => ({
-                userId: item.student_id,
-                title: item.status === 'absent' ? 'Devamsızlık Kaydı' : 'Geç Kalma Kaydı',
-                message: item.status === 'absent'
-                    ? `${item.date} tarihinde devamsızlık kaydınız işlendi.`
-                    : `${item.date} tarihinde ${item.late_minutes} dakika geç kalma kaydınız işlendi.`,
-                type: 'warning' as const,
-            }));
-            await createBulkNotifications(notifications);
-        }
-
-        revalidatePath('/teacher/attendance');
-        return { success: true };
-
-    } catch (e: unknown) {
-        return { success: false, error: `Beklenmedik bir hata oluştu: ${handleError(e)}` };
+    if (upsertError) {
+        return { success: false, error: 'Veritabanı hatası: ' + upsertError.message };
     }
-}
 
-// Hata yönetimi helper kaldırıldı -> lib/utils/error.ts kullanılıyor
+    // Bildirim gönder: devamsız veya geç kalan öğrencilere
+    const notifyItems = items.filter(i => i.status === 'absent' || i.status === 'late');
+    if (notifyItems.length > 0) {
+        const notifications = notifyItems.map(item => ({
+            userId: item.student_id,
+            title: item.status === 'absent' ? 'Devamsızlık Kaydı' : 'Geç Kalma Kaydı',
+            message: item.status === 'absent'
+                ? `${item.date} tarihinde devamsızlık kaydınız işlendi.`
+                : `${item.date} tarihinde ${item.late_minutes} dakika geç kalma kaydınız işlendi.`,
+            type: 'warning' as const,
+        }));
+        await createBulkNotifications(notifications);
+    }
+
+    revalidatePath('/teacher/attendance');
+    return { success: true };
+});

@@ -1,89 +1,45 @@
 'use server';
 
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
+import { withAction } from '@/lib/actions/utils/with-action';
 
-const getAuthContext = async () => {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll();
-                },
-                setAll(cookiesToSet) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) => {
-                            cookieStore.set(name, value, options);
-                        });
-                    } catch (error) {
-                        // ignored
-                    }
-                }
-            }
-        }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        throw new Error('Oturum açmanız gerekiyor.');
-    }
-
-    // Get organization_id from profile
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single();
-
-    if (!profile?.organization_id) {
-        throw new Error('Kurum bilgisi bulunamadı.');
-    }
-
-    return { supabase, user, organizationId: profile.organization_id };
-};
-
-export async function addStudentNote(studentId: string, content: string) {
-    try {
-        const { supabase, user, organizationId } = await getAuthContext();
-
-        const { error } = await supabase
+export const addStudentNote = withAction(
+    z.object({
+        studentId: z.string().uuid(),
+        content: z.string().min(1, 'Not içeriği boş olamaz.'),
+    }),
+    async ({ studentId, content }, ctx) => {
+        const { error } = await ctx.supabase
             .from('student_notes')
             .insert({
-                organization_id: organizationId,
+                organization_id: ctx.organizationId,
                 student_id: studentId,
-                teacher_id: user.id,
-                content: content
+                teacher_id: ctx.user.id,
+                content,
             });
 
-        if (error) throw error;
+        if (error) return { success: false, error: error.message };
 
         revalidatePath(`/teacher/students/${studentId}`);
         return { success: true };
-    } catch (error: any) {
-        console.error('Add note error:', error);
-        return { success: false, error: error.message };
     }
-}
+);
 
-export async function deleteStudentNote(noteId: string, studentId: string) {
-    try {
-        const { supabase } = await getAuthContext();
-
-        const { error } = await supabase
+export const deleteStudentNote = withAction(
+    z.object({
+        noteId: z.string().uuid(),
+        studentId: z.string().uuid(),
+    }),
+    async ({ noteId, studentId }, ctx) => {
+        const { error } = await ctx.supabase
             .from('student_notes')
             .delete()
             .eq('id', noteId);
 
-        if (error) throw error;
+        if (error) return { success: false, error: error.message };
 
         revalidatePath(`/teacher/students/${studentId}`);
         return { success: true };
-    } catch (error: any) {
-        console.error('Delete note error:', error);
-        return { success: false, error: error.message };
     }
-}
+);

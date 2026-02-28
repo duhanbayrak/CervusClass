@@ -32,8 +32,8 @@ export function NotificationDropdown() {
             setIsLoading(true);
             try {
                 const result = await getNotifications();
-                if (mounted && result.data) {
-                    setNotifications(result.data);
+                if (mounted && result.success && result.data) {
+                    setNotifications(result.data as Notification[]);
                 }
             } catch {
                 // AbortError veya diğer hatalar sessizce devam et
@@ -60,8 +60,8 @@ export function NotificationDropdown() {
     async function refreshNotifications() {
         try {
             const result = await getNotifications();
-            if (result.data) {
-                setNotifications(result.data);
+            if (result.success && result.data) {
+                setNotifications(result.data as Notification[]);
             }
         } catch {
             // sessizce devam et
@@ -70,7 +70,7 @@ export function NotificationDropdown() {
 
     async function handleMarkAsRead(id: string) {
         try {
-            await markNotificationAsRead(id);
+            await markNotificationAsRead({ notificationId: id });
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
         } catch {
             // sessizce devam et

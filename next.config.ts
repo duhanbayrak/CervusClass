@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   images: {
@@ -15,4 +16,17 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+
+    // Source map yüklemeyi sadece CI/prod'da yap
+    silent: !process.env.CI,
+
+    widenClientFileUpload: true,
+
+    // Tunnel — ad blocker'ların Sentry'yi engellemesini önler
+    tunnelRoute: "/monitoring",
+
+    automaticVercelMonitors: false,
+});

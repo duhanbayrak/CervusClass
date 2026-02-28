@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase-server'
 // Öğrencinin tüm sınavları + sınıf ortalaması + okul ortalaması
 import { flattenExamScores } from '@/lib/utils'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { logger } from '@/lib/logger'
 
 // Öğrencinin tüm sınavları + sınıf ortalaması + okul ortalaması
 export async function getExamOverviewData(studentId?: string) {
@@ -32,7 +33,7 @@ export async function getExamOverviewData(studentId?: string) {
         .order('exam_date', { ascending: false })
 
     if (error || !studentExams || studentExams.length === 0) {
-        console.error('Error fetching student exams:', error);
+        if (error) logger.error('Öğrenci sınavları alınamadı', { action: 'getExamOverviewData' }, error);
         return {
             studentExams: [],
             classAverages: [],
@@ -73,7 +74,7 @@ export async function getExamOverviewData(studentId?: string) {
             .range(from, from + PAGE_SIZE - 1)
 
         if (batchError || !batch) {
-            console.error('Error fetching peer results batch:', batchError)
+            if (batchError) logger.error('Sınav sonuçları batch alınamadı', { action: 'getExamOverviewData' }, batchError)
             break
         }
 

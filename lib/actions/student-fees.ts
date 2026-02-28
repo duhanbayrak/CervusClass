@@ -3,6 +3,7 @@
 import { getAuthContext } from '@/lib/auth-context';
 import type { StudentFee, FeeInstallment, FinancialServiceItem } from '@/types/accounting';
 import { format } from 'date-fns';
+import { logger } from '@/lib/logger';
 
 /**
  * Öğrenci ücretlerini getirir (filtreli).
@@ -62,7 +63,6 @@ export async function checkDuplicateServices(data: {
         .in('service_id', data.serviceIds);
 
     if (fetchError) {
-        console.error('checkDuplicateServices Error:', fetchError);
         return { duplicates: [], error: 'Mükerrer kontrolü sırasında bir hata oluştu.' };
     }
 
@@ -286,7 +286,6 @@ export async function cancelStudentFee(
                 .in('id', pendingIds);
 
             if (cancelError) {
-                console.error("Installment cancel error:", cancelError);
                 return { success: false, error: 'Taksitler iptal edilemedi: ' + cancelError.message };
             }
         }
@@ -779,8 +778,8 @@ export async function assignBulkServicesToStudents(
             }
         }
         return { success: true };
-    } catch (err: any) {
-        console.error("assignBulkServicesToStudents ERR:", err);
-        return { success: false, error: err.message };
+    } catch (err: unknown) {
+        logger.error('Toplu hizmet ataması başarısız', { action: 'assignBulkServicesToStudents' }, err);
+        return { success: false, error: err instanceof Error ? err.message : 'Beklenmedik hata' };
     }
 }

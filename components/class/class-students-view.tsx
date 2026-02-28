@@ -42,10 +42,10 @@ export function ClassStudentsView({ classId, className }: ClassStudentsViewProps
 
     const loadStudents = async (page: number = currentPage) => {
         setLoading(true);
-        const res = await getStudents(search, classId, page, PAGE_SIZE);
+        const res = await getStudents({ search, classId, page, limit: PAGE_SIZE });
         if (res.success && res.data) {
-            setStudents(res.data as unknown as Student[]);
-            setTotalCount(res.count ?? 0);
+            setStudents(res.data.students as unknown as Student[]);
+            setTotalCount(res.data.count ?? 0);
         }
         setLoading(false);
     };

@@ -1,0 +1,94 @@
+---
+description: Hata yönetimi ve Sentry loglama kuralları — server action, API route ve client component'lerde hata yakalama standartları
+globs: lib/actions/**/*.ts,app/api/**/*.ts,lib/**/*.ts
+alwaysApply: false
+---
+
+# Hata Yönetimi & Sentry Loglama
+
+## Server Action — `withAction` Wrapper Zorunlu
+
+Tüm server action'lar `withAction` ile sarılır. Manuel try/catch, `getAuthContext` çağrısı ve `handleError` kullanılmaz.
+
+```typescript
+// ❌ YASAK — eski pattern
+export async function createClass(data: unknown) {
+    const { supabase, organizationId, error } = await getAuthContext()
+    if (error || !organizationId) return { success: false, error }
+    try {
+        // ...
+    } catch (e) {
+        return { success: false, error: handleError(e) }
+    }
+}
+
+// ✅ DOĞRU — withAction wrapper
+const schema = z.object({ name: z.string().min(2) })
+
+export const createClass = withAction(schema, async (input, ctx) => {
+    const { error } = await ctx.supabase
+        .from('classes')
+        .insert({ name: input.name, organization_id: ctx.organizationId })
+    if (error) return { success: false, error: error.message }
+    revalidatePath('/admin/classes')
+    return { success: true }
+})
+```
+
+`withAction` otomatik olarak: auth kontrolü + Zod validation + try/catch + Sentry loglama yapar.
+
+## Manuel Hata Loglamak Gerekirse — `logger` Kullan
+
+`console.error` / `console.warn` kesinlikle kullanılmaz. Bunun yerine `lib/logger.ts`'deki `logger` kullanılır.
+
+```typescript
+// ❌ YASAK
+console.error('Hata:', e)
+
+// ✅ DOĞRU — organizationId ve action bağlamıyla logla
+import { logger } from '@/lib/logger'
+
+logger.error('Ödeme işlemi başarısız', {
+    userId: ctx.user.id,
+    organizationId: ctx.organizationId,
+    action: 'createPayment',
+}, e)
+```
+
+`logger.error` production'da Sentry'ye gönderir, dev'de renkli console çıktısı verir.
+
+## API Route — `withApiHandler` Wrapper
+
+```typescript
+// ✅ DOĞRU
+import { withApiHandler } from '@/lib/api/with-api-handler'
+
+export const POST = withApiHandler(async (req, ctx) => {
+    // ctx.user, ctx.organizationId hazır
+    // hatalar otomatik Sentry'ye gider
+}, { roles: ['admin'] })
+```
+
+## Client Component — Sentry ile Yakala
+
+Client component'lerde beklenmedik hatalar için:
+
+```typescript
+import * as Sentry from '@sentry/nextjs'
+
+try {
+    await someAction()
+} catch (e) {
+    Sentry.captureException(e)
+    toast.error('Beklenmedik bir hata oluştu.')
+}
+```
+
+## Log Seviyeleri
+
+| Durum | Metod |
+|-------|-------|
+| DB / auth hatası | `logger.error(msg, ctx, error)` |
+| Yetersiz yetki girişimi | `logger.warn(msg, ctx)` |
+| Önemli iş akışı adımı | `logger.info(msg, ctx)` |
+| Geliştirme sırasında | `logger.debug(msg, ctx)` |

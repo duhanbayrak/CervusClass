@@ -58,7 +58,7 @@ export default function HomeworkListTable({ activeAssignments = [], pastAssignme
     const handleDelete = async (id: string) => {
         setIsDeleting(id);
         try {
-            const res = await deleteHomework(id);
+            const res = await deleteHomework({ id });
 
             if (!res.success) {
                 toast({

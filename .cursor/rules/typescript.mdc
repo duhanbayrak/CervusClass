@@ -1,0 +1,92 @@
+---
+description: TypeScript tip güvenliği kuralları — any yasak, strict tipler zorunlu
+alwaysApply: true
+---
+
+# TypeScript Standartları
+
+## `any` Kesinlikle Yasak
+
+```typescript
+// ❌ YASAK
+const data: any = await fetchSomething()
+function process(input: any) {}
+const result = value as any
+
+// ✅ DOĞRU — bilinmeyen tipler için
+const data: unknown = await fetchSomething()
+function process(input: Record<string, unknown>) {}
+// Tip daraltma (type narrowing) kullan
+if (typeof value === 'string') { ... }
+```
+
+`any` yerine: `unknown`, `never`, `Record<string, unknown>`, explicit union types.
+
+## Dönüş Tipleri Zorunlu
+
+Server Action ve fonksiyonlarda dönüş tipi her zaman açıkça belirtilir:
+
+```typescript
+// ❌
+async function getStudents(page: number) {
+    return { data, count }
+}
+
+// ✅
+type GetStudentsResponse =
+    | { success: true; data: Profile[]; count: number }
+    | { success: false; error: string }
+
+async function getStudents(page: number): Promise<GetStudentsResponse> {
+    return { success: true, data, count }
+}
+```
+
+## `as` Type Assertion — Kısıtlı Kullanım
+
+```typescript
+// ❌ Tehlikeli — runtime hatası gizler
+const role = user.metadata as ProfileRole
+
+// ✅ Güvenli — önce doğrula
+const rawRole = user.app_metadata?.role
+if (!isProfileRole(rawRole)) return { success: false, error: 'Geçersiz rol' }
+const role: ProfileRole = rawRole
+```
+
+## Non-Null Assertion (`!`) — Sadece Garanti Durumunda
+
+```typescript
+// ❌ Tehlikeli
+const name = user!.full_name!
+
+// ✅ Önce kontrol et
+if (!user?.full_name) return { success: false, error: 'İsim bulunamadı' }
+const name = user.full_name
+```
+
+## Tip Tanımları
+
+- Tipler `types/` klasöründe tutulur (`types/database.ts`, `types/supabase.ts`)
+- `interface` yerine `type` tercih edilir (union/intersection için esneklik)
+- Supabase tablo tipleri `Database` tipinden türetilir, elle yazılmaz
+
+```typescript
+// ✅ Database tipinden türet
+import { Database } from '@/types/supabase'
+type Profile = Database['public']['Tables']['profiles']['Row']
+```
+
+## Enum Yerine `const` Object
+
+```typescript
+// ❌
+enum Role { Student = 'student' }
+
+// ✅
+export const ROLES = {
+    STUDENT: 'student',
+    TEACHER: 'teacher',
+} as const
+export type ProfileRole = typeof ROLES[keyof typeof ROLES]
+```

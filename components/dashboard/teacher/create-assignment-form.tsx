@@ -71,9 +71,9 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
     useEffect(() => {
         if (selectedClassId) {
             setLoadingStudents(true);
-            getStudentsByClass(selectedClassId)
+            getStudentsByClass({ classId: selectedClassId })
                 .then((result) => {
-                    if (result.error) {
+                    if (!result.success) {
                         toast({
                             variant: "destructive",
                             title: "Hata",
