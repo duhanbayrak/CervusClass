@@ -28,13 +28,16 @@ async function runTests() {
         console.log('\n--- Setup ---')
         // We expect these users to exist from previous phases or we verify their roles
         const emailStudent = 'barisozturk@cervus.com'
-        const passStudent = '123456'
+        const passStudent = process.env.TEST_STUDENT_PASSWORD
+        if (!passStudent) throw new Error('Missing TEST_STUDENT_PASSWORD env variable')
 
         const emailTea = 'cervusteacher@gmail.com'
-        const passTea = '123456'
+        const passTea = process.env.TEST_TEACHER_PASSWORD
+        if (!passTea) throw new Error('Missing TEST_TEACHER_PASSWORD env variable')
 
         const emailAdmin = 'admin@cervus.com'
-        const passAdmin = 'admin123'
+        const passAdmin = process.env.TEST_ADMIN_PASSWORD
+        if (!passAdmin) throw new Error('Missing TEST_ADMIN_PASSWORD env variable')
 
         // 1. TC_SEC_001: Student accessing Admin Data (e.g. users table via RPC or direct select if possible, generally restricted)
         // Actually, checking if they can select from a table they shouldn't, like 'profiles' of other orgs or 'secrets' if any.

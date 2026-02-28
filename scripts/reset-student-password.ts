@@ -22,7 +22,11 @@ const supabase = createSupabaseClient(supabaseUrl, serviceRoleKey, {
 
 async function resetPassword() {
     const email = 'barisozturk@cervus.com'
-    const newPassword = '123456'
+    const newPassword = process.env.TEST_STUDENT_PASSWORD
+    if (!newPassword) {
+        console.error('Missing TEST_STUDENT_PASSWORD env variable')
+        process.exit(1)
+    }
 
     console.log(`Resetting password for ${email}...`)
 

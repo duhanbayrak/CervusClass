@@ -19,9 +19,15 @@ const supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey)
 async function verifyAdminLogin() {
     console.log('Attempting login as admin@cervus.com...')
 
+    const adminPassword = process.env.TEST_ADMIN_PASSWORD
+    if (!adminPassword) {
+        console.error('Missing TEST_ADMIN_PASSWORD env variable')
+        process.exit(1)
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
         email: 'admin@cervus.com',
-        password: 'admin123',
+        password: adminPassword,
     })
 
     if (error) {
