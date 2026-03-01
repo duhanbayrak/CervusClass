@@ -29,8 +29,10 @@ interface StudentWithClass {
 async function getData(query?: string, className?: string) {
     const cookieStore = await cookies();
     const supabase = createServerClient(
-        (process.env.NEXT_PUBLIC_SUPABASE_URL as string), // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        // NOSONAR
         {
             cookies: {
                 getAll() {
@@ -93,7 +95,8 @@ async function getData(query?: string, className?: string) {
     };
 }
 
-export default async function TeacherStudentsPage(props: Readonly<PageProps>) { // NOSONAR
+export default async function TeacherStudentsPage(props: Readonly<PageProps>) {
+    // NOSONAR
     const searchParams = await props.searchParams;
     const query = searchParams.query;
     const className = searchParams.class;

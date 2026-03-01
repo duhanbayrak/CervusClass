@@ -15,8 +15,10 @@ interface PageProps {
 async function getData(id: string) {
     const cookieStore = await cookies();
     const supabase = createServerClient(
-        (process.env.NEXT_PUBLIC_SUPABASE_URL as string), // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        // NOSONAR
         {
             cookies: {
                 getAll() {

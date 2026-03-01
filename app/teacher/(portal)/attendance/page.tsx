@@ -1,7 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
-import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'; // NOSONAR
+import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+// NOSONAR
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, CheckCircle2, AlertCircle, ClipboardList, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -30,8 +31,10 @@ const days = [
 async function getSchedule(dayOfWeek: number) {
     const cookieStore = await cookies();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
-        (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string), // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        // NOSONAR
         {
             cookies: {
                 getAll() {
@@ -101,7 +104,8 @@ async function getSchedule(dayOfWeek: number) {
     return processedSchedules;
 }
 
-export default async function AttendancePage(props: Readonly<PageProps>) { // NOSONAR
+export default async function AttendancePage(props: Readonly<PageProps>) {
+    // NOSONAR
     const searchParams = await props.searchParams;
 
     // Default to today if no param, converted to 1-7 range (ISO)

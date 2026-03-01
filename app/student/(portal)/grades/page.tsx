@@ -8,8 +8,10 @@ import { Award, TrendingUp, TrendingDown, BarChart2 } from 'lucide-react';
 async function getGradesData(userId: string) {
     const cookieStore = await cookies();
     const supabase = createServerClient(
-        (process.env.NEXT_PUBLIC_SUPABASE_URL as string), // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        // NOSONAR
         {
             cookies: {
                 getAll() {
@@ -32,8 +34,10 @@ async function getGradesData(userId: string) {
 export default async function StudentGradesPage() {
     const cookieStore = await cookies();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        // NOSONAR
         {
             cookies: {
                 getAll() {

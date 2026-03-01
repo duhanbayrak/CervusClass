@@ -6,8 +6,10 @@ import HomeworkDetailView from '@/components/student/homework-detail-view';
 async function getData(id: string) {
     const cookieStore = await cookies();
     const supabase = createServerClient(
-        (process.env.NEXT_PUBLIC_SUPABASE_URL as string), // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        // NOSONAR
         {
             cookies: {
                 getAll() {
@@ -79,7 +81,8 @@ async function getData(id: string) {
     }
 }
 
-export default async function CheckAssignmentPage(props: Readonly<{ params: Promise<{ id: string }> }>) { // NOSONAR
+export default async function CheckAssignmentPage(props: Readonly<{ params: Promise<{ id: string }> }>) {
+    // NOSONAR
     const params = await props.params;
     const id = params.id;
     const { user, assignment, submissions } = await getData(id);
@@ -105,7 +108,7 @@ export default async function CheckAssignmentPage(props: Readonly<{ params: Prom
             class_name: assignment.classes?.name || 'Sınıf',
             course_name: 'Genel Ödev' // courses relation bulunmadığı için sabit değer
         },
-        submissions: submissions as any[]
+        submissions: submissions as any
     };
 
     return (

@@ -17,8 +17,10 @@ interface TeacherProfilePageProps {
 async function getTeacherProfile(id: string) {
     const cookieStore = await cookies();
     const supabase = createServerClient(
-        (process.env.NEXT_PUBLIC_SUPABASE_URL as string), // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        // NOSONAR
         {
             cookies: {
                 getAll() {
@@ -127,7 +129,8 @@ async function getTeacherProfile(id: string) {
     };
 }
 
-export default async function TeacherProfilePage({ params }: Readonly<TeacherProfilePageProps>) { // NOSONAR
+export default async function TeacherProfilePage({ params }: Readonly<TeacherProfilePageProps>) {
+    // NOSONAR
     const { id } = await params;
     const data = await getTeacherProfile(id);
 
