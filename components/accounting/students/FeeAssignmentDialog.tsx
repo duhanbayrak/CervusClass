@@ -73,7 +73,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: FeeAssignmentDialogProps) {
+export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Readonly<FeeAssignmentDialogProps>) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [mode, setMode] = useState<'single' | 'bulk'>('single');

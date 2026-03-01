@@ -20,7 +20,7 @@ interface SidebarProps {
     onNavigate?: () => void;
 }
 
-export default function Sidebar({ items, basePath, title, subtitle, className, onNavigate }: SidebarProps) {
+export default function Sidebar({ items, basePath, title, subtitle, className, onNavigate }: Readonly<SidebarProps>) {
     const pathname = usePathname();
     const { profile, role, organization, signOut, loading } = useUserRole();
 

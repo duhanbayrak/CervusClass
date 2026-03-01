@@ -28,8 +28,8 @@ export function registerFonts(fontSrcs: { regular: string; bold: string; italic:
 function s(text: string | null | undefined): string {
     if (!text) return '';
     return text
-        .replace(/ı/g, 'i')   // U+0131 dotless i → regular i
-        .replace(/İ/g, 'I');  // U+0130 dotted I → regular I
+        .replaceAll('ı', 'i')
+        .replaceAll('İ', 'I');
 }
 
 // Para birimi formatı: ₺ sembolü (U+20BA) birçok fontta yok, º olarak görünür.
@@ -280,7 +280,7 @@ interface ReceiptPDFProps {
     data: ReceiptData;
 }
 
-export function ReceiptPDF({ data }: ReceiptPDFProps) {
+export function ReceiptPDF({ data }: Readonly<ReceiptPDFProps>) {
     const { organization, student, payment, details, financials, operator, receiptNumber, dateFormatted } = data;
 
     const displayName = student.parentName

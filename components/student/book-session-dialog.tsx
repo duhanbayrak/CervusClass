@@ -201,7 +201,6 @@ export function BookSessionDialog({ userId }: { userId: string }) {
                             ) : (
                                 <div
                                     className="flex-1 border rounded-md overflow-hidden min-h-0 relative"
-                                    onClick={() => setSelectedSession(null)}
                                 >
                                     <WeeklyScheduler
                                         events={events}
@@ -215,7 +214,6 @@ export function BookSessionDialog({ userId }: { userId: string }) {
                                     {selectedSession && (
                                         <div
                                             className="absolute inset-x-0 bottom-0 bg-background/95 backdrop-blur border-t p-6 z-50 flex items-end gap-4 animate-in slide-in-from-bottom shadow-lg"
-                                            onClick={(e) => e.stopPropagation()}
                                         >
                                             <div className="flex-1 space-y-1.5">
                                                 <Label className="font-semibold text-slate-700 dark:text-slate-200">Konu / Not</Label>

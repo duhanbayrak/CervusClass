@@ -154,7 +154,7 @@ export async function registerStudent(data: RegistrationFormData) {
 
         for (const service of (data.services || [])) {
             await createServiceFeeAndInstallments({
-                client: supabaseAdmin, organizationId, studentId: newUserId!, classId: data.classId,
+                client: supabaseAdmin, organizationId, studentId: newUserId ?? '', classId: data.classId,
                 academicPeriod: data.academicPeriod, service, userId: user.id, fullName, rollbackActions
             });
         }

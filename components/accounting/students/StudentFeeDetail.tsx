@@ -4,13 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     ArrowLeft, Calendar, CreditCard, CheckCircle2, Clock,
-    AlertTriangle, XCircle, Receipt, Box
+    AlertTriangle, XCircle, Receipt, Box, Plus
 } from 'lucide-react';
 import type { StudentFee, FeeInstallment, FeePayment } from '@/types/accounting';
 import { CancelFeeDialog } from './CancelFeeDialog';
 import { PaymentRecordDialog } from './PaymentRecordDialog';
 import { FeeAssignmentDialog } from './FeeAssignmentDialog';
-import { Plus } from 'lucide-react';
 import { ReceiptDownloadButton } from '@/components/accounting/receipt/ReceiptDownloadButton';
 
 interface StudentFeeDetailProps {

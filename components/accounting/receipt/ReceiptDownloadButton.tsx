@@ -20,13 +20,13 @@ async function fetchFontAsDataUrl(url: string): Promise<string> {
     let binary = '';
     const bytes = new Uint8Array(buffer);
     for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
+        binary += String.fromCodePoint(bytes[i]);
     }
     const base64 = btoa(binary);
     return `data:font/woff;base64,${base64}`;
 }
 
-export function ReceiptDownloadButton({ paymentId, installmentId, variant = 'full' }: ReceiptDownloadButtonProps) {
+export function ReceiptDownloadButton({ paymentId, installmentId, variant = 'full' }: Readonly<ReceiptDownloadButtonProps>) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +50,7 @@ export function ReceiptDownloadButton({ paymentId, installmentId, variant = 'ful
             ]);
 
             // 3. Fontları data URL olarak yükle (CORS + glyph sorunlarını tamamen çözer)
-            const origin = window.location.origin;
+            const origin = globalThis.location.origin;
             const [regular, bold, italic] = await Promise.all([
                 fetchFontAsDataUrl(`${origin}/fonts/NotoSans-Regular.woff`),
                 fetchFontAsDataUrl(`${origin}/fonts/NotoSans-Bold.woff`),

@@ -74,7 +74,10 @@ export default async function StudentStudyRequestsPage() {
                         <Card key={req.id} className="border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden hover:border-blue-200 transition-colors">
                             <div className="flex flex-col sm:flex-row">
                                 {(() => {
-                                    const statusColor = req.status === 'pending' ? 'bg-yellow-400' : req.status === 'approved' ? 'bg-green-500' : req.status === 'rejected' ? 'bg-red-500' : 'bg-slate-300';
+                                    let statusColor = 'bg-slate-300';
+                                    if (req.status === 'pending') statusColor = 'bg-yellow-400';
+                                    else if (req.status === 'approved') statusColor = 'bg-green-500';
+                                    else if (req.status === 'rejected') statusColor = 'bg-red-500';
                                     return <div className={`w-full sm:w-2 ${statusColor} h-2 sm:h-auto`} />;
                                 })()}
 

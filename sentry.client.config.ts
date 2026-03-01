@@ -10,7 +10,7 @@ Sentry.init({
     tracesSampleRate: 0.1,
 
     // Session replay — hata anındaki kullanıcı etkileşimini kaydeder
-    replaysOnErrorSampleRate: 1.0,
+    replaysOnErrorSampleRate: 1,
     replaysSessionSampleRate: 0.05,
 
     integrations: [

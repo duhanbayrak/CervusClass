@@ -36,11 +36,11 @@ export function HomeworkCard({ hw, status, referenceDate }: HomeworkCardProps) {
     const handleSubmit = async () => {
         startTransition(async () => {
             const result = await submitHomework({ homeworkId: hw.id });
-            if (!result.success) {
-                toast.error(result.error);
-            } else {
+            if (result.success) {
                 toast.success("Ödev teslim edildi! Öğretmen onayı bekleniyor.");
                 setOpen(false);
+            } else {
+                toast.error(result.error);
             }
         });
     }

@@ -155,11 +155,11 @@ function extractStudentFields(row: unknown) {
         email: typeof emailVal === 'string' ? String(emailVal).trim() : undefined,
         className: (typeof classNameVal === 'string' || typeof classNameVal === 'number') ? String(classNameVal).trim() : undefined,
         password: (typeof passwordVal === 'string' || typeof passwordVal === 'number') ? String(passwordVal).trim() : '123456',
-        studentNumber: r['Öğrenci No'] ? String(r['Öğrenci No']).trim() : undefined,
-        phone: r['Öğrenci Telefon'] ? String(r['Öğrenci Telefon']).trim() : undefined,
-        parentName: r['Veli Adı'] ? String(r['Veli Adı']).trim() : undefined,
-        parentPhone: r['Veli Telefon'] ? String(r['Veli Telefon']).trim() : undefined,
-        birthDate: r['Doğum Tarihi'] ? String(r['Doğum Tarihi']).trim() : undefined,
+        studentNumber: (typeof r['Öğrenci No'] === 'string' || typeof r['Öğrenci No'] === 'number') ? String(r['Öğrenci No']).trim() : undefined,
+        phone: (typeof r['Öğrenci Telefon'] === 'string' || typeof r['Öğrenci Telefon'] === 'number') ? String(r['Öğrenci Telefon']).trim() : undefined,
+        parentName: (typeof r['Veli Adı'] === 'string' || typeof r['Veli Adı'] === 'number') ? String(r['Veli Adı']).trim() : undefined,
+        parentPhone: (typeof r['Veli Telefon'] === 'string' || typeof r['Veli Telefon'] === 'number') ? String(r['Veli Telefon']).trim() : undefined,
+        birthDate: (typeof r['Doğum Tarihi'] === 'string' || typeof r['Doğum Tarihi'] === 'number') ? String(r['Doğum Tarihi']).trim() : undefined,
     }
 }
 

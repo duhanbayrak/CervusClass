@@ -13,7 +13,7 @@ if (!supabaseUrl || !serviceRoleKey) {
 }
 
 // Admin Client (for setup/cleanup)
-const adminClient = createSupabaseClient(supabaseUrl, serviceRoleKey, {
+const adminClient = createSupabaseClient(supabaseUrl ?? '', serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false }
 })
 
@@ -24,7 +24,7 @@ async function testStudentDataIsolation(
     console.log('\n--- TC_SEC_003: Student Data Isolation ---')
     const emailStudent = 'barisozturk@cervus.com'
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
-    const studentClient = createSupabaseClient(supabaseUrl, anonKey)
+    const studentClient = createSupabaseClient(supabaseUrl ?? '', anonKey)
     const { data: { session: studentSession }, error: loginError } = await studentClient.auth.signInWithPassword({
         email: emailStudent,
         password: passStudent
@@ -73,7 +73,7 @@ async function testTeacherAccessControl(
     console.log('\n--- TC_SEC_002: Teacher Access Control ---')
     const emailTea = 'cervusteacher@gmail.com'
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
-    const teacherClient = createSupabaseClient(supabaseUrl, anonKey)
+    const teacherClient = createSupabaseClient(supabaseUrl ?? '', anonKey)
     const { data: { session: teacherSession }, error: tLoginError } = await teacherClient.auth.signInWithPassword({
         email: emailTea,
         password: passTea
@@ -111,11 +111,11 @@ async function runTests() {
     let failed = 0
 
     try {
-        const studentResult = await testStudentDataIsolation(supabaseUrl!, passStudent)
+        const studentResult = await testStudentDataIsolation(supabaseUrl ?? '', passStudent)
         passed += studentResult.passed
         failed += studentResult.failed
 
-        const teacherResult = await testTeacherAccessControl(supabaseUrl!, passTea)
+        const teacherResult = await testTeacherAccessControl(supabaseUrl ?? '', passTea)
         passed += teacherResult.passed
         failed += teacherResult.failed
 

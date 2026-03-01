@@ -490,7 +490,7 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
                                     })
                                     .reduce<(number | string)[]>((acc, page, idx, arr) => {
                                         // Ara boşluklara "..." ekle
-                                        if (idx > 0 && page - (arr[idx - 1] as number) > 1) {
+                                        if (idx > 0 && page - Number(arr[idx - 1]) > 1) {
                                             acc.push(`ellipsis-${acc.length}`);
                                         }
                                         acc.push(page);

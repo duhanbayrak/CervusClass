@@ -1,8 +1,7 @@
 import { z } from 'zod'
 import { getAuthContext } from '@/lib/auth-context'
 import { logger } from '@/lib/logger'
-import type { User } from '@supabase/supabase-js'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { User, SupabaseClient } from '@supabase/supabase-js'
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
 
@@ -73,7 +72,7 @@ export function withAction<TSchema extends z.ZodTypeAny, TReturn>(
 
     // Overload 2: sadece handler verilmiş
     if (typeof schemaOrHandler === 'function') {
-        const fn = schemaOrHandler as (ctx: ActionContext) => Promise<ActionResult<TReturn>>
+        const fn: (ctx: ActionContext) => Promise<ActionResult<TReturn>> = schemaOrHandler
         return async (): Promise<ActionResult<TReturn>> => {
             return executeAction(undefined, undefined, fn, undefined)
         }

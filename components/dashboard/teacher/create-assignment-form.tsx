@@ -72,14 +72,14 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
             setLoadingStudents(true);
             getStudentsByClass({ classId: selectedClassId })
                 .then((result) => {
-                    if (!result.success) {
+                    if (result.success) {
+                        setStudents(result.data as StudentItem[] || []);
+                    } else {
                         toast({
                             variant: "destructive",
                             title: "Hata",
                             description: "Öğrenciler yüklenirken bir hata oluştu."
                         });
-                    } else {
-                        setStudents(result.data as StudentItem[] || []);
                     }
                     setLoadingStudents(false);
                 });

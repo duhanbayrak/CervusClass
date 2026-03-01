@@ -18,7 +18,7 @@ interface ChartDataPoint {
     fullDate: string;
 }
 
-function ExamTooltip({ active, payload }: { active?: boolean; payload?: readonly { payload: ChartDataPoint }[] }) {
+function ExamTooltip({ active, payload }: Readonly<{ active?: boolean; payload?: readonly { payload: ChartDataPoint }[] }>) {
     if (active && payload?.length) {
         const data = payload[0].payload;
         return (

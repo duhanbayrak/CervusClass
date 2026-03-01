@@ -48,8 +48,8 @@ function getRankBadgeClass(rank: number): string {
 async function getClassExamResults(examName: string, classId: string) {
     const cookieStore = await cookies()
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
         { cookies: { getAll() { return cookieStore.getAll() } } }
     )
 
@@ -110,8 +110,8 @@ interface ClassExamResultsPageProps {
 export async function ClassExamResultsPage({ examName, classId, role }: ClassExamResultsPageProps) {
     const cookieStore = await cookies()
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
         { cookies: { getAll() { return cookieStore.getAll() } } }
     )
 

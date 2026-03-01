@@ -206,7 +206,7 @@ export function ClassStudentsView({ classId, className }: ClassStudentsViewProps
                                         return false;
                                     })
                                     .reduce<(number | string)[]>((acc, page, idx, arr) => {
-                                        if (idx > 0 && page - (arr[idx - 1] as number) > 1) {
+                                        if (idx > 0 && page - Number(arr[idx - 1]) > 1) {
                                             acc.push(`ellipsis-${acc.length}`);
                                         }
                                         acc.push(page);

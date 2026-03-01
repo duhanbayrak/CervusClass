@@ -350,7 +350,7 @@ export default function AuthForm({ role }: AuthFormProps) {
                                         placeholder="00000000"
                                         maxLength={8}
                                         value={otp}
-                                        onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
+                                        onChange={(e) => setOtp(e.target.value.replaceAll(/\D/g, ''))}
                                         required
                                         className="flex w-full rounded-xl border border-[#cfd7e7] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#0d121b] dark:text-white h-12 pl-11 pr-4 placeholder:text-[#9aaac8] focus-visible:ring-2 focus-visible:ring-[#135bec]/20 focus-visible:border-[#135bec] transition-all text-base font-medium shadow-sm text-center tracking-[0.5em]"
                                     />

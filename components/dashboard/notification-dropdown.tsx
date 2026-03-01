@@ -150,7 +150,7 @@ export function NotificationDropdown() {
                                 <button
                                     key={notification.id}
                                     type="button"
-                                    onClick={() => !notification.is_read && handleMarkAsRead(notification.id)}
+                                    onClick={() => { if (notification.is_read) return; handleMarkAsRead(notification.id); }}
                                     className={`w-full text-left px-4 py-3 border-b border-slate-50 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${!notification.is_read ? 'bg-blue-50/50 dark:bg-blue-900/5' : ''
                                         }`}
                                 >

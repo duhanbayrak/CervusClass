@@ -36,8 +36,8 @@ type ProfileRow = Record<string, unknown> & {
 async function getStudentExamDetails(examName: string, studentId: string) {
     const cookieStore = await cookies()
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
         { cookies: { getAll() { return cookieStore.getAll() } } }
     )
 
@@ -125,8 +125,8 @@ interface StudentExamDetailPageProps {
 export async function StudentExamDetailPage({ examName, studentId, role }: StudentExamDetailPageProps) {
     const cookieStore = await cookies()
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
         { cookies: { getAll() { return cookieStore.getAll() } } }
     )
 
