@@ -30,7 +30,7 @@ export function StudentNotes({ studentId }: Readonly<StudentNotesProps>) { // N
 
     const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY // NOSONAR
     );
 
     useEffect(() => {

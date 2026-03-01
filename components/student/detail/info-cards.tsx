@@ -7,12 +7,12 @@ import { CheckCheck, Copy } from 'lucide-react';
  * Tek tıkla kopyalanabilir bilgi satırı bileşeni.
  * Tıklanınca değeri panoya kopyalar ve geçici olarak onay ikonu gösterir.
  */
-export function CopyableInfoRow({ icon: Icon, label, value, placeholder }: { // NOSONAR
-    icon: React.ElementType;
-    label: string;
-    value: string | null | undefined;
-    placeholder?: string;
-}) {
+export function CopyableInfoRow({ icon: Icon, label, value, placeholder }: Readonly<{ // NOSONAR
+            icon: React.ElementType;
+            label: string;
+            value: string | null | undefined;
+            placeholder?: string;
+        }>) {
     const [copied, setCopied] = useState(false);
     const displayValue = value || placeholder || '—';
     const hasTrueValue = !!value;

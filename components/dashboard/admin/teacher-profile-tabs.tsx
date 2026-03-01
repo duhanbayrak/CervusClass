@@ -15,9 +15,9 @@ import {
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { updateStudySessionStatus } from "@/lib/actions/study-session-admin"; // NOSONAR
-import { Check, X, Ban, Users } from 'lucide-react'; // NOSONAR
+ // NOSONAR
 import { toast } from "sonner"; // NOSONAR
-import { useRouter } from "next/navigation"; // NOSONAR
+ // NOSONAR
 import { useState } from "react"; // NOSONAR
 
 interface TeacherProfileTabsProps {

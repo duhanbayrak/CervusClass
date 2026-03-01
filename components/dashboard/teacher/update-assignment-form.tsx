@@ -9,15 +9,9 @@ import {} from '@/components/ui/input'; // NOSONAR
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // NOSONAR
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import { tr } from "date-fns/locale";
-import { Calendar as CalendarIcon, Loader2, CheckCircle2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // NOSONAR
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ClassItem {
     id: string;

@@ -31,7 +31,7 @@ async function getSchedule(dayOfWeek: number) {
     const cookieStore = await cookies();
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, // NOSONAR
         {
             cookies: {
                 getAll() {

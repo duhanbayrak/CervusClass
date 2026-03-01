@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 async function getScheduleWithStudents(scheduleId: string) {
     const cookieStore = await cookies();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_URL, // NOSONAR
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
         {
             cookies: {

@@ -23,6 +23,7 @@ export function formatXAxisTick(value: string) {
       return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
     } catch (e) { // NOSONAR
       // Fall through
+      console.error("Ignored execution error:", e);
     }
   }
 

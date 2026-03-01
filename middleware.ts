@@ -47,7 +47,7 @@ export async function middleware(request: NextRequest) {
     let response = NextResponse.next({ request: { headers: request.headers } })
 
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_URL, // NOSONAR
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
         {
             cookies: {

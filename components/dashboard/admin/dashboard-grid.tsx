@@ -22,7 +22,7 @@ import { Users, GraduationCap, School, Wallet, TrendingDown, Banknote, UserPlus 
 import { cn } from '@/lib/utils'; // Ensure you have utils
 
 // Widget Component
-function SortableWidget({ id, children, className }: { id: string, children: React.ReactNode, className?: string }) { // NOSONAR
+function SortableWidget({ id, children, className }: Readonly<{ id: string, children: React.ReactNode, className?: string }>) { // NOSONAR
     const {
         attributes,
         listeners,
