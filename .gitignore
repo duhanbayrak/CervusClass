@@ -46,3 +46,8 @@ yarn-error.log*
 # Documentation
 *.md
 !README.md
+
+# Generated/backup SQL files — not needed in version control
+supabase/migrations_generated/
+supabase/migration_script_final.sql
+restore_script.sql
