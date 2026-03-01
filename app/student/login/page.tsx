@@ -1,5 +1,5 @@
-import StudentLoginForm from '@/components/student-login-form';
+import AuthForm from '@/components/auth-form'
 
 export default function StudentLoginPage() {
-    return <StudentLoginForm />;
+    return <AuthForm role="student" />
 }
