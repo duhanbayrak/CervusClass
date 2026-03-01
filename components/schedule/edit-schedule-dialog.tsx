@@ -56,6 +56,7 @@ export function EditScheduleDialog({ open, onOpenChange, event, teachers, course
 
     const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
+        if (!event) return
         setIsLoading(true)
         try {
             const result = await updateScheduleItem({ id: event.id as string, formData })
@@ -73,6 +74,7 @@ export function EditScheduleDialog({ open, onOpenChange, event, teachers, course
     }
 
     const handleDelete = async () => {
+        if (!event) return
         if (!confirm('Bu dersi silmek istediğinize emin misiniz?')) return
         setIsDeleting(true)
         try {
