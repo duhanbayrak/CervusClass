@@ -1,4 +1,5 @@
--- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL data restore files
+-- nosonar: plsql:LiteralsNonPrintableCharactersCheck - newlines in JSON literals are intentional data formatting
 
 INSERT INTO exam_results (id, organization_id, student_id, exam_name, exam_date, scores, total_net, created_at, details, deleted_at, exam_type)
 VALUES 

@@ -1,64 +1,59 @@
--- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- Kasa hesapları (finance_accounts) için bakiye tutarlılık otomasyonu.
 -- finance_transactions (işlemler) tablosuna bağlı bir TRIGGER ile bakiyenin atomik (race-condition engelli) şekilde güncellenmesini sağlar.
 
+-- Bakiye değişim yönünü hesaplayan yardımcı fonksiyon
+CREATE OR REPLACE FUNCTION public.fn_apply_balance_delta(
+    p_account_id UUID,
+    p_amount NUMERIC,
+    p_type TEXT,
+    p_direction INTEGER  -- +1: ekle, -1: çıkar
+)
+RETURNS VOID AS $$
+DECLARE
+    v_delta NUMERIC;
+BEGIN
+    IF p_type = 'income' THEN
+        v_delta := p_direction * p_amount;
+    ELSIF p_type = 'expense' THEN
+        v_delta := -p_direction * p_amount;
+    ELSE
+        RETURN;
+    END IF;
+    UPDATE finance_accounts SET balance = balance + v_delta WHERE id = p_account_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Ana trigger fonksiyonu — maksimum 3 seviye nesting
 CREATE OR REPLACE FUNCTION public.fn_update_account_balance_on_transaction()
 RETURNS TRIGGER AS $$
 BEGIN
     -- YENİ KAYIT EKLENDİĞİNDE
     IF TG_OP = 'INSERT' THEN
-        IF NEW.type = 'income' THEN
-            UPDATE finance_accounts SET balance = balance + NEW.amount WHERE id = NEW.account_id;
-        ELSIF NEW.type = 'expense' THEN
-            UPDATE finance_accounts SET balance = balance - NEW.amount WHERE id = NEW.account_id;
-        END IF;
+        PERFORM public.fn_apply_balance_delta(NEW.account_id, NEW.amount, NEW.type, +1);
 
-    -- KAYIT GÜNCELLENDİĞİNDE (Özellikle soft-delete)
+    -- KAYIT GÜNCELLENDİĞİNDE
     ELSIF TG_OP = 'UPDATE' THEN
-        -- Eğer soft-delete edildiyse (deleted_at NULL iken dolu hale gelirse)
+        -- Soft-delete: eski etkiyi geri al
         IF OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL THEN
-            IF OLD.type = 'income' THEN
-                UPDATE finance_accounts SET balance = balance - OLD.amount WHERE id = OLD.account_id;
-            ELSIF OLD.type = 'expense' THEN
-                UPDATE finance_accounts SET balance = balance + OLD.amount WHERE id = OLD.account_id;
-            END IF;
-        
-        -- Eğer soft-delete geri alındıysa (restore)
+            PERFORM public.fn_apply_balance_delta(OLD.account_id, OLD.amount, OLD.type, -1);
+
+        -- Soft-delete geri alındı (restore): yeni etkiyi uygula
         ELSIF OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS NULL THEN
-            IF NEW.type = 'income' THEN
-                UPDATE finance_accounts SET balance = balance + NEW.amount WHERE id = NEW.account_id;
-            ELSIF NEW.type = 'expense' THEN
-                UPDATE finance_accounts SET balance = balance - NEW.amount WHERE id = NEW.account_id;
-            END IF;
-        
-        -- Miktar veya hesap veya tür değiştiyse (normal güncelleme)
+            PERFORM public.fn_apply_balance_delta(NEW.account_id, NEW.amount, NEW.type, +1);
+
+        -- Normal güncelleme: hesap, miktar veya tür değiştiyse
         ELSIF OLD.deleted_at IS NULL AND NEW.deleted_at IS NULL THEN
             IF OLD.account_id != NEW.account_id OR OLD.amount != NEW.amount OR OLD.type != NEW.type THEN
-                -- Eski kaydın etkisini hesaptan geri al
-                IF OLD.type = 'income' THEN
-                    UPDATE finance_accounts SET balance = balance - OLD.amount WHERE id = OLD.account_id;
-                ELSIF OLD.type = 'expense' THEN
-                    UPDATE finance_accounts SET balance = balance + OLD.amount WHERE id = OLD.account_id;
-                END IF;
-                -- Yeni kaydın etkisini yeni verilerle entegre et
-                IF NEW.type = 'income' THEN
-                    UPDATE finance_accounts SET balance = balance + NEW.amount WHERE id = NEW.account_id;
-                ELSIF NEW.type = 'expense' THEN
-                    UPDATE finance_accounts SET balance = balance - NEW.amount WHERE id = NEW.account_id;
-                END IF;
+                PERFORM public.fn_apply_balance_delta(OLD.account_id, OLD.amount, OLD.type, -1);
+                PERFORM public.fn_apply_balance_delta(NEW.account_id, NEW.amount, NEW.type, +1);
             END IF;
         END IF;
 
     -- KAYIT TAMAMEN SİLİNDİĞİNDE (Hard Delete)
     ELSIF TG_OP = 'DELETE' THEN
-        -- Sadece silindiğinde, eğer soft-delete DEĞİLDİYSE etkisini geri al.
-        -- Soft delete daha önceden yapılmışsa zaten bakiye trigger update tarafından düşülmüştür, mükerrer kesinti olmasın.
+        -- Soft-delete yapılmamışsa etkiyi geri al (mükerrer kesinti önlenir)
         IF OLD.deleted_at IS NULL THEN
-            IF OLD.type = 'income' THEN
-                UPDATE finance_accounts SET balance = balance - OLD.amount WHERE id = OLD.account_id;
-            ELSIF OLD.type = 'expense' THEN
-                UPDATE finance_accounts SET balance = balance + OLD.amount WHERE id = OLD.account_id;
-            END IF;
+            PERFORM public.fn_apply_balance_delta(OLD.account_id, OLD.amount, OLD.type, -1);
         END IF;
         RETURN OLD;
     END IF;
