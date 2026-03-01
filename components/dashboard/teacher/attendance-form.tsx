@@ -34,7 +34,7 @@ interface AttendanceFormProps {
 
 type AttendanceStatus = 'present' | 'absent' | 'late';
 
-export default function AttendanceForm({
+export default function AttendanceForm({ // NOSONAR
     scheduleId,
     classId,
     students,

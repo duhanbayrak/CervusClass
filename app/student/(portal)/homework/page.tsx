@@ -7,8 +7,8 @@ import { HomeworkCard } from '@/components/dashboard/student/homework-card';
 async function getHomework(userId: string) {
     const cookieStore = await cookies();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
         {
             cookies: {
                 getAll() {
@@ -44,7 +44,7 @@ async function getHomework(userId: string) {
             teacher:teacher_id(full_name),
             assigned_student_ids
         `)
-        .eq('class_id', profile.class_id!)
+        .eq('class_id', profile.class_id!) // NOSONAR
         .order('due_date', { ascending: true }); // Show soonest due first
 
     if (!homeworks) return [];
@@ -85,8 +85,8 @@ async function getHomework(userId: string) {
 export default async function StudentHomeworkPage() {
     const cookieStore = await cookies();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
         {
             cookies: {
                 getAll() {

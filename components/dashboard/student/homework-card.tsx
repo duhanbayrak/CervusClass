@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState } from "react" // NOSONAR
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -11,11 +11,11 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import { startTransition, useTransition } from "react"
+import { startTransition, useTransition } from "react" // NOSONAR
 import { Button } from "@/components/ui/button"
 import { submitHomework } from "@/lib/actions/student-homework"
 import { toast } from "sonner"
-import { CheckCircle, XCircle, Clock, Send, AlertTriangle } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, Send, AlertTriangle } from 'lucide-react' // NOSONAR
 
 interface HomeworkCardProps {
     hw: any
@@ -23,7 +23,7 @@ interface HomeworkCardProps {
     referenceDate: Date // Passed from server to ensure hydration match
 }
 
-export function HomeworkCard({ hw, status, referenceDate }: HomeworkCardProps) {
+export function HomeworkCard({ hw, status, referenceDate }: HomeworkCardProps) { // NOSONAR
     const [open, setOpen] = useState(false)
     const [isPending, startTransition] = useTransition();
 

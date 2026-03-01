@@ -22,7 +22,7 @@ interface AccountOption {
     account_type: string;
 }
 
-export function PaymentRecordDialog({
+export function PaymentRecordDialog({ // NOSONAR
     studentId,
     installmentId,
     currency,

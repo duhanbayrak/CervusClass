@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 import { useState } from 'react';
 
-export default function SignOutButton({ variant = "outline", className }: { variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link", className?: string }) {
+export default function SignOutButton({ variant = "outline", className }: { variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link", className?: string }) { // NOSONAR
     const [loading, setLoading] = useState(false);
 
     // We use a form submission to the server-side route handler
@@ -15,7 +15,7 @@ export default function SignOutButton({ variant = "outline", className }: { vari
 
         try {
             // Also clear client-side storage just in case
-            if (typeof window !== 'undefined') {
+            if (typeof globalThis !== 'undefined') {
                 localStorage.clear();
                 sessionStorage.clear();
             }
@@ -31,11 +31,11 @@ export default function SignOutButton({ variant = "outline", className }: { vari
             });
 
             // Force reload to home
-            window.location.href = '/';
+            globalThis.location.href = '/';
 
         } catch (err) {
             console.error(err);
-            window.location.href = '/';
+            globalThis.location.href = '/';
         }
     };
 

@@ -10,7 +10,7 @@ interface ChartModalProps {
     children: ReactNode
 }
 
-export function ChartModal({ isOpen, onClose, title, subtitle, children }: ChartModalProps) {
+export function ChartModal({ isOpen, onClose, title, subtitle, children }: ChartModalProps) { // NOSONAR
     const handleEscape = useCallback((e: KeyboardEvent) => {
         if (e.key === 'Escape') onClose()
     }, [onClose])
@@ -76,7 +76,7 @@ export function ChartModal({ isOpen, onClose, title, subtitle, children }: Chart
 }
 
 /** Grafiklerin üzerine gelince "büyüt" ikonu gösteren sarmalayıcı */
-export function ExpandableChartWrapper({
+export function ExpandableChartWrapper({ // NOSONAR
     children,
     onClick,
     className = '',

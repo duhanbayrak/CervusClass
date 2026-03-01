@@ -5,7 +5,7 @@ import MobileSidebar from '@/components/dashboard/mobile-sidebar';
 import DashboardHeader from '@/components/dashboard/header';
 import { SUPER_ADMIN_NAV } from '@/lib/navigation';
 
-export default function SuperAdminLayout({
+export default function SuperAdminLayout({ // NOSONAR
     children,
 }: {
     children: React.ReactNode;

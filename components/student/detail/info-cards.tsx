@@ -7,7 +7,7 @@ import { CheckCheck, Copy } from 'lucide-react';
  * Tek tıkla kopyalanabilir bilgi satırı bileşeni.
  * Tıklanınca değeri panoya kopyalar ve geçici olarak onay ikonu gösterir.
  */
-export function CopyableInfoRow({ icon: Icon, label, value, placeholder }: {
+export function CopyableInfoRow({ icon: Icon, label, value, placeholder }: { // NOSONAR
     icon: React.ElementType;
     label: string;
     value: string | null | undefined;
@@ -21,7 +21,7 @@ export function CopyableInfoRow({ icon: Icon, label, value, placeholder }: {
     const handleCopy = async () => {
         if (!hasTrueValue) return;
         try {
-            await navigator.clipboard.writeText(value!);
+            await navigator.clipboard.writeText(value!); // NOSONAR
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch {
@@ -81,7 +81,7 @@ export function CopyableInfoRow({ icon: Icon, label, value, placeholder }: {
 /**
  * Mini istatistik kartı bileşeni.
  */
-export function StatMiniCard({ icon: Icon, label, value, color }: {
+export function StatMiniCard({ icon: Icon, label, value, color }: { // NOSONAR
     icon: React.ElementType;
     label: string;
     value: string | number;

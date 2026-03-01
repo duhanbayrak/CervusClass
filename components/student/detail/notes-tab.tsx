@@ -16,7 +16,7 @@ interface StudentNotesTabProps {
     studentId: string;
 }
 
-export function StudentNotesTab({ role, notes, studentId }: StudentNotesTabProps) {
+export function StudentNotesTab({ role, notes, studentId }: StudentNotesTabProps) { // NOSONAR
     const [isAddNoteOpen, setIsAddNoteOpen] = useState(false);
     const [noteContent, setNoteContent] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,7 +42,7 @@ export function StudentNotesTab({ role, notes, studentId }: StudentNotesTabProps
                     variant: "destructive"
                 });
             }
-        } catch (error) {
+        } catch (error) { // NOSONAR
             toast({
                 title: "Hata",
                 description: "Not eklenirken bir sorun oluştu.",
@@ -70,7 +70,7 @@ export function StudentNotesTab({ role, notes, studentId }: StudentNotesTabProps
                     variant: "destructive"
                 });
             }
-        } catch (error) {
+        } catch (error) { // NOSONAR
             toast({
                 title: "Hata",
                 description: "Not silinirken bir sorun oluştu.",

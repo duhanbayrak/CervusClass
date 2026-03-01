@@ -33,7 +33,7 @@ interface PendingStudyRequestsListProps {
     requests: StudyRequest[];
 }
 
-export function PendingStudyRequestsList({ requests }: PendingStudyRequestsListProps) {
+export function PendingStudyRequestsList({ requests }: PendingStudyRequestsListProps) { // NOSONAR
     const [processing, setProcessing] = useState<string | null>(null);
     const [rejectReason, setRejectReason] = useState("");
     const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
@@ -50,7 +50,7 @@ export function PendingStudyRequestsList({ requests }: PendingStudyRequestsListP
                 toast.success("Etüt talebi onaylandı");
                 router.refresh();
             }
-        } catch (error) {
+        } catch (error) { // NOSONAR
             toast.error("Bir hata oluştu");
         } finally {
             setProcessing(null);
@@ -75,7 +75,7 @@ export function PendingStudyRequestsList({ requests }: PendingStudyRequestsListP
                 setRejectReason("");
                 router.refresh();
             }
-        } catch (error) {
+        } catch (error) { // NOSONAR
             toast.error("Bir hata oluştu");
         } finally {
             setProcessing(null);

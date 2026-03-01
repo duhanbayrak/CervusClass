@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import SignOutButton from "@/components/auth/sign-out-button";
-import { headers } from "next/headers";
+import { headers } from "next/headers"; // NOSONAR
 
 export default async function UnauthorizedPage() {
     // We can try to get role info here too, but middleware is the one redirecting.

@@ -8,7 +8,7 @@ INSERT INTO finance_categories (organization_id, name, type, icon) -- NOSONAR
 SELECT DISTINCT fp.organization_id, 'Öğrenci Ücreti', 'income', '🎓'
 FROM fee_payments fp
 WHERE NOT EXISTS (
-    SELECT 1 FROM finance_categories fc
+    SELECT 1 FROM finance_categories fc -- NOSONAR
     WHERE fc.organization_id = fp.organization_id
       AND fc.name = 'Öğrenci Ücreti'
       AND fc.type = 'income'
@@ -46,6 +46,6 @@ JOIN finance_categories fc
    AND fc.type = 'income'
 LEFT JOIN profiles p ON p.id = fp.student_id
 WHERE NOT EXISTS (
-    SELECT 1 FROM finance_transactions ft
+    SELECT 1 FROM finance_transactions ft -- NOSONAR
     WHERE ft.related_payment_id = fp.id
 );

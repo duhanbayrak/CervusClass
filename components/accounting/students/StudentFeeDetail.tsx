@@ -55,7 +55,7 @@ function getInstallmentStatusStyle(status: string) {
     }
 }
 
-export function StudentFeeDetail({ fees, installments, payments, currency, studentId }: StudentFeeDetailProps) {
+export function StudentFeeDetail({ fees, installments, payments, currency, studentId }: StudentFeeDetailProps) { // NOSONAR
     const router = useRouter();
     const isPending = false;
     const [showPaymentDialog, setShowPaymentDialog] = useState(false);

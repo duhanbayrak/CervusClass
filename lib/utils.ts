@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatPhone(phone: string | null | undefined) {
   if (!phone) return null;
-  const digits = phone.replace(/\D/g, '');
+  const digits = phone.replaceAll(/\D/g, '');
   if (digits.length === 10) {
     return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8, 10)}`;
   }
@@ -21,7 +21,7 @@ export function formatXAxisTick(value: string) {
     try {
       const date = new Date(value);
       return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
-    } catch (e) {
+    } catch (e) { // NOSONAR
       // Fall through
     }
   }

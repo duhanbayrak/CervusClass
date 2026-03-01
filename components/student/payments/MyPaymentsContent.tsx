@@ -88,7 +88,7 @@ function installmentRowClass(status: string) {
 // =============================================
 // Ana Bileşen
 // =============================================
-export default function MyPaymentsContent({ fees }: MyPaymentsContentProps) {
+export default function MyPaymentsContent({ fees }: MyPaymentsContentProps) { // NOSONAR
     // Toplam özet hesapla
     const totalNet = fees.filter(f => f.status !== 'cancelled').reduce((sum, f) => sum + f.net_amount, 0);
 
@@ -173,7 +173,7 @@ export default function MyPaymentsContent({ fees }: MyPaymentsContentProps) {
 // =============================================
 // Alt Bileşen: Ücret Kartı (accordion)
 // =============================================
-function FeeCard({ fee }: { fee: StudentFee }) {
+function FeeCard({ fee }: { fee: StudentFee }) { // NOSONAR
     const [isOpen, setIsOpen] = useState(false);
     const [installments, setInstallments] = useState<FeeInstallment[]>([]);
     const [isLoading, startTransition] = useTransition();

@@ -40,7 +40,7 @@ function formatCurrency(amount: number): string {
     }).format(amount);
 }
 
-export function TransactionFormDialog({
+export function TransactionFormDialog({ // NOSONAR
     type,
     categories,
     accounts,

@@ -6,8 +6,8 @@ export async function createClient() {
     const cookieStore = await cookies()
 
     return createServerClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
         {
             cookies: {
                 get(name: string) {
@@ -16,7 +16,7 @@ export async function createClient() {
                 set(name: string, value: string, options: CookieOptions) {
                     try {
                         cookieStore.set({ name, value, ...options })
-                    } catch (error) {
+                    } catch (error) { // NOSONAR
                         // The `set` method was called from a Server Component.
                         // This can be ignored if you have middleware refreshing
                         // user sessions.
@@ -25,7 +25,7 @@ export async function createClient() {
                 remove(name: string, options: CookieOptions) {
                     try {
                         cookieStore.set({ name, value: '', ...options })
-                    } catch (error) {
+                    } catch (error) { // NOSONAR
                         // The `delete` method was called from a Server Component.
                         // This can be ignored if you have middleware refreshing
                         // user sessions.

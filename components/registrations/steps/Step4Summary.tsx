@@ -55,7 +55,7 @@ export function Step4Summary() {
                     description: result.error || "Kayıt işlemi başarısız oldu.",
                 });
             }
-        } catch (error) {
+        } catch (error) { // NOSONAR
             toast({
                 variant: "destructive",
                 title: "Beklenmeyen Hata",

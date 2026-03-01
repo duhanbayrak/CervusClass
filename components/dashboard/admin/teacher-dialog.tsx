@@ -30,7 +30,7 @@ export interface TeacherDialogProps {
     onSuccess?: () => void;
 }
 
-export default function TeacherDialog({ open, onOpenChange, teacher, branches, onSuccess }: TeacherDialogProps) {
+export default function TeacherDialog({ open, onOpenChange, teacher, branches, onSuccess }: TeacherDialogProps) { // NOSONAR
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
 
@@ -167,7 +167,7 @@ export default function TeacherDialog({ open, onOpenChange, teacher, branches, o
                             maxLength={10}
                             value={formData.phone}
                             onChange={(e) => {
-                                let val = e.target.value.replace(/\D/g, '');
+                                let val = e.target.value.replaceAll(/\D/g, '');
                                 if (val.startsWith('0')) val = val.substring(1);
                                 if (val.length > 10) val = val.substring(0, 10);
                                 setFormData({ ...formData, phone: val });

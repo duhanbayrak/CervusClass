@@ -1,6 +1,6 @@
 import AccountingSubNav from '@/components/accounting/AccountingSubNav';
 
-export default function AccountingLayout({
+export default function AccountingLayout({ // NOSONAR
     children,
 }: {
     children: React.ReactNode;

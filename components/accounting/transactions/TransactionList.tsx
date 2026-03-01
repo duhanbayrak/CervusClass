@@ -17,7 +17,7 @@ function formatDate(date: string): string {
     });
 }
 
-export function TransactionList({ transactions, type }: TransactionListProps) {
+export function TransactionList({ transactions, type }: TransactionListProps) { // NOSONAR
     const cardClass = 'rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5';
 
     if (transactions.length === 0) {

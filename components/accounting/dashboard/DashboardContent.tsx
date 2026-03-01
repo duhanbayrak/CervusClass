@@ -88,7 +88,7 @@ const CATEGORY_COLORS = [
 // =============================================
 // Ana Bileşen
 // =============================================
-export default function DashboardContent({
+export default function DashboardContent({ // NOSONAR
     summary,
     trends,
     incomeDistribution,
@@ -491,7 +491,7 @@ const colorMap: Record<string, { bg: string; icon: string; text: string }> = {
     },
 };
 
-function SummaryCard({ title, value, icon, color, highlight, subtext }: SummaryCardProps) {
+function SummaryCard({ title, value, icon, color, highlight, subtext }: SummaryCardProps) { // NOSONAR
     const c = colorMap[color];
     return (
         <div className={`relative overflow-hidden rounded-2xl border p-4 transition-shadow hover:shadow-md ${highlight

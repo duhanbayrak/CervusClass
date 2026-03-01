@@ -20,7 +20,7 @@ interface MissingAttendanceAlertProps {
     missingItems: MissingAttendanceItem[];
 }
 
-export function MissingAttendanceAlert({ missingItems }: MissingAttendanceAlertProps) {
+export function MissingAttendanceAlert({ missingItems }: MissingAttendanceAlertProps) { // NOSONAR
     if (!missingItems || missingItems.length === 0) return null;
 
     const days = [

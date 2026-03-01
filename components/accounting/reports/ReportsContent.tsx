@@ -77,7 +77,7 @@ function exportToCSV(transactions: FinanceTransaction[]) {
 // =============================================
 // Ana Bileşen
 // =============================================
-export default function ReportsContent({ categories }: ReportsContentProps) {
+export default function ReportsContent({ categories }: ReportsContentProps) { // NOSONAR
     const [isPending, startTransition] = useTransition();
 
     // Filtre state

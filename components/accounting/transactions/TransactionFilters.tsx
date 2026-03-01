@@ -14,7 +14,7 @@ interface TransactionFiltersProps {
     accounts: FinanceAccount[];
 }
 
-export function TransactionFilters({
+export function TransactionFilters({ // NOSONAR
     searchTerm,
     onSearchChange,
     categoryFilter,

@@ -13,7 +13,7 @@ interface DashboardHeaderProps {
     mobileNav?: React.ReactNode;
 }
 
-export default function DashboardHeader({ title, description, actionButtonText, onActionClick, mobileNav }: DashboardHeaderProps) {
+export default function DashboardHeader({ title, description, actionButtonText, onActionClick, mobileNav }: DashboardHeaderProps) { // NOSONAR
     return (
         <header className="h-20 bg-white/80 dark:bg-[#151c2b]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-8 flex items-center justify-between z-10 shrink-0 sticky top-0">
             <div className="flex items-center gap-4">

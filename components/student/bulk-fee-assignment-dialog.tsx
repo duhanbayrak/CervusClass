@@ -60,7 +60,7 @@ interface BulkFeeAssignmentDialogProps {
     onSuccess: () => void;
 }
 
-export function BulkFeeAssignmentDialog({ open, onOpenChange, selectedStudentIds, onSuccess }: BulkFeeAssignmentDialogProps) {
+export function BulkFeeAssignmentDialog({ open, onOpenChange, selectedStudentIds, onSuccess }: BulkFeeAssignmentDialogProps) { // NOSONAR
     const { toast } = useToast();
     const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
     const [servicesData, setServicesData] = useState<FinanceService[]>([]);

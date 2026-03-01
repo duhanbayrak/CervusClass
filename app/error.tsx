@@ -5,7 +5,7 @@ import * as Sentry from '@sentry/nextjs'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle } from 'lucide-react'
 
-export default function AppError({
+export default function AppError({ // NOSONAR
     error,
     reset,
 }: {

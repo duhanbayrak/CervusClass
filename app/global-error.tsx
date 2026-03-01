@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { AlertTriangle } from 'lucide-react'
 
 // Global Error must be a Client Component
-export default function GlobalError({
+export default function GlobalError({ // NOSONAR
     error,
     reset,
 }: {
@@ -39,7 +39,7 @@ export default function GlobalError({
                         <Button onClick={() => reset()} variant="default">
                             Tekrar Dene
                         </Button>
-                        <Button onClick={() => window.location.href = '/'} variant="outline">
+                        <Button onClick={() => globalThis.location.href = '/'} variant="outline">
                             Ana Sayfaya Dön
                         </Button>
                     </div>

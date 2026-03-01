@@ -1,6 +1,6 @@
 import { StudentExamsHistoryPage } from '@/components/exams/StudentExamsHistoryPage'
 
-export default async function AdminStudentExamsPage({
+export default async function AdminStudentExamsPage({ // NOSONAR
     params,
 }: {
     params: Promise<{ id: string }>

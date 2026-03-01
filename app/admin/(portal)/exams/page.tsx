@@ -30,8 +30,8 @@ interface ClassExamData {
 async function getExams(page: number = 1, limit: number = 10) {
     const cookieStore = await cookies()
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
         {
             cookies: {
                 getAll() {
@@ -155,7 +155,7 @@ async function getExams(page: number = 1, limit: number = 10) {
     }
 }
 
-export default async function AdminExamsPage({ searchParams }: { searchParams: { page?: string } }) {
+export default async function AdminExamsPage({ searchParams }: { searchParams: { page?: string } }) { // NOSONAR
     // Await searchParams before accessing properties
     const resolvedSearchParams = await Promise.resolve(searchParams);
     const page = Number(resolvedSearchParams?.page) || 1

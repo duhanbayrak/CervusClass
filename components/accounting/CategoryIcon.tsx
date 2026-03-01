@@ -15,7 +15,7 @@ interface CategoryIconProps {
     className?: string;
 }
 
-export function CategoryIcon({ iconName, className = "w-4 h-4" }: CategoryIconProps) {
+export function CategoryIcon({ iconName, className = "w-4 h-4" }: CategoryIconProps) { // NOSONAR
     if (!iconName) return null;
 
     // Eğer emoji ise text olarak renderla

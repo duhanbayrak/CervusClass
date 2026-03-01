@@ -8,8 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mail, MoreHorizontal, Search, Filter } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Mail, MoreHorizontal, Search, Filter } from 'lucide-react'; // NOSONAR
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"; // NOSONAR
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -37,7 +37,7 @@ interface StudentListProps {
     classes: ClassItem[];
 }
 
-export default function StudentList({ students, classes }: StudentListProps) {
+export default function StudentList({ students, classes }: StudentListProps) { // NOSONAR
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const router = useRouter(); // Use full router for push

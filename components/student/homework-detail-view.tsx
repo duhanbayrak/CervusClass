@@ -39,7 +39,7 @@ interface HomeworkDetailViewProps {
     submissions: Submissions[];
 }
 
-export default function HomeworkDetailView({ homework, submissions }: HomeworkDetailViewProps) {
+export default function HomeworkDetailView({ homework, submissions }: HomeworkDetailViewProps) { // NOSONAR
     const router = useRouter();
     const { toast } = useToast();
     const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});

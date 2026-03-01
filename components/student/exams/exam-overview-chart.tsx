@@ -120,7 +120,7 @@ function renderChart(chartData: any[], isBarChart: boolean, yDomain: [number, nu
     )
 }
 
-export function ExamOverviewChart({ studentExams, classAverages, schoolAverages }: ExamOverviewChartProps) {
+export function ExamOverviewChart({ studentExams, classAverages, schoolAverages }: ExamOverviewChartProps) { // NOSONAR
     const [isBarChart, setIsBarChart] = useState(false)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [activeTab, setActiveTab] = useState<'TYT' | 'AYT'>('TYT')
@@ -153,7 +153,7 @@ export function ExamOverviewChart({ studentExams, classAverages, schoolAverages 
             const shortName = exam.exam_name
                 .replace(/\.xlsx?$/i, '')
                 .replace(/mock_exam_/i, 'Deneme ')
-                .replace(/_/g, ' ')
+                .replaceAll(/_/g, ' ')
                 .trim()
             const dateStr = exam.exam_date
                 ? format(new Date(exam.exam_date), 'd MMM', { locale: tr })

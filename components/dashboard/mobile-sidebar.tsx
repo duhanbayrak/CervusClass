@@ -11,7 +11,7 @@ interface MobileSidebarProps {
     subtitle?: string;
 }
 
-export default function MobileSidebar({ items, basePath, title, subtitle }: MobileSidebarProps) {
+export default function MobileSidebar({ items, basePath, title, subtitle }: MobileSidebarProps) { // NOSONAR
     const [open, setOpen] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
 

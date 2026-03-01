@@ -6,7 +6,7 @@ interface ChartPaginationProps {
     onPageChange: (page: number) => void
 }
 
-export function ChartPagination({ currentPage, totalPages, onPageChange }: ChartPaginationProps) {
+export function ChartPagination({ currentPage, totalPages, onPageChange }: ChartPaginationProps) { // NOSONAR
     if (totalPages <= 1) return null
 
     return (

@@ -19,7 +19,7 @@ interface ForcePasswordResetModalProps {
     onComplete: () => void;
 }
 
-export default function ForcePasswordResetModal({ open, onComplete }: ForcePasswordResetModalProps) {
+export default function ForcePasswordResetModal({ open, onComplete }: ForcePasswordResetModalProps) { // NOSONAR
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);

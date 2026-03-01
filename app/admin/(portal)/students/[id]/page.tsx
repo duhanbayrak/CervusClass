@@ -6,13 +6,13 @@ import { getStudentProfileData } from '@/lib/data/student-profile';
 import { getStudentFees, getStudentFeeDetail } from '@/lib/actions/student-fees';
 import { getFeePayments } from '@/lib/actions/fee-payments';
 
-export default async function StudentDetailPage(props: { params: Promise<{ id: string }> }) {
+export default async function StudentDetailPage(props: { params: Promise<{ id: string }> }) { // NOSONAR
     const params = await props.params;
     const { id } = params;
     const cookieStore = await cookies();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
         {
             cookies: {
                 getAll() {

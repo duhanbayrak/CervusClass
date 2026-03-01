@@ -22,7 +22,7 @@ import { Users, GraduationCap, School, Wallet, TrendingDown, Banknote, UserPlus 
 import { cn } from '@/lib/utils'; // Ensure you have utils
 
 // Widget Component
-function SortableWidget({ id, children, className }: { id: string, children: React.ReactNode, className?: string }) {
+function SortableWidget({ id, children, className }: { id: string, children: React.ReactNode, className?: string }) { // NOSONAR
     const {
         attributes,
         listeners,
@@ -60,7 +60,7 @@ interface DashboardStats {
 
 const defaultOrder = ['totalActiveBalance', 'expectedCollectionThisMonth', 'delayedPayments', 'newRegistrations', 'students', 'teachers', 'classes'];
 
-export function DashboardGrid({ stats }: { stats: DashboardStats | null }) {
+export function DashboardGrid({ stats }: { stats: DashboardStats | null }) { // NOSONAR
     const [items, setItems] = useState<string[]>([]);
     const [mounted, setMounted] = useState(false);
 

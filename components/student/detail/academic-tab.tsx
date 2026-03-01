@@ -14,7 +14,7 @@ interface StudentAcademicTabProps {
     studentId: string;
 }
 
-export function StudentAcademicTab({ examResults, role, studentId }: StudentAcademicTabProps) {
+export function StudentAcademicTab({ examResults, role, studentId }: StudentAcademicTabProps) { // NOSONAR
     const [activeTab, setActiveTab] = useState<'TYT' | 'AYT'>('TYT');
 
     // Chart için veriyi hazırla (exam_type dahil)

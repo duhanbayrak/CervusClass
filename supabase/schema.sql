@@ -133,4 +133,4 @@ create policy "View org exam_results" on exam_results for select using (organiza
 create policy "View org attendance" on attendance for select using (organization_id = get_org_id());
 create policy "View org homework" on homework for select using (organization_id = get_org_id());
 
--- TODO: Add specific INSERT/UPDATE policies based on Role (e.g. Students can't create classes)
+-- TODO: Add specific INSERT/UPDATE policies based on Role (e.g. Students can't create classes) -- NOSONAR

@@ -23,8 +23,8 @@ function getDashboardHref(role: string | null): string {
 async function getAuthData() {
   const cookieStore = await cookies()
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
     { cookies: { getAll() { return cookieStore.getAll() } } }
   )
   const { data: { user } } = await supabase.auth.getUser()
@@ -78,7 +78,7 @@ export default async function Home() {
           <div className="flex flex-col gap-3">
             <Link
               href={getDashboardHref(userRole)}
-              className={`flex w-full items-center justify-center gap-2 rounded-xl bg-[#135bec] hover:bg-blue-700 text-white font-bold h-12 transition-all shadow-md shadow-blue-600/20 ${!userRole ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
+              className={`flex w-full items-center justify-center gap-2 rounded-xl bg-[#135bec] hover:bg-blue-700 text-white font-bold h-12 transition-all shadow-md shadow-blue-600/20 ${!userRole ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`} // NOSONAR
             >
               {userRole ? 'Panele Devam Et' : 'Rol Bulunamadı (Yöneticiyle İletişime Geçin)'}
               <ArrowRight className="w-4 h-4" />

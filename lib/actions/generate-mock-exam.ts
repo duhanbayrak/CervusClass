@@ -84,7 +84,7 @@ export async function generateMockExamExcel(type: 'TYT' | 'AYT' = 'TYT') {
             // Widths: Name(25), Num(15), 4*4=16 cols (10), Total(12)
             colWidths = [
                 { wch: 25 }, { wch: 15 },
-                ...Array(16).fill({ wch: 8 }),
+                ...new Array(16).fill({ wch: 8 }),
                 { wch: 12 }
             ];
 
@@ -168,13 +168,13 @@ export async function generateMockExamExcel(type: 'TYT' | 'AYT' = 'TYT') {
             colWidths = [
                 { wch: 25 }, { wch: 15 },
                 // Mat (4)
-                ...Array(4).fill({ wch: 9 }),
+                ...new Array(4).fill({ wch: 9 }),
                 // Fen (3*4 + 1) = 13
-                ...Array(13).fill({ wch: 9 }),
+                ...new Array(13).fill({ wch: 9 }),
                 // TDE (3*4 + 1) = 13
-                ...Array(13).fill({ wch: 9 }),
+                ...new Array(13).fill({ wch: 9 }),
                 // Sos2 (4*4 + 1) = 17
-                ...Array(17).fill({ wch: 9 }),
+                ...new Array(17).fill({ wch: 9 }),
                 // Total
                 { wch: 12 }
             ];

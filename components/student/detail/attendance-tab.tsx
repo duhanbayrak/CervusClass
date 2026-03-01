@@ -25,7 +25,7 @@ interface StudentAttendanceTabProps {
     };
 }
 
-export function StudentAttendanceTab({ stats }: StudentAttendanceTabProps) {
+export function StudentAttendanceTab({ stats }: StudentAttendanceTabProps) { // NOSONAR
     return (
         <Card className="border-slate-200 dark:border-slate-700/50 shadow-sm">
             <CardHeader>

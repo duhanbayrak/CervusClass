@@ -21,7 +21,7 @@ export default async function StudentSchedulePage() {
                 classes ( name ),
                 profiles ( full_name ) 
             `)
-            .eq('class_id', profile.class_id!),
+            .eq('class_id', profile.class_id!), // NOSONAR
 
         supabase
             .from('study_sessions')

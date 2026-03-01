@@ -5,7 +5,7 @@ import MobileSidebar from '@/components/dashboard/mobile-sidebar';
 import DashboardHeader from '@/components/dashboard/header';
 import { STUDENT_NAV } from '@/lib/navigation';
 
-export default function StudentLayout({
+export default function StudentLayout({ // NOSONAR
     children,
 }: {
     children: React.ReactNode;

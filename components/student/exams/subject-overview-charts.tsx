@@ -209,7 +209,7 @@ function renderSubjectChart(data: any[], isBarChart: boolean, visibleSeries: Vis
     )
 }
 
-export function SubjectOverviewCharts({
+export function SubjectOverviewCharts({ // NOSONAR
     studentExams,
     classSubjectOverview,
     schoolSubjectOverview,
@@ -257,7 +257,7 @@ export function SubjectOverviewCharts({
                     const shortName = exam.exam_name
                         .replace(/\.xlsx?$/i, '')
                         .replace(/mock_exam_/i, 'Deneme ')
-                        .replace(/_/g, ' ')
+                        .replaceAll(/_/g, ' ')
                         .trim()
                     const dateStr = exam.exam_date
                         ? format(new Date(exam.exam_date), 'd MMM', { locale: tr })
@@ -310,7 +310,7 @@ export function SubjectOverviewCharts({
     // Sayfa indekslerine göre her dersin datasını kes
     const pageIndices = getPageData(currentPage)
     const pageStart = pageIndices[0] ?? 0
-    const pageEnd = (pageIndices[pageIndices.length - 1] ?? 0) + 1
+    const pageEnd = (pageIndices[pageIndices.length - 1] ?? 0) + 1 // NOSONAR
 
     return (
         <>

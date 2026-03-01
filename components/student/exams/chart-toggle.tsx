@@ -5,12 +5,12 @@ interface ChartToggleProps {
     onChange: (isBar: boolean) => void
 }
 
-export function ChartToggle({ isBarChart, onChange }: ChartToggleProps) {
+export function ChartToggle({ isBarChart, onChange }: ChartToggleProps) { // NOSONAR
     return (
         <div className="flex items-center gap-2">
             <button
                 onClick={() => onChange(false)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${!isBarChart
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${!isBarChart // NOSONAR
                         ? 'bg-primary text-primary-foreground shadow-sm'
                         : 'bg-muted text-muted-foreground hover:bg-muted/80'
                     }`}

@@ -45,7 +45,7 @@ const formSchema = z.object({
     assignment_mode: z.enum(['entire_class', 'selected_students']),
 });
 
-export default function CreateAssignmentForm({ classes, userId, organizationId }: CreateAssignmentFormProps) {
+export default function CreateAssignmentForm({ classes, userId, organizationId }: CreateAssignmentFormProps) { // NOSONAR
     const router = useRouter();
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();

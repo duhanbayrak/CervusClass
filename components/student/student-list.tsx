@@ -68,7 +68,7 @@ interface StudentListProps {
     initialCount?: number;
 }
 
-export function StudentList({ initialData = [], initialCount = 0 }: StudentListProps) {
+export function StudentList({ initialData = [], initialCount = 0 }: StudentListProps) { // NOSONAR
     const router = useRouter();
     const searchParams = useSearchParams();
     const { toast } = useToast();

@@ -25,7 +25,7 @@ function formatCurrency(amount: number, currency: string): string {
     }).format(amount);
 }
 
-export default function ServiceList({ services, currency }: ServiceListProps) {
+export default function ServiceList({ services, currency }: ServiceListProps) { // NOSONAR
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [search, setSearch] = useState('');

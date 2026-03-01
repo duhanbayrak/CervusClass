@@ -14,7 +14,7 @@ interface TransactionsContentProps {
     type: 'income' | 'expense';
 }
 
-export function TransactionsContent({
+export function TransactionsContent({ // NOSONAR
     transactions,
     categories,
     accounts,

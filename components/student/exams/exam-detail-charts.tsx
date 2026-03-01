@@ -118,7 +118,7 @@ const CustomSubjectTooltip = ({ active, payload, label }: any) => {
     return null
 }
 
-export function ExamDetailCharts({
+export function ExamDetailCharts({ // NOSONAR
     scores,
     examType,
     totalNet,

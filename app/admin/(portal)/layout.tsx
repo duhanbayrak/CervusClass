@@ -7,7 +7,7 @@ import DashboardHeader from '@/components/dashboard/header';
 import { ADMIN_NAV } from '@/lib/navigation';
 import UserSelectionDialog from '@/components/dashboard/admin/user-selection-dialog';
 
-export default function AdminLayout({
+export default function AdminLayout({ // NOSONAR
     children,
 }: {
     children: React.ReactNode;

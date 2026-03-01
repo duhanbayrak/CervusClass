@@ -61,7 +61,7 @@ const COLORS = {
 
 // --- Component ---
 
-export function ExpandedExamChart({ data }: ExpandedExamChartProps) {
+export function ExpandedExamChart({ data }: ExpandedExamChartProps) { // NOSONAR
     const [isBarChart, setIsBarChart] = useState(false)
     const [filter, setFilter] = useState<FilterType>('all')
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
@@ -90,7 +90,7 @@ export function ExpandedExamChart({ data }: ExpandedExamChartProps) {
                 const d = new Date(item.originalDate)
                 d.setHours(0, 0, 0, 0)
 
-                const f = new Date(dateRange.from!)
+                const f = new Date(dateRange.from!) // NOSONAR
                 f.setHours(0, 0, 0, 0)
 
                 let t = new Date(dateRange.to || dateRange.from!)

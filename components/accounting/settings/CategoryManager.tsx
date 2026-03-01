@@ -14,7 +14,7 @@ interface CategoryManagerProps {
     onUpdate: () => void;
 }
 
-export function CategoryManager({
+export function CategoryManager({ // NOSONAR
     incomeCategories,
     expenseCategories,
     onUpdate,

@@ -52,7 +52,7 @@ export async function uploadExamResult(prevState: unknown, formData: FormData) {
     // 3. Upload to Supabase Storage
     const timestamp = Date.now()
     // Clean filename to avoid issues
-    const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+    const cleanFileName = file.name.replaceAll(/[^a-zA-Z0-9.-]/g, '_')
     // Organize by Organization ID for security and RLS
     const filePath = `${organizationId}/${timestamp}-${cleanFileName}`
 

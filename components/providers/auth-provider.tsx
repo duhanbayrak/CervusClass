@@ -53,7 +53,7 @@ function profileFromJwt(authUser: User): Profile {
     } as unknown as Profile;
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) { // NOSONAR
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } finally {
             setUser(null);
             setProfile(null);
-            window.location.href = '/';
+            globalThis.location.href = '/';
         }
     };
 

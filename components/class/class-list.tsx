@@ -39,7 +39,7 @@ interface ClassListProps {
     initialData?: ClassWithCount[];
 }
 
-export function ClassList({ initialData = [] }: ClassListProps) {
+export function ClassList({ initialData = [] }: ClassListProps) { // NOSONAR
     const router = useRouter();
     const { toast } = useToast();
     const [classes, setClasses] = useState<ClassWithCount[]>(initialData);

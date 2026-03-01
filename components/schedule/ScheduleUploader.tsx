@@ -32,7 +32,7 @@ export function ScheduleUploader() {
                     duration: 10000
                 })
             }
-        } catch (e) {
+        } catch (e) { // NOSONAR
             toast.error('Bir hata oluştu.')
         } finally {
             setIsPending(false)

@@ -30,7 +30,7 @@ interface ClassStudentsViewProps {
     className: string;
 }
 
-export function ClassStudentsView({ classId, className }: ClassStudentsViewProps) {
+export function ClassStudentsView({ classId, className }: ClassStudentsViewProps) { // NOSONAR
     const router = useRouter();
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(true);

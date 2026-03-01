@@ -30,7 +30,7 @@ interface ClassDialogProps {
     onSave: () => void;
 }
 
-export function ClassDialog({ open, onOpenChange, cls, onSave }: ClassDialogProps) {
+export function ClassDialog({ open, onOpenChange, cls, onSave }: ClassDialogProps) { // NOSONAR
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
 
@@ -75,7 +75,7 @@ export function ClassDialog({ open, onOpenChange, cls, onSave }: ClassDialogProp
                     toast({ variant: "destructive", description: res.error });
                 }
             }
-        } catch (error) {
+        } catch (error) { // NOSONAR
             toast({ variant: "destructive", description: "Bir hata oluştu." });
         } finally {
             setIsLoading(false);

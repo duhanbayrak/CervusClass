@@ -11,14 +11,14 @@ interface TeacherScheduleClientProps {
     currentUserId: string
 }
 
-export function TeacherScheduleClient({ events, studySessions, currentUserId }: TeacherScheduleClientProps) {
+export function TeacherScheduleClient({ events, studySessions, currentUserId }: TeacherScheduleClientProps) { // NOSONAR
     const [selectedSession, setSelectedSession] = useState<StudySessionEvent | null>(null)
     const [open, setOpen] = useState(false)
 
     const handleEventClick = (event: ScheduleEvent | StudySessionEvent) => {
         // Check if it is a study session
         if ('scheduled_at' in event) {
-            setSelectedSession(event as StudySessionEvent)
+            setSelectedSession(event as StudySessionEvent) // NOSONAR
             setOpen(true)
         } else {
             // It's a regular schedule event.

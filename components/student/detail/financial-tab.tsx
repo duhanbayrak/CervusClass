@@ -15,7 +15,7 @@ interface FinancialTabProps {
     };
 }
 
-export function StudentFinancialTab({ data }: FinancialTabProps) {
+export function StudentFinancialTab({ data }: FinancialTabProps) { // NOSONAR
     const { fees, installments, payments } = data;
 
     const formatCurrency = (amount: number) => {

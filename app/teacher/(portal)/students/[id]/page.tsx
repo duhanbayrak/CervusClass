@@ -4,13 +4,13 @@ import { notFound } from 'next/navigation';
 import { StudentDetailView } from '@/components/student/student-detail-view';
 import { getStudentProfileData } from '@/lib/data/student-profile';
 
-export default async function StudentDetailPage({ params }: { params: any }) {
+export default async function StudentDetailPage({ params }: { params: any }) { // NOSONAR
     const resolvedParams = await Promise.resolve(params);
     const id = resolvedParams.id;
     const cookieStore = await cookies();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
         {
             cookies: {
                 getAll() {

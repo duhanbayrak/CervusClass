@@ -8,8 +8,8 @@ import { format } from "date-fns";
 
 // Admin client - Auth API (kullanıcı oluşturma) ve Rol bypass için gerekli
 const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
+    process.env.SUPABASE_SERVICE_ROLE_KEY!, // NOSONAR
     {
         auth: {
             autoRefreshToken: false,

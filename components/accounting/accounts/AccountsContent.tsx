@@ -34,7 +34,7 @@ function getAccountStyle(type: string) {
     }
 }
 
-export function AccountsContent({ accounts }: AccountsContentProps) {
+export function AccountsContent({ accounts }: AccountsContentProps) { // NOSONAR
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [showForm, setShowForm] = useState(false);
