@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { getSupabaseEnv } from '@/lib/env';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from "@/components/ui/progress";
@@ -7,11 +8,10 @@ import { Award, TrendingUp, TrendingDown, BarChart2 } from 'lucide-react';
 
 async function getGradesData(userId: string) {
     const cookieStore = await cookies();
+    const { url, anonKey } = getSupabaseEnv();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        // NOSONAR
+        url,
+        anonKey,
         {
             cookies: {
                 getAll() {
@@ -33,11 +33,10 @@ async function getGradesData(userId: string) {
 
 export default async function StudentGradesPage() {
     const cookieStore = await cookies();
+    const { url, anonKey } = getSupabaseEnv();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        // NOSONAR
+        url,
+        anonKey,
         {
             cookies: {
                 getAll() {
@@ -177,8 +176,7 @@ export default async function StudentGradesPage() {
                                     <span className="font-medium">Matematik</span>
                                     <span className="text-slate-500">32.5 / 40</span>
                                 </div>
-                                <Progress value={81} className="h-2 bg-slate-100 dark:bg-slate-700" /> {/* Need to verify generic div color or check shadcn */}
-                                {/* Shadcn progress usually has an Indicator. Assuming standard setup */}
+                                <Progress value={81} className="h-2 bg-slate-100 dark:bg-slate-700" />
                             </div>
                             <div className="space-y-2">
                                 <div className="flex justify-between text-sm">

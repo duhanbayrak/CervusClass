@@ -1,13 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { getSupabaseEnv } from "@/lib/env";
 
 export default async function DebugRolePage() {
     const cookieStore = await cookies();
+    const { url, anonKey } = getSupabaseEnv();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        // NOSONAR
+        url,
+        anonKey,
         {
             cookies: {
                 getAll() {

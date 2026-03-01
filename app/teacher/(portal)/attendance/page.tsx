@@ -1,8 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { getSupabaseEnv } from '@/lib/env';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-// NOSONAR
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, CheckCircle2, AlertCircle, ClipboardList, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -30,11 +30,10 @@ const days = [
 
 async function getSchedule(dayOfWeek: number) {
     const cookieStore = await cookies();
+    const { url, anonKey } = getSupabaseEnv();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        // NOSONAR
+        url,
+        anonKey,
         {
             cookies: {
                 getAll() {

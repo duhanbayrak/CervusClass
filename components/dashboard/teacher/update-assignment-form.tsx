@@ -9,6 +9,7 @@ import { tr } from "date-fns/locale";
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
+import { getSupabaseEnv } from "@/lib/env";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -63,10 +64,10 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
     const [loadingStudents, setLoadingStudents] = useState(false);
 
     // Create supabase client once
-    const [supabase] = useState(() => createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    ));
+    const [supabase] = useState(() => {
+        const { url, anonKey } = getSupabaseEnv();
+        return createBrowserClient(url, anonKey);
+    });
 
     // Fetch students when classId changes
     useEffect(() => {
