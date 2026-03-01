@@ -65,7 +65,7 @@ async function getStudentExamDetails(examName: string, studentId: string) {
     if (error || !results || results.length === 0) return null
 
     const examResult = results[0]
-    const profile = examResult.profiles as ProfileRow
+    const profile = examResult.profiles as unknown as ProfileRow
     const classId = profile?.class_id
 
     const { data: classResults } = await supabase

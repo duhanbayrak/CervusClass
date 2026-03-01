@@ -43,7 +43,8 @@ export async function StudentExamsHistoryPage({ studentId, role }: StudentExamsH
 
     const backHref = role === 'admin' ? `/admin/students/${studentId}` : `/teacher/students/${studentId}`
     const breadcrumb = role === 'admin' ? 'Öğrenci Gelişim Analizi (Admin)' : 'Öğrenci Gelişim Analizi'
-    const className = (profile as Record<string, unknown> & { classes?: { name?: string } }).classes?.name
+    type ProfileWithClass = { classes?: { name?: string }; full_name?: string }
+    const className = (profile as unknown as ProfileWithClass).classes?.name
 
     return (
         <div className="container py-8 max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">

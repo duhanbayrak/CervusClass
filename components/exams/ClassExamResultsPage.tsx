@@ -80,14 +80,18 @@ async function getClassExamResults(examName: string, classId: string) {
 
     if (error || !results || results.length === 0) return null
 
-    const className = (results[0].profiles as Record<string, unknown> & { classes?: { name?: string } })?.classes?.name
+    type ProfileData = { full_name?: string; student_number?: string; classes?: { name?: string } }
+    const getProfile = (p: unknown): ProfileData => p as ProfileData
+
+    const className = getProfile(results[0].profiles)?.classes?.name
 
     const students: StudentExamData[] = results.map((result, index) => {
         const scoresData = flattenExamDetails(result.scores, result.exam_type)
+        const profile = getProfile(result.profiles)
         return {
             studentId: result.student_id,
-            fullName: (result.profiles as Record<string, unknown> & { full_name?: string })?.full_name || 'N/A',
-            studentNumber: (result.profiles as Record<string, unknown> & { student_number?: string })?.student_number || 'N/A',
+            fullName: profile?.full_name || 'N/A',
+            studentNumber: profile?.student_number || 'N/A',
             scores: scoresData as Record<string, { net?: number }>,
             totalNet: result.total_net || 0,
             rank: index + 1,
