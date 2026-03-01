@@ -25,16 +25,17 @@ interface AttendanceRecord {
 }
 
 interface AttendanceFormProps {
-    scheduleId: string;
-    classId: string;
-    students: Student[];
-    attendanceMap: Record<string, AttendanceRecord>;
-    date: string;
+    readonly scheduleId: string;
+    readonly classId: string;
+    readonly students: Student[];
+    readonly attendanceMap: Record<string, AttendanceRecord>;
+    readonly date: string;
 }
 
 type AttendanceStatus = 'present' | 'absent' | 'late';
 
-export default function AttendanceForm({ // NOSONAR
+export default function AttendanceForm({
+    // NOSONAR
     scheduleId,
     classId,
     students,

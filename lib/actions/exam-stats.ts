@@ -50,7 +50,8 @@ export async function getExamOverviewData(studentId?: string) {
     // Okuldaki bu sınavlara ait tüm sonuçları çek
     // Supabase varsayılan olarak 1000 satır döndürür, bu yüzden sayfalama yapıyoruz
     const uniqueExamNames = [...new Set(examNames)]
-    let allPeerResults: any[] = []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let allPeerResults: any[] = [];
     const PAGE_SIZE = 1000
 
     let from = 0
@@ -91,6 +92,7 @@ export async function getExamOverviewData(studentId?: string) {
     const classStats: Record<string, { totalNet: number, count: number, subjects: Record<string, { total: number, count: number }> }> = {}
     const schoolStats: Record<string, { totalNet: number, count: number, subjects: Record<string, { total: number, count: number }> }> = {}
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const processResult = (result: any, statsMap: Record<string, any>) => {
         // Key: examName + examType to prevent TYT/AYT data mixing
         const key = `${result.exam_name}::${result.exam_type}`
@@ -120,6 +122,7 @@ export async function getExamOverviewData(studentId?: string) {
         })
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     allPeerResults?.forEach((result: any) => {
         // School Stats (Herkes dahil)
         processResult(result, schoolStats)
@@ -131,9 +134,11 @@ export async function getExamOverviewData(studentId?: string) {
     })
 
     // Format results for frontend
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const formatStats = (statsMap: Record<string, any>) => {
         return Object.values(statsMap).map(stat => {
             const subjectsAvg: Record<string, number> = {}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             Object.entries(stat.subjects).forEach(([sub, val]: [string, any]) => {
                 subjectsAvg[sub] = Number((val.total / val.count).toFixed(2))
             })

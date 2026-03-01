@@ -31,13 +31,13 @@ import {
 import { ChartModal, ExpandableChartWrapper } from './chart-modal'
 
 interface ExamDetailChartsProps {
-    scores: Record<string, any>
-    examType: 'TYT' | 'AYT'
-    totalNet: number | null
-    classSubjectAverages: Record<string, number>
-    classTotalAvg: number
-    schoolSubjectAverages: Record<string, number>
-    schoolTotalAvg: number
+    readonly scores: Readonly<Record<string, any>>
+    readonly examType: 'TYT' | 'AYT'
+    readonly totalNet: number | null
+    readonly classSubjectAverages: Readonly<Record<string, number>>
+    readonly classTotalAvg: number
+    readonly schoolSubjectAverages: Readonly<Record<string, number>>
+    readonly schoolTotalAvg: number
 }
 
 const COLORS = {
@@ -118,7 +118,8 @@ const CustomSubjectTooltip = ({ active, payload, label }: any) => {
     return null
 }
 
-export function ExamDetailCharts({ // NOSONAR
+export function ExamDetailCharts({
+    // NOSONAR
     scores,
     examType,
     totalNet,

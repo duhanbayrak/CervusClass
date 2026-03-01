@@ -52,13 +52,13 @@ export async function updateFinanceSettings(settings: {
     const { supabase, organizationId, error } = await getAuthContext();
     if (error || !organizationId) return { success: false, error: error || 'Yetkilendirme hatası' };
 
-     
+
     const { error: updateError } = await supabase
         .from('finance_settings')
         .update({
             ...settings,
             updated_at: new Date().toISOString(),
-        } as any)
+        } as Record<string, unknown>)
         .eq('organization_id', organizationId);
 
     if (updateError) return { success: false, error: updateError.message };

@@ -17,10 +17,11 @@ interface MissingAttendanceItem {
 }
 
 interface MissingAttendanceAlertProps {
-    missingItems: MissingAttendanceItem[];
+    readonly missingItems: MissingAttendanceItem[];
 }
 
-export function MissingAttendanceAlert({ missingItems }: Readonly<MissingAttendanceAlertProps>) { // NOSONAR
+export function MissingAttendanceAlert({ missingItems }: Readonly<MissingAttendanceAlertProps>) {
+    // NOSONAR
     if (!missingItems || missingItems.length === 0) return null;
 
     const days = [

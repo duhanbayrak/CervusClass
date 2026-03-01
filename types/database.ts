@@ -1463,7 +1463,8 @@ export type Enums<
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"] // NOSONAR
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+  | keyof DefaultSchema["CompositeTypes"] // NOSONAR
   | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals

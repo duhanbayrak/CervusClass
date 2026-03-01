@@ -40,10 +40,10 @@ export const serviceItemSchema = z.object({
     const totalWithVat = netAmount + vatAmount;
 
     if (data.downPayment > 0 && !data.downPaymentAccountId) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Kasa/Hesap seçilmelidir", path: ["downPaymentAccountId"] });
+        ctx.addIssue({ code: "custom", message: "Kasa/Hesap seçilmelidir", path: ["downPaymentAccountId"] });
     }
     if (data.downPayment > totalWithVat) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Peşinat KDV dahil net tutardan (₺${totalWithVat.toFixed(2)}) büyük olamaz`, path: ["downPayment"] });
+        ctx.addIssue({ code: "custom", message: `Peşinat KDV dahil net tutardan (₺${totalWithVat.toFixed(2)}) büyük olamaz`, path: ["downPayment"] });
     }
 });
 
@@ -54,13 +54,14 @@ const bulkFinancialSchema = z.object({
 type BulkFinancialFormData = z.infer<typeof bulkFinancialSchema>;
 
 interface BulkFeeAssignmentDialogProps {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    selectedStudentIds: string[];
-    onSuccess: () => void;
+    readonly open: boolean;
+    readonly onOpenChange: (open: boolean) => void;
+    readonly selectedStudentIds: readonly string[];
+    readonly onSuccess: () => void;
 }
 
-export function BulkFeeAssignmentDialog({ open, onOpenChange, selectedStudentIds, onSuccess }: Readonly<BulkFeeAssignmentDialogProps>) { // NOSONAR
+export function BulkFeeAssignmentDialog({ open, onOpenChange, selectedStudentIds, onSuccess }: Readonly<BulkFeeAssignmentDialogProps>) {
+    // NOSONAR
     const { toast } = useToast();
     const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
     const [servicesData, setServicesData] = useState<FinanceService[]>([]);
@@ -167,7 +168,7 @@ export function BulkFeeAssignmentDialog({ open, onOpenChange, selectedStudentIds
 
         setIsSubmitting(true);
         try {
-            const result = await assignBulkServicesToStudents(selectedStudentIds, data.services);
+            const result = await assignBulkServicesToStudents([...selectedStudentIds], data.services);
 
             if (!result.success) {
                 throw new Error(result.error || 'İşlem sırasında bir hata oluştu');

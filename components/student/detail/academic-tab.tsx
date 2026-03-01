@@ -9,12 +9,13 @@ import Link from 'next/link';
 import { DynamicStudentExamChart } from '@/components/student/exams/student-charts-wrapper';
 
 interface StudentAcademicTabProps {
-    examResults: any[];
-    role: 'admin' | 'teacher' | 'parent';
-    studentId: string;
+    readonly examResults: readonly any[];
+    readonly role: 'admin' | 'teacher' | 'parent';
+    readonly studentId: string;
 }
 
-export function StudentAcademicTab({ examResults, role, studentId }: Readonly<StudentAcademicTabProps>) { // NOSONAR
+export function StudentAcademicTab({ examResults, role, studentId }: Readonly<StudentAcademicTabProps>) {
+    // NOSONAR
     const [activeTab, setActiveTab] = useState<'TYT' | 'AYT'>('TYT');
 
     // Chart için veriyi hazırla (exam_type dahil)

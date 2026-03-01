@@ -15,12 +15,12 @@ export type AttendanceItem = {
 };
 
 const attendanceItemSchema = z.object({
-    student_id: z.string().uuid(),
-    schedule_id: z.string().uuid(),
+    student_id: z.uuid(),
+    schedule_id: z.uuid(),
     date: z.string(),
     status: z.string(),
     late_minutes: z.number(),
-    id: z.string().uuid().optional(),
+    id: z.uuid().optional(),
 });
 
 const saveAttendanceSchema = z.array(attendanceItemSchema).min(1, 'En az bir yoklama kaydı gereklidir.');

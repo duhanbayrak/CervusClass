@@ -13,11 +13,11 @@ interface Option {
 }
 
 interface AdminScheduleViewProps {
-    events: ScheduleEvent[];
-    studySessions?: StudySessionEvent[];
-    teachers: Option[];
-    courses: Option[];
-    classes: Option[];
+    readonly events: readonly ScheduleEvent[];
+    readonly studySessions?: readonly StudySessionEvent[];
+    readonly teachers: readonly Option[];
+    readonly courses: readonly Option[];
+    readonly classes: readonly Option[];
 }
 
 import {
@@ -29,7 +29,8 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
-export function AdminScheduleView({ events, studySessions = [], teachers, courses, classes }: Readonly<AdminScheduleViewProps>) { // NOSONAR
+export function AdminScheduleView({ events, studySessions = [], teachers, courses, classes }: Readonly<AdminScheduleViewProps>) {
+    // NOSONAR
     const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [selectedTeacherId, setSelectedTeacherId] = useState<string>(teachers[0]?.id || '');
@@ -37,7 +38,7 @@ export function AdminScheduleView({ events, studySessions = [], teachers, course
     const handleEventClick = (event: ScheduleEvent | StudySessionEvent) => {
         // Only handle ScheduleEvents (classes) for now in Admin view
         if ('class_id' in event) {
-            setSelectedEvent(event as ScheduleEvent); // NOSONAR
+            setSelectedEvent(event); // NOSONAR
             setIsEditDialogOpen(true);
         }
     };
@@ -86,9 +87,9 @@ export function AdminScheduleView({ events, studySessions = [], teachers, course
                 open={isEditDialogOpen}
                 onOpenChange={setIsEditDialogOpen}
                 event={selectedEvent}
-                teachers={teachers}
-                courses={courses}
-                classes={classes}
+                teachers={[...teachers]}
+                courses={[...courses]}
+                classes={[...classes]}
             />
         </div>
     );

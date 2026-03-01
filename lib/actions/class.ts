@@ -61,7 +61,7 @@ export const addClass = withAction(classFormSchema, async (formData, ctx) => {
 
 // Sınıf güncelle
 export const updateClass = withAction(
-    z.object({ id: z.string().uuid(), formData: classFormSchema }),
+    z.object({ id: z.uuid(), formData: classFormSchema }),
     async ({ id, formData }, ctx) => {
         const role = ctx.user.app_metadata?.role;
         if (role !== 'admin' && role !== 'super_admin') {
@@ -82,7 +82,7 @@ export const updateClass = withAction(
 
 // Sınıf sil (soft delete)
 export const deleteClass = withAction(
-    z.object({ id: z.string().uuid() }),
+    z.object({ id: z.uuid() }),
     async ({ id }, ctx) => {
         const role = ctx.user.app_metadata?.role;
         if (role !== 'admin' && role !== 'super_admin') {
@@ -103,7 +103,7 @@ export const deleteClass = withAction(
 
 // Tek sınıf bilgisi getir
 export const getClassById = withAction(
-    z.object({ id: z.string().uuid() }),
+    z.object({ id: z.uuid() }),
     async ({ id }, ctx) => {
         const { data, error: dbError } = await ctx.supabase
             .from('classes')

@@ -129,7 +129,7 @@ export async function createFinanceService(data: {
 
     if (insertError) return { success: false, error: insertError.message };
     // Yeni hizmet eklendi — listeyi geçersiz kıl
-    // @ts-ignore
+    // @ts-expect-error -- revalidateTag type mismatch
     revalidateTag('finance-services');
     return { success: true, data: inserted as FinanceService };
 }
@@ -177,7 +177,7 @@ export async function updateFinanceService(
 
     if (updateError) return { success: false, error: updateError.message };
     // Güncelleme oldu — listeyi geçersiz kıl
-    // @ts-ignore
+    // @ts-expect-error -- revalidateTag type mismatch
     revalidateTag('finance-services');
     return { success: true };
 }
@@ -215,7 +215,7 @@ export async function deleteFinanceService(id: string): Promise<{ success: boole
 
     if (deleteError) return { success: false, error: deleteError.message };
     // Silindi — listeyi geçersiz kıl
-    // @ts-ignore
+    // @ts-expect-error -- revalidateTag type mismatch
     revalidateTag('finance-services');
     return { success: true };
 }

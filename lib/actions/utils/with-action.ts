@@ -81,7 +81,8 @@ export function withAction<TSchema extends z.ZodTypeAny, TReturn>(
     // Overload 1: schema + handler
     const schema = schemaOrHandler
     return async (input: unknown): Promise<ActionResult<TReturn>> => {
-        return executeAction(input, schema, undefined, handler) // NOSONAR
+        return executeAction(input, schema, undefined, handler)
+        // NOSONAR
     }
 }
 
@@ -150,7 +151,7 @@ function extractMessage(e: unknown): string {
     if (e instanceof Error) return e.message
     if (typeof e === 'string') return e
     if (typeof e === 'object' && e !== null && 'message' in e) {
-        return String((e as any).message)
+        return String((e as Record<string, unknown>).message)
     }
     return 'Bilinmeyen hata'
 }

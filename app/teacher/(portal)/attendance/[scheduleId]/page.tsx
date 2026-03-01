@@ -12,8 +12,10 @@ import { format } from 'date-fns';
 async function getScheduleWithStudents(scheduleId: string) {
     const cookieStore = await cookies();
     const supabase = createServerClient(
-        (process.env.NEXT_PUBLIC_SUPABASE_URL as string), // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
+        (process.env.NEXT_PUBLIC_SUPABASE_URL as string),
+        // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        // NOSONAR
         {
             cookies: {
                 getAll() {
@@ -99,7 +101,8 @@ async function getScheduleWithStudents(scheduleId: string) {
     };
 }
 
-export default async function TakeAttendancePage({ params }: Readonly<{ params: any }>) { // NOSONAR
+export default async function TakeAttendancePage({ params }: Readonly<{ params: any }>) {
+    // NOSONAR
     const resolvedParams = await Promise.resolve(params);
     const scheduleId = resolvedParams.scheduleId;
 
@@ -176,7 +179,7 @@ export default async function TakeAttendancePage({ params }: Readonly<{ params: 
                             classId={schedule.class_id}
                             students={students}
                             attendanceMap={attendanceMap}
-                            date={date!} // NOSONAR
+                            date={date}
                         />
                     )}
                     {!isFuture && students.length === 0 && (

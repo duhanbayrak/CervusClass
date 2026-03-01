@@ -51,8 +51,8 @@ export async function generateMockExamExcel(type: 'TYT' | 'AYT' = 'TYT') {
         }
 
         let headerRow: string[] = [];
-        let dataRows: any[] = [];
-        let colWidths: any[] = [];
+        let dataRows: (string | number | null)[][] = [];
+        let colWidths: { wch: number }[] = [];
 
         if (type === 'TYT') {
             headerRow = [

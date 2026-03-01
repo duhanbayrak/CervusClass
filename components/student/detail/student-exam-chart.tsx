@@ -38,14 +38,15 @@ function ExamTooltip({ active, payload }: Readonly<{ active?: boolean; payload?:
 }
 
 interface StudentExamChartProps {
-    data: {
-        date: string;
-        net: number;
-        name: string;
+    readonly data: readonly {
+        readonly date: string;
+        readonly net: number;
+        readonly name: string;
     }[];
 }
 
-export function StudentExamChart({ data }: Readonly<StudentExamChartProps>) { // NOSONAR
+export function StudentExamChart({ data }: Readonly<StudentExamChartProps>) {
+    // NOSONAR
     if (!data || data.length < 2) {
         return null;
     }
@@ -103,7 +104,7 @@ export function StudentExamChart({ data }: Readonly<StudentExamChartProps>) { /
                                 tickFormatter={(value) => formattedData[value]?.shortName || ''}
                             />
                             <YAxis
-                                domain={[minNet < 0 ? 0 : minNet, maxNet]} // NOSONAR
+                                domain={[Math.max(0, minNet), maxNet]} // NOSONAR
                                 tickLine={false}
                                 axisLine={false}
                                 tick={{ fontSize: 12, fill: '#64748b' }}

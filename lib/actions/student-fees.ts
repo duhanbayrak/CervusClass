@@ -207,7 +207,7 @@ export async function checkDuplicateServices(data: {
     }
 
     // Sadece benzersiz isimleri döndür
-    const duplicateNames = Array.from(new Set(existingFees.map((fee: any) => fee.service?.name || 'İsimsiz Hizmet')));
+    const duplicateNames = Array.from(new Set(existingFees.map((fee: { service?: { name?: string } | null }) => fee.service?.name || 'İsimsiz Hizmet')));
     return { duplicates: duplicateNames };
 }
 

@@ -24,9 +24,9 @@ export type GetStudentsResponse =
 
 const studentFormSchema = z.object({
     full_name: z.string().min(2, 'Ad soyad en az 2 karakter olmalıdır.'),
-    email: z.string().email('Geçerli bir e-posta giriniz.'),
+    email: z.email('Geçerli bir e-posta giriniz.'),
     password: z.string().optional(),
-    class_id: z.string().uuid(),
+    class_id: z.uuid(),
     phone: z.string().optional(),
     student_number: z.string().optional(),
     parent_name: z.string().optional(),
@@ -121,7 +121,7 @@ function buildStudentUpdatePayload(formData: Partial<{ full_name: string; email:
 
 // Öğrenci güncelle
 export const updateStudent = withAction(
-    z.object({ id: z.string().uuid(), formData: studentFormSchema.partial() }),
+    z.object({ id: z.uuid(), formData: studentFormSchema.partial() }),
     async ({ id, formData }, ctx) => {
         const role = ctx.user.app_metadata?.role;
         if (role !== 'admin' && role !== 'super_admin') {
@@ -152,7 +152,7 @@ export const updateStudent = withAction(
 
 // Öğrenci sil (soft delete)
 export const deleteStudent = withAction(
-    z.object({ id: z.string().uuid() }),
+    z.object({ id: z.uuid() }),
     async ({ id }, ctx) => {
         const role = ctx.user.app_metadata?.role;
         if (role !== 'admin' && role !== 'super_admin') {

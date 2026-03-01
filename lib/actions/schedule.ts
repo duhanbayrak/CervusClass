@@ -20,9 +20,9 @@ const scheduleFormSchema = z.object({
     day_of_week: z.number().int().min(1).max(7),
     start_time: z.string().min(1, 'Başlangıç saati zorunludur.'),
     end_time: z.string().min(1, 'Bitiş saati zorunludur.'),
-    course_id: z.string().uuid(),
-    teacher_id: z.string().uuid(),
-    class_id: z.string().uuid(),
+    course_id: z.uuid(),
+    teacher_id: z.uuid(),
+    class_id: z.uuid(),
     room_name: z.string().optional(),
 });
 
@@ -64,7 +64,7 @@ export const addScheduleItem = withAction(scheduleFormSchema, async (formData, c
 
 // Ders programı öğesi sil
 export const deleteScheduleItem = withAction(
-    z.object({ id: z.string().uuid() }),
+    z.object({ id: z.uuid() }),
     async ({ id }, ctx) => {
         const role = ctx.user.app_metadata?.role;
         if (role !== ROLES.ADMIN && role !== ROLES.SUPER_ADMIN) {
@@ -85,7 +85,7 @@ export const deleteScheduleItem = withAction(
 
 // Ders programı öğesi güncelle
 export const updateScheduleItem = withAction(
-    z.object({ id: z.string().uuid(), formData: scheduleFormSchema }),
+    z.object({ id: z.uuid(), formData: scheduleFormSchema }),
     async ({ id, formData }, ctx) => {
         const role = ctx.user.app_metadata?.role;
         if (role !== ROLES.ADMIN && role !== ROLES.SUPER_ADMIN) {
