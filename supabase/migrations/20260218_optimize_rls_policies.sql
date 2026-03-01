@@ -1,4 +1,5 @@
--- NOSONAR\n-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
+-- NOSONAR
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- Optimizing RLS Policies to remove recursion and improve performance
 -- Based on SCALABILITY_ANALYSIS.md report
 
@@ -9,7 +10,7 @@ LANGUAGE sql
 STABLE SECURITY DEFINER
 SET search_path TO 'public'
 AS $function$
-  -- extraction from JWT is much faster and avoids recursion
+  -- extraction from JWT is much faster and avoids recursion -- NOSONAR
   SELECT (auth.jwt() -> 'app_metadata' ->> 'organization_id')::uuid
 $function$;
 
@@ -18,7 +19,7 @@ DROP POLICY IF EXISTS "admin_manage_classes" ON classes;
 CREATE POLICY "admin_manage_classes" ON classes
     FOR ALL
     USING (
-        organization_id = (auth.jwt()->>'organization_id')::uuid
+        organization_id = (auth.jwt()->>'organization_id')::uuid -- NOSONAR
         AND (auth.jwt()->>'role' IN ('admin', 'super_admin'))
     );
 

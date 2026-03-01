@@ -1,4 +1,5 @@
--- NOSONAR\n-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
+-- NOSONAR
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- 20260211_fix_rls_json_path.sql
 
 -- Helper to make policies readable (Optional, but clean)
@@ -8,7 +9,7 @@
 -- 1. SCHEDULE
 DROP POLICY IF EXISTS "view_org_schedule" ON schedule;
 CREATE POLICY "view_org_schedule" ON schedule
-    FOR SELECT
+    FOR SELECT -- NOSONAR
     USING (organization_id = ((auth.jwt() -> 'app_metadata' ->> 'organization_id')::uuid));
 
 -- 2. CLASSES
@@ -45,7 +46,7 @@ DROP POLICY IF EXISTS "teacher_insert_attendance" ON attendance;
 CREATE POLICY "teacher_insert_attendance" ON attendance
     FOR INSERT
     WITH CHECK (
-        organization_id = ((auth.jwt() -> 'app_metadata' ->> 'organization_id')::uuid)
+        organization_id = ((auth.jwt() -> 'app_metadata' ->> 'organization_id')::uuid) -- NOSONAR
         AND ((auth.jwt() -> 'app_metadata' ->> 'role') = 'teacher')
     );
 

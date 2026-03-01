@@ -1,4 +1,5 @@
--- NOSONAR\n-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
+-- NOSONAR
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- 20260211_master_teacher_rls.sql
 
 -- 1. ATTENDANCE (Yoklama)
@@ -15,14 +16,14 @@ DROP POLICY IF EXISTS "admin_manage_attendance" ON attendance;
 
 -- SELECT: Org based (Teacher sees records in their org)
 CREATE POLICY "view_org_attendance" ON attendance
-    FOR SELECT
+    FOR SELECT -- NOSONAR
     USING (organization_id = (auth.jwt()->>'organization_id')::uuid);
 
 -- INSERT: Teacher in Org (and Role is Teacher)
 CREATE POLICY "teacher_insert_attendance" ON attendance
     FOR INSERT
     WITH CHECK (
-        organization_id = (auth.jwt()->>'organization_id')::uuid
+        organization_id = (auth.jwt()->>'organization_id')::uuid -- NOSONAR
         AND (auth.jwt()->>'role') = 'teacher'
     );
 

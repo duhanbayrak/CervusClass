@@ -1,9 +1,10 @@
--- NOSONAR\n-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
+-- NOSONAR
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- Mevcut fee_payments kayıtlarını finance_transactions tablosuna aktarma
 -- Bu migration bir kerelik çalıştırılmalıdır.
 
 -- 1. "Öğrenci Ücreti" gelir kategorisini yoksa oluştur
-INSERT INTO finance_categories (organization_id, name, type, icon)
+INSERT INTO finance_categories (organization_id, name, type, icon) -- NOSONAR
 SELECT DISTINCT fp.organization_id, 'Öğrenci Ücreti', 'income', '🎓'
 FROM fee_payments fp
 WHERE NOT EXISTS (

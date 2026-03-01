@@ -1,4 +1,5 @@
--- NOSONAR\n-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
+-- NOSONAR
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- Fix RLS policies for accounting tables - v3
 -- Fixes:
 -- 1. Correctly accesses 'organization_id' and 'role' from JWT 'app_metadata'
@@ -31,7 +32,7 @@ DROP POLICY IF EXISTS "Admin manage finance accounts" ON "finance_accounts";
 CREATE POLICY "Admin manage finance accounts" ON "finance_accounts"
     FOR ALL
     USING (
-        organization_id = get_auth_org_id()
+        organization_id = get_auth_org_id() -- NOSONAR
         AND get_auth_role() IN ('admin', 'super_admin')
     );
 

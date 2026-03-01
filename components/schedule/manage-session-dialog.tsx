@@ -23,6 +23,18 @@ interface ManageSessionDialogProps {
     onClose: () => void
 }
 
+const SESSION_STATUS_LABELS: Record<string, string> = {
+    available: 'Müsait (Talep Bekleniyor)',
+    pending: 'Onay Bekliyor',
+    approved: 'Onaylandı',
+    completed: 'Tamamlandı',
+    no_show: 'Gelmedi',
+}
+
+function getSessionStatusLabel(status: string): string {
+    return SESSION_STATUS_LABELS[status] ?? status
+}
+
 async function executeSessionAction(
     action: () => Promise<{ error?: string } | null | undefined>,
     successMsg: string,
@@ -87,12 +99,7 @@ export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Ma
                     <div className="flex flex-col gap-1">
                         <span className="text-sm text-muted-foreground">Durum</span>
                         <span className="capitalize font-medium text-slate-900 border px-2 py-1 rounded w-fit text-sm">
-                            {session.status === 'available' ? 'Müsait (Talep Bekleniyor)' :
-                                session.status === 'pending' ? 'Onay Bekliyor' :
-                                    session.status === 'approved' ? 'Onaylandı' :
-                                        session.status === 'completed' ? 'Tamamlandı' :
-                                            session.status === 'no_show' ? 'Gelmedi' :
-                                                session.status}
+                            {getSessionStatusLabel(session.status)}
                         </span>
                     </div>
                 </div>

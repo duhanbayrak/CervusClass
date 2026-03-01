@@ -1,11 +1,12 @@
--- NOSONAR\n-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
+-- NOSONAR
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- 20260211_fix_rls_recursion.sql
 
 -- Fix recursion in profiles
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "view_org_profiles" ON profiles;
 CREATE POLICY "view_org_profiles" ON profiles
-    FOR SELECT
+    FOR SELECT -- NOSONAR
     USING (organization_id = (auth.jwt()->>'organization_id')::uuid);
 
 

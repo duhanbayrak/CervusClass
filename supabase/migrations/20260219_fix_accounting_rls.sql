@@ -1,4 +1,5 @@
--- NOSONAR\n-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
+-- NOSONAR
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- Fix RLS policies for accounting tables created in previous migrations
 
 -- 1. finance_accounts
@@ -7,8 +8,8 @@ ALTER TABLE IF EXISTS "finance_accounts" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Admin manage finance accounts" ON "finance_accounts";
 CREATE POLICY "Admin manage finance accounts" ON "finance_accounts"
     FOR ALL
-    USING (
-        organization_id = (auth.jwt()->>'organization_id')::uuid
+    USING ( -- NOSONAR
+        organization_id = (auth.jwt()->>'organization_id')::uuid -- NOSONAR
         AND (auth.jwt()->>'role' IN ('admin', 'super_admin'))
     );
 

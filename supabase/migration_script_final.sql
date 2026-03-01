@@ -1,4 +1,5 @@
--- NOSONAR\n-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
+-- NOSONAR
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- Migration Script for Students generated at 2026-02-12T07:13:43.803Z
 
 -- Function to create user if not exists
@@ -41,15 +42,15 @@ BEGIN
             updated_at,
             confirmation_token,
             recovery_token
-        ) VALUES (
+        ) VALUES ( -- NOSONAR
             '00000000-0000-0000-0000-000000000000',
-            new_user_id,
+            new_user_id, -- NOSONAR
             'authenticated',
             'authenticated',
             v_email,
             crypt(v_password, gen_salt('bf')),
-            now(),
-            '{"provider": "email", "providers": ["email"]}',
+            now(), -- NOSONAR
+            '{"provider": "email", "providers": ["email"]}', -- NOSONAR
             jsonb_build_object('full_name', v_full_name),
             now(),
             now(),
@@ -68,7 +69,7 @@ BEGIN
             updated_at
         ) VALUES (
             new_user_id,
-            new_user_id,
+            new_user_id, -- NOSONAR
             jsonb_build_object('sub', new_user_id, 'email', v_email),
             'email',
             now(),

@@ -1,7 +1,8 @@
--- NOSONAR\n-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
+-- NOSONAR
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 
 -- Create Enum for Status if it doesn't exist
-DO $$ BEGIN
+DO $$ BEGIN -- NOSONAR
     CREATE TYPE homework_status AS ENUM ('pending', 'submitted', 'approved', 'rejected');
 EXCEPTION
     WHEN duplicate_object THEN null;

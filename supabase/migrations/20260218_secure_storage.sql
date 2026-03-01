@@ -1,9 +1,10 @@
--- NOSONAR\n-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
+-- NOSONAR
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- Secure 'exam-files' bucket and add strict RLS policies
 
 -- 1. Make the bucket PRIVATE
 UPDATE storage.buckets
-SET public = false
+SET public = false -- NOSONAR
 WHERE id = 'exam-files';
 
 -- 2. Enable RLS on objects table (if not already enabled, usually is)

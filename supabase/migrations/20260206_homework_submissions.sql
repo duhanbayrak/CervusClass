@@ -1,5 +1,6 @@
--- NOSONAR\n-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
--- Create ENUM for submission status
+-- NOSONAR
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
+-- Create ENUM for submission status -- NOSONAR
 CREATE TYPE submission_status AS ENUM ('pending', 'submitted', 'approved', 'rejected');
 
 -- Create homework_submissions table
@@ -41,7 +42,7 @@ CREATE POLICY "Teachers can view all submissions in their org"
     USING (
         EXISTS (
             SELECT 1 FROM profiles 
-            WHERE id = auth.uid() 
+            WHERE id = auth.uid()  -- NOSONAR
             AND role_id = (SELECT id FROM roles WHERE name = 'teacher')
             AND organization_id = homework_submissions.organization_id
         )

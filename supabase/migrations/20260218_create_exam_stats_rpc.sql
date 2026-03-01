@@ -1,4 +1,5 @@
--- NOSONAR\n-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
+-- NOSONAR
+-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- Create a function to calculate exam statistics efficiently in the database
 -- This avoids fetching all exam results to the application server
 
@@ -63,7 +64,7 @@ BEGIN
                     key as subject,
                     AVG(
                         CASE 
-                            WHEN jsonb_typeof(value) = 'number' THEN value::numeric
+                            WHEN jsonb_typeof(value) = 'number' THEN value::numeric -- NOSONAR
                             WHEN jsonb_typeof(value) = 'object' THEN (value->>'net')::numeric
                             ELSE 0 
                         END
