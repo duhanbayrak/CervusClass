@@ -18,7 +18,7 @@ import { ScheduleFormFields, ScheduleOption } from './schedule-form-fields'
 interface EditScheduleDialogProps {
     readonly open: boolean
     readonly onOpenChange: (open: boolean) => void
-    readonly event: Record<string, unknown>
+    readonly event: Record<string, unknown> | null
     readonly teachers: ScheduleOption[]
     readonly courses: ScheduleOption[]
     readonly classes: ScheduleOption[]
