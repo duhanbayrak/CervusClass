@@ -7,12 +7,13 @@ import { CheckCheck, Copy } from 'lucide-react';
  * Tek tıkla kopyalanabilir bilgi satırı bileşeni.
  * Tıklanınca değeri panoya kopyalar ve geçici olarak onay ikonu gösterir.
  */
-export function CopyableInfoRow({ icon: Icon, label, value, placeholder }: Readonly<{ // NOSONAR
-            icon: React.ElementType;
-            label: string;
-            value: string | null | undefined;
-            placeholder?: string;
-        }>) {
+export function CopyableInfoRow({ icon: Icon, label, value, placeholder }: Readonly<{
+    // NOSONAR
+    icon: React.ElementType;
+    label: string;
+    value: string | null | undefined;
+    placeholder?: string;
+}>) {
     const [copied, setCopied] = useState(false);
     const displayValue = value || placeholder || '—';
     const hasTrueValue = !!value;
@@ -21,7 +22,7 @@ export function CopyableInfoRow({ icon: Icon, label, value, placeholder }: Reado
     const handleCopy = async () => {
         if (!hasTrueValue) return;
         try {
-            await navigator.clipboard.writeText(value!); // NOSONAR
+            await navigator.clipboard.writeText(value ?? '');
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch {
@@ -81,12 +82,13 @@ export function CopyableInfoRow({ icon: Icon, label, value, placeholder }: Reado
 /**
  * Mini istatistik kartı bileşeni.
  */
-export function StatMiniCard({ icon: Icon, label, value, color }: { // NOSONAR
+export function StatMiniCard({ icon: Icon, label, value, color }: Readonly<{
+    // NOSONAR
     icon: React.ElementType;
     label: string;
     value: string | number;
     color: 'green' | 'blue' | 'red' | 'orange' | 'indigo';
-}) {
+}>) {
     const colorMap = {
         green: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
         blue: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400',
