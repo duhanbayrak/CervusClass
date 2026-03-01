@@ -23,7 +23,7 @@ function getDashboardHref(role: string | null): string {
 async function getAuthData() {
   const cookieStore = await cookies()
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL, // NOSONAR
+    (process.env.NEXT_PUBLIC_SUPABASE_URL as string), // NOSONAR
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
     { cookies: { getAll() { return cookieStore.getAll() } } }
   )

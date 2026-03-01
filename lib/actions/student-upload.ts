@@ -9,7 +9,7 @@ import { Profile } from '@/types/database';
 
 // Admin client for user management (Service Role)
 const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL, // NOSONAR
+    (process.env.NEXT_PUBLIC_SUPABASE_URL as string), // NOSONAR
     process.env.SUPABASE_SERVICE_ROLE_KEY!, // NOSONAR
     {
         auth: {
