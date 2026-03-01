@@ -30,7 +30,7 @@ export function GenerateMockButton() {
                 document.body.appendChild(a)
                 a.click()
                 window.URL.revokeObjectURL(url)
-                document.body.removeChild(a)
+                a.remove()
 
                 toast.success(`${type} deneme excel dosyası indirildi.`)
             } else {

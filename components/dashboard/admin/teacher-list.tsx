@@ -106,7 +106,7 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
         setIsLoading(true);
 
         try {
-            const url = editingTeacher ? '/api/admin/users' : '/api/admin/users';
+            const url = '/api/admin/users';
             const method = editingTeacher ? 'PUT' : 'POST';
             const body = {
                 ...formData,
@@ -333,7 +333,7 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
                             )}
                             <DialogFooter>
                                 <Button type="submit" disabled={isLoading}>
-                                    {isLoading ? 'İşleniyor...' : (editingTeacher ? 'Güncelle' : 'Kaydet')}
+                                    {isLoading ? 'İşleniyor...' : editingTeacher ? 'Güncelle' : 'Kaydet'}
                                 </Button>
                             </DialogFooter>
                         </form>

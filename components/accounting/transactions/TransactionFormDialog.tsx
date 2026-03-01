@@ -97,8 +97,8 @@ export function TransactionFormDialog({
     };
 
     // KDV hesaplama
-    const price = parseFloat(subtotal) || 0;
-    const vat = parseFloat(vatRate) || 0;
+    const price = Number.parseFloat(subtotal) || 0;
+    const vat = Number.parseFloat(vatRate) || 0;
     const vatAmount = price * (vat / 100);
     const totalAmount = price + vatAmount;
 

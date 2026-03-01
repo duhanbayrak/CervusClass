@@ -60,8 +60,8 @@ export function AccountsContent({ accounts }: AccountsContentProps) {
             const result = await createFinanceAccount({
                 name: name.trim(),
                 account_type: accountType,
-                balance: parseFloat(initialBalance) || 0,
-                initial_balance: parseFloat(initialBalance) || 0,
+                balance: Number.parseFloat(initialBalance) || 0,
+                initial_balance: Number.parseFloat(initialBalance) || 0,
                 currency,
             });
 

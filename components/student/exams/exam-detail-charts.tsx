@@ -99,8 +99,8 @@ const CustomSubjectTooltip = ({ active, payload, label }: any) => {
                 </p>
                 <div className="space-y-2">
                     {payload.map((entry: any) => {
-                        const num = typeof entry.value === 'number' ? entry.value : parseFloat(String(entry.value ?? '0'))
-                        const formattedValue = isNaN(num) ? '-' : num.toFixed(2)
+                        const num = typeof entry.value === 'number' ? entry.value : Number.parseFloat(String(entry.value ?? '0'))
+                        const formattedValue = Number.isNaN(num) ? '-' : num.toFixed(2)
                         return (
                             <div key={entry.dataKey ?? entry.name} className="flex items-center justify-between gap-4 text-sm">
                                 <div className="flex items-center gap-2">

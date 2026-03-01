@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
 import { RegistrationFormData } from '@/lib/actions/student-registration';
 
 // Context State
@@ -26,15 +26,18 @@ export function RegistrationProvider({ children }: { children: ReactNode }) {
         setFormData((prev) => ({ ...prev, ...data }));
     };
 
+    const contextValue = useMemo(() => ({
+        step,
+        setStep,
+        formData,
+        updateFormData,
+        isSubmitting,
+        setIsSubmitting,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }), [step, formData, isSubmitting]);
+
     return (
-        <RegistrationContext.Provider value={{
-            step,
-            setStep,
-            formData,
-            updateFormData,
-            isSubmitting,
-            setIsSubmitting
-        }}>
+        <RegistrationContext.Provider value={contextValue}>
             {children}
         </RegistrationContext.Provider>
     );

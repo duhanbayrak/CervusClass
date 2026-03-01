@@ -68,8 +68,8 @@ export function ServiceFormDialog({ service, currency, onClose }: ServiceFormDia
     }, []);
 
     // KDV hesaplama
-    const price = parseFloat(unitPrice) || 0;
-    const vat = parseFloat(vatRate) || 0;
+    const price = Number.parseFloat(unitPrice) || 0;
+    const vat = Number.parseFloat(vatRate) || 0;
     const vatAmount = price * (vat / 100);
     const totalWithVat = price + vatAmount;
 

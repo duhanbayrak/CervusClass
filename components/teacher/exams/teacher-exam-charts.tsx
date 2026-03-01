@@ -34,8 +34,8 @@ const tooltipStyle = {
 }
 
 const tooltipFormatter = (value?: number | string) => {
-    const num = typeof value === 'number' ? value : parseFloat(String(value ?? '0'))
-    return isNaN(num) ? '-' : num.toFixed(2)
+    const num = typeof value === 'number' ? value : Number.parseFloat(String(value ?? '0'))
+    return Number.isNaN(num) ? '-' : num.toFixed(2)
 }
 
 export function TeacherExamCharts({

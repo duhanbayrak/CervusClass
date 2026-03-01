@@ -38,7 +38,6 @@ export function BookSessionDialog({ userId }: { userId: string }) {
     // Data
     const [teachers, setTeachers] = useState<any[]>([])
     const [loadingTeachers, setLoadingTeachers] = useState(false)
-    const [selectedTeacherId, setSelectedTeacherId] = useState<string>("")
 
     // Schedule Data
     const [loadingSchedule, setLoadingSchedule] = useState(false)
@@ -86,7 +85,6 @@ export function BookSessionDialog({ userId }: { userId: string }) {
     }
 
     const handleTeacherSelect = async (teacherId: string) => {
-        setSelectedTeacherId(teacherId)
         setStep('select-slot')
         setLoadingSchedule(true)
 
@@ -137,7 +135,6 @@ export function BookSessionDialog({ userId }: { userId: string }) {
                 setOpen(false)
                 // Reset state
                 setStep('select-teacher')
-                setSelectedTeacherId("")
                 setSelectedSession(null)
                 setTopic("")
             }
@@ -170,27 +167,27 @@ export function BookSessionDialog({ userId }: { userId: string }) {
                 </DialogHeader>
 
                 <div className="py-4 h-full overflow-hidden flex flex-col">
-                    {step === 'select-teacher' ? (
-                        loadingTeachers ? (
-                            <div className="flex justify-center"><Loader2 className="animate-spin" /></div>
-                        ) : (
-                            <div className="grid gap-2">
-                                <Label>Öğretmen Seçin</Label>
-                                <Select onValueChange={handleTeacherSelect}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Öğretmen Ara..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {teachers.map(t => (
-                                            <SelectItem key={t.id} value={t.id}>
-                                                {t.full_name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )
-                    ) : (
+                    {step === 'select-teacher' && loadingTeachers && (
+                        <div className="flex justify-center"><Loader2 className="animate-spin" /></div>
+                    )}
+                    {step === 'select-teacher' && !loadingTeachers && (
+                        <div className="grid gap-2">
+                            <Label>Öğretmen Seçin</Label>
+                            <Select onValueChange={handleTeacherSelect}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Öğretmen Ara..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {teachers.map(t => (
+                                        <SelectItem key={t.id} value={t.id}>
+                                            {t.full_name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                    {step !== 'select-teacher' && (
                         <div className="flex flex-col h-full gap-4">
                             <div className="flex items-center gap-2 mb-2">
                                 <Button variant="ghost" size="sm" onClick={handleBack}><ArrowLeft className="mr-2 h-4 w-4" /> Geri</Button>
@@ -204,6 +201,7 @@ export function BookSessionDialog({ userId }: { userId: string }) {
                             ) : (
                                 <div
                                     className="flex-1 border rounded-md overflow-hidden min-h-0 relative"
+                                    role="presentation"
                                     onClick={() => setSelectedSession(null)}
                                 >
                                     <WeeklyScheduler
@@ -218,6 +216,7 @@ export function BookSessionDialog({ userId }: { userId: string }) {
                                     {selectedSession && (
                                         <div
                                             className="absolute inset-x-0 bottom-0 bg-background/95 backdrop-blur border-t p-6 z-50 flex items-end gap-4 animate-in slide-in-from-bottom shadow-lg"
+                                            role="presentation"
                                             onClick={(e) => e.stopPropagation()}
                                         >
                                             <div className="flex-1 space-y-1.5">

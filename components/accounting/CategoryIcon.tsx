@@ -19,7 +19,7 @@ export function CategoryIcon({ iconName, className = "w-4 h-4" }: CategoryIconPr
     if (!iconName) return null;
 
     // Eğer emoji ise text olarak renderla
-    if (iconName.match(/[\p{Emoji}]/u) || iconName.length <= 2) {
+    if (iconName.match(/\p{Emoji}/u) || iconName.length <= 2) {
         return <span className={`mr-1 inline-block text-base leading-none ${className || ''}`}>{iconName}</span>;
     }
 

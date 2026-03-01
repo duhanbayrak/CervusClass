@@ -71,7 +71,7 @@ export function PaymentRecordDialog({
             return;
         }
 
-        const numAmount = parseFloat(amount);
+        const numAmount = Number.parseFloat(amount);
 
         if (defaultAmount !== undefined && numAmount > defaultAmount) {
             setMessage(`Hata: Tahsilat tutarı aşımı! Bu taksit için en fazla ${defaultAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ${currency} ödeme alınabilir.`);

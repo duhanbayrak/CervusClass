@@ -53,7 +53,7 @@ export const getStudentsByClass = withAction(
 const CreateHomeworkSchema = z.object({
     description: z.string().min(3, 'Açıklama en az 3 karakter olmalıdır.'),
     class_id: z.string().uuid('Geçerli bir sınıf seçiniz.'),
-    due_date: z.string().refine((val) => !isNaN(Date.parse(val)), 'Geçerli bir tarih seçiniz.'),
+    due_date: z.string().refine((val) => !Number.isNaN(Date.parse(val)), 'Geçerli bir tarih seçiniz.'),
     assignment_mode: z.enum(['entire_class', 'selected_students']),
     assigned_student_ids: z.string().nullable().optional(),
 });

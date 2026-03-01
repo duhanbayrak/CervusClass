@@ -10,7 +10,7 @@ export default async function StudentSchedulePage() {
 
     const { data: profile } = await supabase.from('profiles').select('class_id').eq('id', user.id).single()
 
-    if (!profile || !profile.class_id) return <div>Sınıf bilginiz bulunamadı.</div>
+    if (!profile?.class_id) return <div>Sınıf bilginiz bulunamadı.</div>
 
     const [scheduleResponse, studySessionsResponse] = await Promise.all([
         supabase

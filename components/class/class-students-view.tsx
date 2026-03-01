@@ -205,16 +205,16 @@ export function ClassStudentsView({ classId, className }: ClassStudentsViewProps
                                         if (Math.abs(page - currentPage) <= 1) return true;
                                         return false;
                                     })
-                                    .reduce<(number | 'ellipsis')[]>((acc, page, idx, arr) => {
-                                        if (idx > 0 && page - (arr[idx - 1]) > 1) {
-                                            acc.push('ellipsis');
+                                    .reduce<(number | string)[]>((acc, page, idx, arr) => {
+                                        if (idx > 0 && page - (arr[idx - 1] as number) > 1) {
+                                            acc.push(`ellipsis-${acc.length}`);
                                         }
                                         acc.push(page);
                                         return acc;
                                     }, [])
-                                    .map((item, idx) =>
-                                        item === 'ellipsis' ? (
-                                            <span key={`ellipsis-${idx}`} className="px-1.5 text-sm text-slate-400">…</span>
+                                    .map((item) =>
+                                        typeof item === 'string' ? (
+                                            <span key={item} className="px-1.5 text-sm text-slate-400">…</span>
                                         ) : (
                                             <Button
                                                 key={item}

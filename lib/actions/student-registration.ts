@@ -153,10 +153,10 @@ export async function registerStudent(data: RegistrationFormData) {
         });
 
         for (const service of (data.services || [])) {
-            await createServiceFeeAndInstallments(
-                supabaseAdmin, organizationId, newUserId!, data.classId, data.academicPeriod,
-                service, user.id, fullName, rollbackActions
-            );
+            await createServiceFeeAndInstallments({
+                client: supabaseAdmin, organizationId, studentId: newUserId!, classId: data.classId,
+                academicPeriod: data.academicPeriod, service, userId: user.id, fullName, rollbackActions
+            });
         }
 
         revalidatePath('/admin/students');
@@ -202,7 +202,7 @@ export async function getNextStudentNumber(orgId?: string) {
         // 26001 formatını kontrol et
         if (currentNumberStr.length === 5 && currentNumberStr.startsWith(yearPrefix)) {
             const numPart = Number.parseInt(currentNumberStr.slice(2), 10);
-            if (!isNaN(numPart)) {
+            if (!Number.isNaN(numPart)) {
                 generatedStudentNumber = `${yearPrefix}${String(numPart + 1).padStart(3, '0')}`;
             }
         }
@@ -250,16 +250,20 @@ function calcRegNetAmount(service: RegistrationServiceItem): { netAmount: number
     return { netAmount, vatAmount, totalAmountWithVat: netAmount + vatAmount }
 }
 
-async function insertRegInstallments(
-    client: SupabaseClient,
-    feeId: string,
-    organizationId: string,
-    studentId: string,
-    service: RegistrationServiceItem,
-    totalAmountWithVat: number,
-    userId: string,
-    fullName: string
-): Promise<void> {
+interface InsertRegInstallmentsParams {
+    client: SupabaseClient;
+    feeId: string;
+    organizationId: string;
+    studentId: string;
+    service: RegistrationServiceItem;
+    totalAmountWithVat: number;
+    userId: string;
+    fullName: string;
+}
+
+async function insertRegInstallments({
+    client, feeId, organizationId, studentId, service, totalAmountWithVat, userId, fullName
+}: InsertRegInstallmentsParams): Promise<void> {
     const hasDownPayment = service.downPayment > 0
     const installmentsToInsert: object[] = []
     let nextNum = 1
@@ -288,17 +292,21 @@ async function insertRegInstallments(
     }
 }
 
-async function createServiceFeeAndInstallments(
-    client: SupabaseClient,
-    organizationId: string,
-    studentId: string,
-    classId: string,
-    academicPeriod: string,
-    service: RegistrationServiceItem,
-    userId: string,
-    fullName: string,
-    rollbackActions: Array<() => Promise<void>>
-): Promise<string> {
+interface CreateServiceFeeParams {
+    client: SupabaseClient;
+    organizationId: string;
+    studentId: string;
+    classId: string;
+    academicPeriod: string;
+    service: RegistrationServiceItem;
+    userId: string;
+    fullName: string;
+    rollbackActions: Array<() => Promise<void>>;
+}
+
+async function createServiceFeeAndInstallments({
+    client, organizationId, studentId, classId, academicPeriod, service, userId, fullName, rollbackActions
+}: CreateServiceFeeParams): Promise<string> {
     const { vatAmount, totalAmountWithVat } = calcRegNetAmount(service)
     const hasDownPayment = service.downPayment > 0
     const mainInstallmentCount = service.installmentCount > 0 ? service.installmentCount : 1
@@ -328,7 +336,7 @@ async function createServiceFeeAndInstallments(
     const feeId = feeData.id
     rollbackActions.push(async () => { await client.from('student_fees').delete().eq('id', feeId) })
 
-    await insertRegInstallments(client, feeId, organizationId, studentId, service, totalAmountWithVat, userId, fullName)
+    await insertRegInstallments({ client, feeId, organizationId, studentId, service, totalAmountWithVat, userId, fullName })
     return feeId
 }
 

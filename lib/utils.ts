@@ -52,11 +52,11 @@ export function flattenExamScores(scores: any, type?: string) {
   // Helper to safely get net value
   const getNet = (val: any) => {
     if (typeof val === 'number') return val
-    if (typeof val === 'string' && !isNaN(parseFloat(val))) return parseFloat(val)
+    if (typeof val === 'string' && !Number.isNaN(Number.parseFloat(val))) return Number.parseFloat(val)
     if (val && typeof val === 'object' && 'net' in val) {
       const netVal = val.net
       if (typeof netVal === 'number') return netVal
-      if (typeof netVal === 'string' && !isNaN(parseFloat(netVal))) return parseFloat(netVal)
+      if (typeof netVal === 'string' && !Number.isNaN(Number.parseFloat(netVal))) return Number.parseFloat(netVal)
     }
     return null
   }
@@ -123,11 +123,11 @@ export function flattenExamDetails(scores: any, type?: string) {
     // If scalar (net), return mock detail. Or if we want to be safe, standard object.
     // Assuming number is just net.
     if (typeof val === 'number') return { net: val, dogru: 0, yanlis: 0 }
-    if (typeof val === 'string' && !isNaN(parseFloat(val))) return { net: parseFloat(val), dogru: 0, yanlis: 0 }
+    if (typeof val === 'string' && !Number.isNaN(Number.parseFloat(val))) return { net: Number.parseFloat(val), dogru: 0, yanlis: 0 }
     if (val && typeof val === 'object') {
       const netVal = val.net
-      if (typeof netVal === 'string' && !isNaN(parseFloat(netVal))) {
-        return { ...val, net: parseFloat(netVal) }
+      if (typeof netVal === 'string' && !Number.isNaN(Number.parseFloat(netVal))) {
+        return { ...val, net: Number.parseFloat(netVal) }
       }
       return val
     }

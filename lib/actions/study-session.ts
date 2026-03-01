@@ -202,10 +202,11 @@ export async function requestSession(sessionId: string, topic: string) {
                 .single();
 
             const studentName = studentProfile?.full_name || 'Bir öğrenci';
+            const topicSuffix = topic ? `: ${topic}` : '';
             await createNotification({
                 userId: sessionData.teacher_id,
                 title: 'Yeni Etüt Talebi 📚',
-                message: `${studentName} etüt talebinde bulundu${topic ? `: ${topic}` : ''}.`,
+                message: `${studentName} etüt talebinde bulundu${topicSuffix}.`,
                 type: 'info',
             });
         }

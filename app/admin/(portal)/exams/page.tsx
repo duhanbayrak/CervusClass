@@ -202,8 +202,8 @@ export default async function AdminExamsPage({ searchParams }: { searchParams: {
                         </p>
                     </div>
                 ) : (
-                    exams.map((exam, idx) => (
-                        <div key={idx} className="border rounded-xl overflow-hidden bg-card shadow-sm transition-all hover:shadow-md">
+                    exams.map((exam) => (
+                        <div key={exam.examName} className="border rounded-xl overflow-hidden bg-card shadow-sm transition-all hover:shadow-md">
                             {/* Exam Header */}
                             <div className="p-6 border-b bg-muted/30 flex items-center justify-between">
                                 <div className="space-y-1">

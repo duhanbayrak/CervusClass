@@ -53,7 +53,7 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
     const [date, setDate] = useState<Date | undefined>(new Date(assignment.due_date));
 
     // Assignment Mode State
-    const [assignmentMode, setAssignmentMode] = useState<'entire_class' | 'selected_students'>(
+    const [assignmentMode] = useState<'entire_class' | 'selected_students'>(
         assignment.assigned_student_ids && assignment.assigned_student_ids.length > 0
             ? 'selected_students'
             : 'entire_class'
@@ -116,21 +116,6 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
         fetchStudents();
     }, [classId, supabase, assignment.class_id, initialStudents]);
 
-    const handleStudentToggle = (studentId: string) => {
-        setSelectedStudents(prev =>
-            prev.includes(studentId)
-                ? prev.filter(id => id !== studentId)
-                : [...prev, studentId]
-        );
-    };
-
-    const handleSelectAll = (checked: boolean) => {
-        if (checked) {
-            setSelectedStudents(students.map(s => s.id));
-        } else {
-            setSelectedStudents([]);
-        }
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

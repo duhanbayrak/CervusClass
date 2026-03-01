@@ -23,7 +23,7 @@ export default function GlobalError({
     }, [error, reset])
 
     return (
-        <html>
+        <html lang="tr">
             <body>
                 <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-center">
                     <div className="rounded-full bg-red-100 p-4 dark:bg-red-900/20">

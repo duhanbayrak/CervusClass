@@ -117,13 +117,6 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
         return d;
     });
 
-    const isSameDate = (d1: Date, stringDate: string) => {
-        const d2 = new Date(stringDate);
-        return d1.getDate() === d2.getDate() &&
-            d1.getMonth() === d2.getMonth() &&
-            d1.getFullYear() === d2.getFullYear();
-    }
-
     // --- OPTIMIZATION START ---
 
     // 1. Group events by day of week (1-7)
@@ -246,33 +239,31 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                                 <div className="relative" style={{ height: HOURS.length * HOUR_HEIGHT }}>
                                     {/* Grid Lines */}
                                     {HOURS.map(hour => (
-                                        <div
-                                            key={hour}
-                                            className={cn(
-                                                "border-b border-dashed border-muted/50 w-full absolute hover:bg-muted/10 transition-colors",
-                                                role === 'teacher' ? "cursor-pointer group/cell" : ""
-                                            )}
-                                            style={{ top: (hour - 8) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
-                                            onClick={(e) => {
-                                                if (role !== 'teacher') return;
-                                                // Prevent triggering if clicking existing event
-                                                if (isDragging) return;
-
-                                                setCreateModal({
-                                                    open: true,
-                                                    date: date,
-                                                    startTime: `${String(hour).padStart(2, '0')}:00`
-                                                })
-                                            }}
-                                        >
-                                            {role === 'teacher' && (
+                                        role === 'teacher' ? (
+                                            <button
+                                                key={hour}
+                                                type="button"
+                                                aria-label={`${String(hour).padStart(2, '0')}:00 saatine ders ekle`}
+                                                className="border-b border-dashed border-muted/50 w-full absolute hover:bg-muted/10 transition-colors cursor-pointer group/cell"
+                                                style={{ top: (hour - 8) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+                                                onClick={() => {
+                                                    if (isDragging) return;
+                                                    setCreateModal({ open: true, date: date, startTime: `${String(hour).padStart(2, '0')}:00` })
+                                                }}
+                                            >
                                                 <div className="hidden group-hover/cell:flex absolute inset-0 items-center justify-center pointer-events-none">
                                                     <div className="bg-primary/10 text-primary rounded-full p-1">
                                                         <Plus className="w-4 h-4" />
                                                     </div>
                                                 </div>
-                                            )}
-                                        </div>
+                                            </button>
+                                        ) : (
+                                            <div
+                                                key={hour}
+                                                className="border-b border-dashed border-muted/50 w-full absolute"
+                                                style={{ top: (hour - 8) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+                                            />
+                                        )
                                     ))}
 
                                     {/* Standard Events */}
@@ -282,10 +273,11 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                                         const timeRange = `${event.start_time.substring(0, 5)} - ${event.end_time.substring(0, 5)}`
 
                                         return (
-                                            <div
+                                            <button
                                                 key={event.id}
+                                                type="button"
                                                 className={cn(
-                                                    "absolute rounded px-2 py-1 text-xs border shadow-sm cursor-pointer hover:brightness-95 transition-all overflow-hidden z-20", // Changed to z-20 to be consistent with study sessions, behind header z-30
+                                                    "absolute rounded px-2 py-1 text-xs border shadow-sm cursor-pointer hover:brightness-95 transition-all overflow-hidden z-20 text-left",
                                                     "flex flex-col justify-start",
                                                     classes.container
                                                 )}
@@ -304,7 +296,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                                                 <div className={cn("font-bold leading-tight", classes.title)}>{event.courses?.name}</div>
                                                 <div className={cn("opacity-90 text-[10px]", classes.subtitle)}>{event.classes?.name}</div>
                                                 <div className={cn("opacity-80 text-[9px] mt-0.5 truncate font-medium", classes.subtitle)}>{event.profiles?.full_name}</div>
-                                            </div>
+                                            </button>
                                         )
                                     })}
 
@@ -317,10 +309,11 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                                         const classes = getEventClasses(session, true, currentUserId, role);
 
                                         return (
-                                            <div
+                                            <button
                                                 key={session.id}
+                                                type="button"
                                                 className={cn(
-                                                    "absolute rounded px-2 py-1 text-xs border shadow-sm cursor-pointer hover:brightness-95 transition-all overflow-hidden z-20",
+                                                    "absolute rounded px-2 py-1 text-xs border shadow-sm cursor-pointer hover:brightness-95 transition-all overflow-hidden z-20 text-left",
                                                     "flex flex-col justify-start",
                                                     classes.container
                                                 )}
@@ -332,7 +325,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                                                 }}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    if (isDragging) return; // Prevent click if dragging
+                                                    if (isDragging) return;
                                                     onEventClick?.(session);
                                                 }}
                                             >
@@ -351,12 +344,15 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                                                 </div>
 
                                                 <div className={cn("text-[11px] opacity-90 truncate font-medium mt-0.5", classes.subtitle)}>
-                                                    {session.status === 'available' ? '' :
-                                                        (role === 'teacher' || (currentUserId && session.student_id === currentUserId)) ? (session.profiles?.full_name || 'Öğrenci') : ''}
+                                                    {(() => {
+                                                        if (session.status === 'available') return '';
+                                                        const isVisible = role === 'teacher' || (currentUserId && session.student_id === currentUserId);
+                                                        return isVisible ? (session.profiles?.full_name || 'Öğrenci') : '';
+                                                    })()}
                                                 </div>
 
                                                 {currentUserId && session.student_id === currentUserId && <div className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />}
-                                            </div>
+                                            </button>
                                         )
                                     })}
                                 </div>

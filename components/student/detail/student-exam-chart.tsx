@@ -12,6 +12,31 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp } from "lucide-react";
 
+interface ChartDataPoint {
+    name: string;
+    net: number;
+    fullDate: string;
+}
+
+function ExamTooltip({ active, payload }: { active?: boolean; payload?: readonly { payload: ChartDataPoint }[] }) {
+    if (active && payload?.length) {
+        const data = payload[0].payload;
+        return (
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-lg shadow-lg text-xs">
+                <p className="font-semibold text-slate-900 dark:text-white mb-1">{data.name}</p>
+                <p className="text-slate-500 mb-2">{data.fullDate}</p>
+                <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                    <span className="font-bold text-indigo-600 dark:text-indigo-400">
+                        {Number(data.net).toFixed(2)} Net
+                    </span>
+                </div>
+            </div>
+        );
+    }
+    return null;
+}
+
 interface StudentExamChartProps {
     data: {
         date: string;
@@ -85,26 +110,7 @@ export function StudentExamChart({ data }: StudentExamChartProps) {
                                 tickCount={5}
                                 allowDecimals={true}
                             />
-                            <Tooltip
-                                content={({ active, payload }) => {
-                                    if (active && payload?.length) {
-                                        const data = payload[0].payload;
-                                        return (
-                                            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-lg shadow-lg text-xs">
-                                                <p className="font-semibold text-slate-900 dark:text-white mb-1">{data.name}</p>
-                                                <p className="text-slate-500 mb-2">{data.fullDate}</p>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                                                    <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                                                        {Number(data.net).toFixed(2)} Net
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-                                    return null;
-                                }}
-                            />
+                            <Tooltip content={ExamTooltip} />
                             <Line
                                 type="monotone"
                                 dataKey="net"

@@ -29,11 +29,12 @@ export function getDateRange(period: string) {
             startDate = startOfMonth(now);
             endDate = endOfMonth(now);
             break;
-        case 'last_month':
+        case 'last_month': {
             const lastMonth = subMonths(now, 1);
             startDate = startOfMonth(lastMonth);
             endDate = endOfMonth(lastMonth);
             break;
+        }
         case 'yearly':
         default:
             startDate = startOfYear(now);

@@ -47,7 +47,7 @@ function buildInstallmentRows(
     const remainingAmount = totalAmountWithVat - (service.downPayment || 0)
     if (remainingAmount <= 0 || service.installmentCount <= 0) return rows
 
-    const amountPerInstallment = parseFloat((remainingAmount / service.installmentCount).toFixed(2))
+    const amountPerInstallment = Number.parseFloat((remainingAmount / service.installmentCount).toFixed(2))
     const { startYear, startMonthIndex } = parseStartMonth(service.startMonth)
     let num = startInstallmentNumber
 
@@ -60,7 +60,7 @@ function buildInstallmentRows(
         }
         let instAmount = amountPerInstallment
         if (i === service.installmentCount - 1) {
-            instAmount = parseFloat((remainingAmount - amountPerInstallment * (service.installmentCount - 1)).toFixed(2))
+            instAmount = Number.parseFloat((remainingAmount - amountPerInstallment * (service.installmentCount - 1)).toFixed(2))
         }
         const instDate = new Date(dueYear, dueMonth, service.paymentDueDay)
         rows.push({

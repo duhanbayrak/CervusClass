@@ -56,11 +56,10 @@ export default async function DebugRolePage() {
                     Is Array: {profile?.roles ? Array.isArray(profile.roles).toString() : 'N/A'}
                 </div>
                 <div>
-                    Role Name: {
-                        profile?.roles
-                            ? (Array.isArray(profile.roles) ? profile.roles[0]?.name : profile.roles?.name)
-                            : 'UNDEFINED'
-                    }
+                    Role Name: {(() => {
+                        if (!profile?.roles) return 'UNDEFINED';
+                        return Array.isArray(profile.roles) ? profile.roles[0]?.name : profile.roles?.name;
+                    })()}
                 </div>
             </div>
         </div>
