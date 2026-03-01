@@ -100,11 +100,11 @@ create index idx_profiles_org on profiles(organization_id);
 create index idx_classes_org on classes(organization_id);
 create index idx_exam_results_net on exam_results(total_net);
 
--- RLS Helper Function
-create or replace function get_org_id()
+-- RLS Helper Function (Using JWT for organization_id)
+create or replace function get_jwt_org_id()
 returns uuid as $$
-  select organization_id from profiles where id = auth.uid();
-$$ language sql security definer;
+  select (auth.jwt() ->> 'organization_id')::uuid;
+$$ language sql stable;
 
 -- Enable RLS
 alter table organizations enable row level security;
@@ -116,21 +116,50 @@ alter table exam_results enable row level security;
 alter table attendance enable row level security;
 alter table homework enable row level security;
 
--- Policies (Basic Multi-tenancy)
--- Organizations: only super_admin can insert/update. Users can view their own org.
-create policy "Users can view own organization" on organizations
-  for select using (id = get_org_id());
+-- Policies (Robust Multi-tenancy)
 
--- Profiles: 
-create policy "Users can view profiles in their org" on profiles
-  for select using (organization_id = get_org_id());
+-- Organizations
+create policy "Select own organization" on organizations for select using (id = get_jwt_org_id());
+create policy "Update own organization" on organizations for update using (id = get_jwt_org_id()) with check (id = get_jwt_org_id());
 
--- Classes, Schedule, etc.: Viewable by org members
-create policy "View org classes" on classes for select using (organization_id = get_org_id());
-create policy "View org schedule" on schedule for select using (organization_id = get_org_id());
-create policy "View org study_sessions" on study_sessions for select using (organization_id = get_org_id());
-create policy "View org exam_results" on exam_results for select using (organization_id = get_org_id());
-create policy "View org attendance" on attendance for select using (organization_id = get_org_id());
-create policy "View org homework" on homework for select using (organization_id = get_org_id());
+-- Profiles
+create policy "Select org profiles" on profiles for select using (organization_id = get_jwt_org_id());
+create policy "Insert org profiles" on profiles for insert with check (organization_id = get_jwt_org_id());
+create policy "Update org profiles" on profiles for update using (organization_id = get_jwt_org_id()) with check (organization_id = get_jwt_org_id());
+create policy "Delete org profiles" on profiles for delete using (organization_id = get_jwt_org_id());
 
--- TODO: Add specific INSERT/UPDATE policies based on Role (e.g. Students can't create classes) -- NOSONAR
+-- Classes
+create policy "Select org classes" on classes for select using (organization_id = get_jwt_org_id());
+create policy "Insert org classes" on classes for insert with check (organization_id = get_jwt_org_id());
+create policy "Update org classes" on classes for update using (organization_id = get_jwt_org_id()) with check (organization_id = get_jwt_org_id());
+create policy "Delete org classes" on classes for delete using (organization_id = get_jwt_org_id());
+
+-- Schedule
+create policy "Select org schedule" on schedule for select using (organization_id = get_jwt_org_id());
+create policy "Insert org schedule" on schedule for insert with check (organization_id = get_jwt_org_id());
+create policy "Update org schedule" on schedule for update using (organization_id = get_jwt_org_id()) with check (organization_id = get_jwt_org_id());
+create policy "Delete org schedule" on schedule for delete using (organization_id = get_jwt_org_id());
+
+-- Study Sessions
+create policy "Select org study_sessions" on study_sessions for select using (organization_id = get_jwt_org_id());
+create policy "Insert org study_sessions" on study_sessions for insert with check (organization_id = get_jwt_org_id());
+create policy "Update org study_sessions" on study_sessions for update using (organization_id = get_jwt_org_id()) with check (organization_id = get_jwt_org_id());
+create policy "Delete org study_sessions" on study_sessions for delete using (organization_id = get_jwt_org_id());
+
+-- Exam Results
+create policy "Select org exam_results" on exam_results for select using (organization_id = get_jwt_org_id());
+create policy "Insert org exam_results" on exam_results for insert with check (organization_id = get_jwt_org_id());
+create policy "Update org exam_results" on exam_results for update using (organization_id = get_jwt_org_id()) with check (organization_id = get_jwt_org_id());
+create policy "Delete org exam_results" on exam_results for delete using (organization_id = get_jwt_org_id());
+
+-- Attendance
+create policy "Select org attendance" on attendance for select using (organization_id = get_jwt_org_id());
+create policy "Insert org attendance" on attendance for insert with check (organization_id = get_jwt_org_id());
+create policy "Update org attendance" on attendance for update using (organization_id = get_jwt_org_id()) with check (organization_id = get_jwt_org_id());
+create policy "Delete org attendance" on attendance for delete using (organization_id = get_jwt_org_id());
+
+-- Homework
+create policy "Select org homework" on homework for select using (organization_id = get_jwt_org_id());
+create policy "Insert org homework" on homework for insert with check (organization_id = get_jwt_org_id());
+create policy "Update org homework" on homework for update using (organization_id = get_jwt_org_id()) with check (organization_id = get_jwt_org_id());
+create policy "Delete org homework" on homework for delete using (organization_id = get_jwt_org_id());
