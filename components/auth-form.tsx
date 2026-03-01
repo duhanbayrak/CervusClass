@@ -394,18 +394,22 @@ export default function AuthForm({ role }: AuthFormProps) {
                                     href={currentConfig.switchLink}
                                     className="text-[#135bec] font-bold hover:underline inline-flex items-center gap-1 mt-1 sm:mt-0 ml-1"
                                 >
-                                    {role === 'student' ? 'Öğretmen Portalı' : role === 'teacher' ? 'Öğrenci Portalı' : 'Ana Sayfa'}
+                                    {(() => {
+                                        if (role === 'student') return 'Öğretmen Portalı';
+                                        if (role === 'teacher') return 'Öğrenci Portalı';
+                                        return 'Ana Sayfa';
+                                    })()}
                                     <ArrowRight className="w-4 h-4" />
                                 </a>
                             </p>
                         </div>
 
                         <div className="flex gap-6 text-xs text-[#9aaac8] font-medium">
-                            <a href="#" className="hover:text-[#135bec] transition-colors">Gizlilik Politikası</a>
+                            <button type="button" className="hover:text-[#135bec] transition-colors">Gizlilik Politikası</button>
                             <span>•</span>
-                            <a href="#" className="hover:text-[#135bec] transition-colors">Kullanım Şartları</a>
+                            <button type="button" className="hover:text-[#135bec] transition-colors">Kullanım Şartları</button>
                             <span>•</span>
-                            <a href="#" className="hover:text-[#135bec] transition-colors">Destek</a>
+                            <button type="button" className="hover:text-[#135bec] transition-colors">Destek</button>
                         </div>
                     </div>
 

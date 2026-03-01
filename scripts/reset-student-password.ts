@@ -1,7 +1,7 @@
 
 const { createClient: createSupabaseClient } = require('@supabase/supabase-js')
 const dotenv = require('dotenv')
-const path = require('path')
+const path = require('node:path')
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
@@ -62,6 +62,6 @@ async function resetPassword() {
     }
 }
 
-resetPassword()
+await resetPassword()
 
 export { }

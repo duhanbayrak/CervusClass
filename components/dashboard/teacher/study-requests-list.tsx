@@ -145,8 +145,12 @@ export default function StudyRequestsList({ pendingRequests, pastRequests }: Stu
                         <CardHeader className="pb-2">
                             <div className="flex justify-between items-center">
                                 <div className="font-medium">{req.student.full_name}</div>
-                                <Badge variant={req.status === 'approved' ? 'default' : req.status === 'completed' ? 'default' : 'destructive'}>
-                                    {req.status === 'approved' ? 'Onaylandı' : req.status === 'completed' ? 'Tamamlandı' : 'Reddedildi'}
+                                <Badge variant={req.status === 'rejected' ? 'destructive' : 'default'}>
+                                    {(() => {
+                                        if (req.status === 'approved') return 'Onaylandı';
+                                        if (req.status === 'completed') return 'Tamamlandı';
+                                        return 'Reddedildi';
+                                    })()}
                                 </Badge>
                             </div>
                         </CardHeader>

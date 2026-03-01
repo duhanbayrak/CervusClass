@@ -66,7 +66,7 @@ function buildUploadResult(successCount: number, errors: string[]): { message: s
         const limitErrors = errors.slice(0, 10);
         const remain = errors.length - 10;
         return {
-            message: `${successCount} öğrenci eklendi/güncellendi.\n\nHatalar:\n${limitErrors.join('\n')}${remain > 0 ? `\n...ve ${remain} hata daha.` : ''}`,
+            message: `${successCount} öğrenci eklendi/güncellendi.\n\nHatalar:\n${limitErrors.join('\n')}${remain > 0 ? '\n...ve ' + remain + ' hata daha.' : ''}`,
             success: successCount > 0
         };
     }

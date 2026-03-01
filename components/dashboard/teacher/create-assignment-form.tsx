@@ -13,7 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Removed to fix error
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/components/ui/use-toast";
@@ -239,14 +238,14 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
                                     <div className="space-y-3" role="radiogroup">
 
                                         {/* Option 1: Entire Class */}
-                                        <div
+                                        <label
+                                            htmlFor="entire_class"
                                             className={cn(
                                                 "flex items-center space-x-3 p-3 rounded-md border transition-colors cursor-pointer",
                                                 field.value === "entire_class"
                                                     ? "border-primary bg-primary/5 dark:bg-primary/10"
                                                     : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
                                             )}
-                                            onClick={() => field.onChange("entire_class")}
                                         >
                                             <input
                                                 type="radio"
@@ -257,22 +256,22 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
                                                 onChange={() => field.onChange("entire_class")}
                                                 className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer accent-primary"
                                             />
-                                            <Label htmlFor="entire_class" className="flex items-center gap-2 cursor-pointer flex-1 user-select-none">
+                                            <span className="flex items-center gap-2 cursor-pointer flex-1">
                                                 <Users className="w-4 h-4 text-indigo-600" />
                                                 <span className="font-medium">Tüm Sınıf</span>
                                                 <span className="text-sm text-slate-500">({students.length} öğrenci)</span>
-                                            </Label>
-                                        </div>
+                                            </span>
+                                        </label>
 
                                         {/* Option 2: Selected Students */}
-                                        <div
+                                        <label
+                                            htmlFor="selected_students"
                                             className={cn(
                                                 "flex items-center space-x-3 p-3 rounded-md border transition-colors cursor-pointer",
                                                 field.value === "selected_students"
                                                     ? "border-primary bg-primary/5 dark:bg-primary/10"
                                                     : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
                                             )}
-                                            onClick={() => field.onChange("selected_students")}
                                         >
                                             <input
                                                 type="radio"
@@ -283,14 +282,14 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
                                                 onChange={() => field.onChange("selected_students")}
                                                 className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer accent-primary"
                                             />
-                                            <Label htmlFor="selected_students" className="flex items-center gap-2 cursor-pointer flex-1 user-select-none">
+                                            <span className="flex items-center gap-2 cursor-pointer flex-1">
                                                 <UserCheck className="w-4 h-4 text-emerald-600" />
                                                 <span className="font-medium">Öğrenci Seç</span>
                                                 <span className="text-sm text-slate-500">
                                                     (Sadece seçili öğrencilere)
                                                 </span>
-                                            </Label>
-                                        </div>
+                                            </span>
+                                        </label>
 
                                     </div>
                                 )}
@@ -323,27 +322,23 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
                                         </div>
                                     </div>
 
-                                    {loadingStudents ? (
+                                    {loadingStudents && (
                                         <div className="flex items-center justify-center py-8">
                                             <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
                                         </div>
-                                    ) : students.length === 0 ? (
+                                    )}
+                                    {!loadingStudents && students.length === 0 && (
                                         <p className="text-sm text-slate-500 text-center py-4">Bu sınıfta öğrenci bulunmamaktadır.</p>
-                                    ) : (
+                                    )}
+                                    {!loadingStudents && students.length > 0 && (
                                         <div className="max-h-64 overflow-y-auto space-y-2 p-3 bg-white dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700">
                                             {students.map((student) => (
-                                                <div
+                                                <label
                                                     key={student.id}
                                                     className={cn(
                                                         "flex items-center space-x-3 p-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer",
                                                         selectedStudents.includes(student.id) && "bg-blue-50 dark:bg-blue-900/20"
                                                     )}
-                                                    onClick={(e) => {
-                                                        // Prevent double toggling if clicking directly on the input
-                                                        if ((e.target as HTMLElement).tagName !== 'INPUT') {
-                                                            toggleStudent(student.id);
-                                                        }
-                                                    }}
                                                 >
                                                     <input
                                                         type="checkbox"
@@ -351,10 +346,10 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
                                                         onChange={() => toggleStudent(student.id)}
                                                         className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer accent-primary"
                                                     />
-                                                    <Label className="flex-1 cursor-pointer font-normal user-select-none">
+                                                    <span className="flex-1 cursor-pointer font-normal">
                                                         {student.full_name}
-                                                    </Label>
-                                                </div>
+                                                    </span>
+                                                </label>
                                             ))}
                                         </div>
                                     )}

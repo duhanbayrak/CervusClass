@@ -4,7 +4,6 @@ import { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { User } from '@supabase/supabase-js';
 import { createClient } from "@/lib/supabase";
 import { Profile, ProfileRole } from '@/types/database';
-import { useRouter } from 'next/navigation';
 
 const supabase = createClient();
 
@@ -58,8 +57,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
-    const router = useRouter();
-
     useEffect(() => {
         let mounted = true;
         const controller = new AbortController();

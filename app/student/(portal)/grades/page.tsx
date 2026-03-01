@@ -55,7 +55,7 @@ export default async function StudentGradesPage() {
 
     // Determine Trend (Simple logic: compare last exam with average)
     const lastExamNet = exams.length > 0 ? exams[0].total_net : 0;
-    const isTrendingUp = parseFloat(lastExamNet.toString()) >= parseFloat(averageNet.toString());
+    const isTrendingUp = Number.parseFloat(lastExamNet.toString()) >= Number.parseFloat(averageNet.toString());
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -210,7 +210,7 @@ export default async function StudentGradesPage() {
                         <CardContent>
                             <p className="text-sm text-blue-900 dark:text-blue-100 leading-relaxed">
                                 Matematik netlerinizde istikrarlı bir artış var, ancak Kimya konularında eksiğiniz görünüyor.
-                                <span className="font-bold"> "Asitler ve Bazlar"</span> konusuna odaklanmanızı öneririz.
+                                {' '}<span className="font-bold">&quot;Asitler ve Bazlar&quot;</span>{' '}konusuna odaklanmanızı öneririz.
                             </p>
                         </CardContent>
                     </Card>

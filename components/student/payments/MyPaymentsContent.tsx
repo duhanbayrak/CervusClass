@@ -246,15 +246,17 @@ function FeeCard({ fee }: { fee: StudentFee }) {
             {/* Taksit detayları (accordion) */}
             {isOpen && (
                 <div className="border-t border-gray-100 dark:border-white/5">
-                    {isLoading ? (
+                    {isLoading && (
                         <div className="flex items-center justify-center py-8">
                             <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
                         </div>
-                    ) : installments.length === 0 ? (
+                    )}
+                    {!isLoading && installments.length === 0 && (
                         <p className="text-sm text-gray-400 text-center py-6">
                             Taksit bilgisi bulunamadı
                         </p>
-                    ) : (
+                    )}
+                    {!isLoading && installments.length > 0 && (
                         <>
                             {/* İlerleme çubuğu */}
                             <div className="px-5 pt-4 pb-2">
@@ -305,6 +307,7 @@ function FeeCard({ fee }: { fee: StudentFee }) {
                     )}
                 </div>
             )}
+
         </div>
     );
 }

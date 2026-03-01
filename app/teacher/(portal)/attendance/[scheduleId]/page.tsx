@@ -61,6 +61,7 @@ async function getScheduleWithStudents(scheduleId: string) {
         .order('full_name');
 
     if (studentsError) {
+        // Non-critical error; proceed with empty student list
     }
 
     // 3. Calculate Target Date based on Schedule Day of Week

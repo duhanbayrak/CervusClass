@@ -108,7 +108,7 @@ export default async function AttendancePage(props: PageProps) {
     const todayJS = new Date().getDay(); // 0=Sun, 1=Mon
     const todayISO = todayJS === 0 ? 7 : todayJS;
 
-    const selectedDay = searchParams.day ? parseInt(searchParams.day) : todayISO;
+    const selectedDay = searchParams.day ? Number.parseInt(searchParams.day) : todayISO;
     const items = await getSchedule(selectedDay);
 
     if (items === null) {

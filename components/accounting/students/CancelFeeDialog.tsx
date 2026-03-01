@@ -131,7 +131,7 @@ export function CancelFeeDialog({ fee, installments, currency, onClose }: Cancel
                     {/* İade seçeneği (ödeme varsa göster) */}
                     {totalPaid > 0 && (
                         <div className="space-y-3">
-                            <label htmlFor="refundCheckbox" className="flex items-center gap-3 cursor-pointer group">
+                            <label htmlFor="refundCheckbox" aria-label="İade Yap" className="flex items-center gap-3 cursor-pointer group">
                                 <input
                                     id="refundCheckbox"
                                     type="checkbox"

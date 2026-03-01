@@ -108,6 +108,8 @@ export default function TeacherDialog({ open, onOpenChange, teacher, branches, o
         }
     };
 
+    const submitLabel = teacher ? 'Güncelle' : 'Kaydet';
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[500px]">
@@ -205,7 +207,7 @@ export default function TeacherDialog({ open, onOpenChange, teacher, branches, o
                     )}
                     <DialogFooter>
                         <Button type="submit" disabled={isLoading}>
-                            {isLoading ? 'İşleniyor...' : (teacher ? 'Güncelle' : 'Kaydet')}
+                            {isLoading ? 'İşleniyor...' : submitLabel}
                         </Button>
                     </DialogFooter>
                 </form>

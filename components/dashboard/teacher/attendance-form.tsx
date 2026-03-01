@@ -232,7 +232,7 @@ export default function AttendanceForm({
                                     min={1}
                                     max={60}
                                     value={attendance[student.id]?.late_minutes || 5}
-                                    onChange={(e) => handleLateMinutesChange(student.id, parseInt(e.target.value) || 0)}
+                                    onChange={(e) => handleLateMinutesChange(student.id, Number.parseInt(e.target.value) || 0)}
                                     className="w-20 h-8"
                                 />
                             </div>

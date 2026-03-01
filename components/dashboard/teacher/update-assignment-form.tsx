@@ -49,7 +49,7 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
 
     // Form State
     const [description, setDescription] = useState(assignment.description);
-    const [classId, setClassId] = useState(assignment.class_id);
+    const [classId] = useState(assignment.class_id);
     const [date, setDate] = useState<Date | undefined>(new Date(assignment.due_date));
 
     // Assignment Mode State
@@ -133,8 +133,6 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
         setIsLoading(true);
 
         try {
-            const assignedIds = assignmentMode === 'selected_students' ? selectedStudents : null;
-
             const { error } = await supabase
                 .from('homework')
                 .update({
@@ -227,13 +225,15 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
                                 </div>
                             </div>
 
-                            {loadingStudents ? (
+                            {loadingStudents && (
                                 <div className="flex justify-center p-4">
                                     <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
                                 </div>
-                            ) : students.length === 0 ? (
+                            )}
+                            {!loadingStudents && students.length === 0 && (
                                 <p className="text-sm text-muted-foreground text-center py-4">Bu sınıfta kayıtlı öğrenci bulunamadı.</p>
-                            ) : (
+                            )}
+                            {!loadingStudents && students.length > 0 && (
                                 <ScrollArea className="h-[200px] pr-4">
                                     <div className="space-y-2">
                                         {students.map((student) => (

@@ -228,7 +228,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                         const daySessions = sessionsByDateKey.get(dateKey) || [];
 
                         return (
-                            <div key={i} className="flex-none w-[200px] md:w-[180px] border-r border-b relative group/col">
+                            <div key={dateKey} className="flex-none w-[200px] md:w-[180px] border-r border-b relative group/col">
                                 {/* Header */}
                                 <div className="h-14 sticky top-0 bg-background z-30 border-b flex flex-col items-center justify-center font-medium shadow-sm">
                                     <span className="text-sm text-muted-foreground">{dayName}</span>

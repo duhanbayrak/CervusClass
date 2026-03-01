@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const debugFile = path.join(__dirname, 'debug_exams.json');
 const exams = JSON.parse(fs.readFileSync(debugFile, 'utf8'));

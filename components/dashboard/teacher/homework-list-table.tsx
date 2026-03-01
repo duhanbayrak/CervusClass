@@ -101,7 +101,6 @@ export default function HomeworkListTable({ activeAssignments = [], pastAssignme
             <TableBody>
                 {list.length > 0 ? (
                     list.map((hw) => {
-                        const isPast = new Date(hw.due_date) < new Date();
                         return (
                             <TableRow key={hw.id}>
                                 <TableCell className="font-medium max-w-xs truncate" title={hw.description}>
