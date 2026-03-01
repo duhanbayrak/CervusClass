@@ -64,7 +64,7 @@ interface Teacher {
     bio?: string | null;
 }
 
-export default function TeacherList({ initialTeachers, initialBranches }: { initialTeachers: Teacher[], initialBranches: string[] }) { // NOSONAR
+export default function TeacherList({ initialTeachers, initialBranches }: { initialTeachers: Teacher[], initialBranches: string[] }) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [searchTerm, setSearchTerm] = useState('');
@@ -333,7 +333,7 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
                             )}
                             <DialogFooter>
                                 <Button type="submit" disabled={isLoading}>
-                                    {isLoading ? 'İşleniyor...' : editingTeacher ? 'Güncelle' : 'Kaydet'} // NOSONAR
+                                    {isLoading ? 'İşleniyor...' : editingTeacher ? 'Güncelle' : 'Kaydet'}
                                 </Button>
                             </DialogFooter>
                         </form>
