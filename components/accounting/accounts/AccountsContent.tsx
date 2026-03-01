@@ -156,15 +156,7 @@ export function AccountsContent({ accounts }: AccountsContentProps) {
                 })}
 
                 {/* Yeni hesap ekle butonu / form */}
-                {!showForm ? (
-                    <button
-                        onClick={() => setShowForm(true)}
-                        className="rounded-xl border-2 border-dashed border-gray-200 dark:border-white/10 p-5 flex flex-col items-center justify-center gap-2 min-h-[140px] hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/5 transition-all cursor-pointer"
-                    >
-                        <Plus className="w-8 h-8 text-gray-400" />
-                        <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">Yeni Hesap Ekle</span>
-                    </button>
-                ) : (
+                {showForm ? (
                     <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-900/10 p-5 space-y-3">
                         <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Yeni Hesap</h4>
                         <div>
@@ -221,6 +213,14 @@ export function AccountsContent({ accounts }: AccountsContentProps) {
                             </button>
                         </div>
                     </div>
+                ) : (
+                    <button
+                        onClick={() => setShowForm(true)}
+                        className="rounded-xl border-2 border-dashed border-gray-200 dark:border-white/10 p-5 flex flex-col items-center justify-center gap-2 min-h-[140px] hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/5 transition-all cursor-pointer"
+                    >
+                        <Plus className="w-8 h-8 text-gray-400" />
+                        <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">Yeni Hesap Ekle</span>
+                    </button>
                 )}
             </div>
 

@@ -101,7 +101,7 @@ interface VisibleSeries {
 function computeYAxisConfig(data: any[], dataKeys: string[]) {
     const values = data.flatMap(d =>
         dataKeys.map(k => d[k]).filter(v => v != null && typeof v === 'number')
-    ) as number[]
+    )
 
     if (values.length === 0) return {}
 

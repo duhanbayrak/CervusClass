@@ -42,6 +42,4 @@ async function resetPassword() {
     }
 }
 
-await resetPassword()
 
-export { }

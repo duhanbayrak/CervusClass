@@ -147,35 +147,39 @@ export function NotificationDropdown() {
                             </div>
                         )}
                         {!isLoading && notifications.length > 0 && notifications.map((notification) => (
-                                <button
-                                    key={notification.id}
-                                    type="button"
-                                    onClick={() => { if (notification.is_read) return; handleMarkAsRead(notification.id); }}
-                                    className={`w-full text-left px-4 py-3 border-b border-slate-50 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${!notification.is_read ? 'bg-blue-50/50 dark:bg-blue-900/5' : ''
-                                        }`}
-                                >
-                                    <div className="flex gap-3">
-                                        <div className={`mt-0.5 p-1.5 rounded-lg shrink-0 ${typeBg(notification.type)}`}>
-                                            {typeIcon(notification.type)}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <p className={`text-sm font-medium ${!notification.is_read ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
-                                                    {notification.title}
-                                                </p>
-                                                {!notification.is_read && (
-                                                    <span className="h-2 w-2 bg-[#135bec] rounded-full shrink-0"></span>
-                                                )}
-                                            </div>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
-                                                {notification.message}
-                                            </p>
-                                            <p className="text-[10px] text-slate-400 mt-1">
-                                                {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: tr })}
-                                            </p>
-                                        </div>
+                            <button
+                                key={notification.id}
+                                type="button"
+                                onClick={() => {
+                                    if (!notification.is_read) {
+                                        handleMarkAsRead(notification.id);
+                                    }
+                                }}
+                                className={`w-full text-left px-4 py-3 border-b border-slate-50 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${notification.is_read ? '' : 'bg-blue-50/50 dark:bg-blue-900/5'
+                                    }`}
+                            >
+                                <div className="flex gap-3">
+                                    <div className={`mt-0.5 p-1.5 rounded-lg shrink-0 ${typeBg(notification.type)}`}>
+                                        {typeIcon(notification.type)}
                                     </div>
-                                </button>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <p className={`text-sm font-medium ${notification.is_read ? 'text-slate-600 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>
+                                                {notification.title}
+                                            </p>
+                                            {!notification.is_read && (
+                                                <span className="h-2 w-2 bg-[#135bec] rounded-full shrink-0"></span>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
+                                            {notification.message}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400 mt-1">
+                                            {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: tr })}
+                                        </p>
+                                    </div>
+                                </div>
+                            </button>
                         ))}
                         {!isLoading && notifications.length === 0 && (
                             <div className="text-center py-12 text-slate-400">

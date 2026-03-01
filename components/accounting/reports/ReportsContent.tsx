@@ -62,7 +62,7 @@ function exportToCSV(transactions: FinanceTransaction[]) {
 
     // BOM ile CSV oluştur (Türkçe karakter desteği)
     const csvContent = '\uFEFF' + [headers, ...rows].map(row =>
-        row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(';')
+        row.map(cell => `"${cell.replaceAll('"', '""')}"`).join(';')
     ).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
