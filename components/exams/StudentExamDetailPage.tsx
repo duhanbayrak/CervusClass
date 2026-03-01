@@ -8,6 +8,7 @@ import {
     User,
     Award,
     TrendingUp,
+    BarChart3,
     LineChart,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
