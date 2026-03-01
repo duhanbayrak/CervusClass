@@ -6,10 +6,17 @@ import { getAuthContext } from "@/lib/auth-context";
 import { logger } from "@/lib/logger";
 import { format } from "date-fns";
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Missing Supabase environment variables')
+}
+
 // Admin client - Auth API (kullanıcı oluşturma) ve Rol bypass için gerekli
 const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
-    process.env.SUPABASE_SERVICE_ROLE_KEY!, // NOSONAR
+    supabaseUrl,
+    supabaseServiceKey,
     {
         auth: {
             autoRefreshToken: false,
@@ -167,7 +174,7 @@ export async function registerStudent(data: RegistrationFormData) {
         logger.error('Öğrenci kayıt hatası — rollback başlatılıyor', { action: 'registerStudent' }, err);
         for (let i = rollbackActions.length - 1; i >= 0; i--) {
             try { await rollbackActions[i](); }
-            catch (rollbackErr) { logger.error('Rollback başarısız', { action: 'registerStudent.rollback' }, rollbackErr); }
+            catch (error_) { logger.error('Rollback başarısız', { action: 'registerStudent.rollback' }, error_); }
         }
         return { success: false, error: err instanceof Error ? err.message : 'Kayıt sırasında beklenmeyen bir hata oluştu.' };
     }

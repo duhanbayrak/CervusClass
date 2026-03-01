@@ -4,7 +4,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users } from "lucide-react";
-import {} from "@/components/ui/button"; // NOSONAR
 import {
     Table,
     TableBody,
@@ -15,11 +14,6 @@ import {
 } from "@/components/ui/table";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import { updateStudySessionStatus } from "@/lib/actions/study-session-admin"; // NOSONAR
- // NOSONAR
-import { toast } from "sonner"; // NOSONAR
- // NOSONAR
-import { useState } from "react"; // NOSONAR
 
 interface TeacherProfileTabsProps {
     homeworks: any[];
@@ -27,7 +21,7 @@ interface TeacherProfileTabsProps {
     weeklySchedule: any;
 }
 
-export default function TeacherProfileTabs({ homeworks, studySessions, weeklySchedule }: Readonly<TeacherProfileTabsProps>) { // NOSONAR
+export default function TeacherProfileTabs({ homeworks, studySessions, weeklySchedule }: Readonly<TeacherProfileTabsProps>) {
     const dayNames = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
 
     return (
@@ -124,7 +118,8 @@ export default function TeacherProfileTabs({ homeworks, studySessions, weeklySch
                                 {homeworks && homeworks.length > 0 ? (
                                     homeworks.map((hw: any) => {
                                         const dueDate = hw.due_date ? new Date(hw.due_date) : new Date(0); // If no date, assume past
-                                        const isPast = dueDate.getTime() < Date.now(); // NOSONAR
+                                        const isPast = dueDate.getTime() < Date.now();
+                                        // NOSONAR
 
                                         // Calculate completion status
                                         const assignedCount = hw.assigned_student_ids?.length || 0;

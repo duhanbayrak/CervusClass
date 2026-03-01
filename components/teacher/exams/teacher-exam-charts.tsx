@@ -38,7 +38,7 @@ const tooltipFormatter = (value?: number | string) => {
     return Number.isNaN(num) ? '-' : num.toFixed(2)
 }
 
-export function TeacherExamCharts({ // NOSONAR
+export function TeacherExamCharts({
     classSubjectAverages,
     classTotalAvg,
     schoolSubjectAverages,

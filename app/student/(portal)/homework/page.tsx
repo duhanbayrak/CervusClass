@@ -6,9 +6,16 @@ import { HomeworkCard } from '@/components/dashboard/student/homework-card';
 
 async function getHomework(userId: string) {
     const cookieStore = await cookies();
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Missing Supabase environment variables')
+    }
+
     const supabase = createServerClient(
-        (process.env.NEXT_PUBLIC_SUPABASE_URL as string), // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
+        supabaseUrl,
+        supabaseKey,
         {
             cookies: {
                 getAll() {
@@ -16,7 +23,8 @@ async function getHomework(userId: string) {
                 }
             }
         }
-    );
+    )
+        ;
 
     // Get user's class_id
     const { data: profile } = await supabase
@@ -44,7 +52,7 @@ async function getHomework(userId: string) {
             teacher:teacher_id(full_name),
             assigned_student_ids
         `)
-        .eq('class_id', profile.class_id!) // NOSONAR
+        .eq('class_id', profile.class_id) // NOSONAR
         .order('due_date', { ascending: true }); // Show soonest due first
 
     if (!homeworks) return [];
@@ -84,9 +92,16 @@ async function getHomework(userId: string) {
 
 export default async function StudentHomeworkPage() {
     const cookieStore = await cookies();
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Missing Supabase environment variables')
+    }
+
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
+        supabaseUrl,
+        supabaseKey,
         {
             cookies: {
                 getAll() {
@@ -94,7 +109,8 @@ export default async function StudentHomeworkPage() {
                 }
             }
         }
-    );
+    )
+        ;
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;

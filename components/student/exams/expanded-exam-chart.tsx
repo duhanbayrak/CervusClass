@@ -61,7 +61,8 @@ const COLORS = {
 
 // --- Component ---
 
-export function ExpandedExamChart({ data }: Readonly<ExpandedExamChartProps>) { // NOSONAR
+export function ExpandedExamChart({ data }: Readonly<ExpandedExamChartProps>) {
+    // NOSONAR
     const [isBarChart, setIsBarChart] = useState(false)
     const [filter, setFilter] = useState<FilterType>('all')
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
@@ -83,17 +84,18 @@ export function ExpandedExamChart({ data }: Readonly<ExpandedExamChartProps>) {
         })
 
         // 2. Apply Custom Date Filter
-        if (filter === 'custom' && dateRange?.from) {
+        const fromDate = dateRange?.from
+        if (filter === 'custom' && fromDate) {
             processed = processed.filter(item => {
                 if (!item.originalDate) return false
                 // Set to start/end of days for comparison
                 const d = new Date(item.originalDate)
                 d.setHours(0, 0, 0, 0)
 
-                const f = new Date(dateRange.from!) // NOSONAR
+                const f = new Date(fromDate)
                 f.setHours(0, 0, 0, 0)
 
-                const t = new Date(dateRange.to || dateRange.from!)
+                const t = new Date(dateRange.to || fromDate)
                 t.setHours(23, 59, 59, 999)
 
                 return d >= f && d <= t
@@ -267,7 +269,6 @@ export function ExpandedExamChart({ data }: Readonly<ExpandedExamChartProps>) {
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
-                                initialFocus
                                 mode="range"
                                 defaultMonth={dateRange?.from}
                                 selected={dateRange}

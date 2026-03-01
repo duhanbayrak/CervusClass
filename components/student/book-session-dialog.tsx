@@ -1,7 +1,5 @@
 'use client'
 
-'use client'
-
 
 
 import { Button } from "@/components/ui/button"
@@ -9,7 +7,8 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
-     // NOSONAR
+
+    // NOSONAR
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -31,7 +30,8 @@ import { WeeklyScheduler } from "@/components/schedule/WeeklyScheduler"
 import { ScheduleEvent, StudySessionEvent } from "@/types/schedule";
 import { cn } from "@/lib/utils"
 
-export function BookSessionDialog({ userId }: Readonly<{ userId: string }>) { // NOSONAR
+export function BookSessionDialog({ userId }: Readonly<{ userId: string }>) {
+    // NOSONAR
     const [open, setOpen] = useState(false)
     const [step, setStep] = useState<'select-teacher' | 'select-slot'>('select-teacher')
 
@@ -65,7 +65,8 @@ export function BookSessionDialog({ userId }: Readonly<{ userId: string }>) { /
 
             if ('error' in result && result.error) {
 
-                toast.error(result.error as string) // NOSONAR
+                toast.error(result.error)
+                // NOSONAR
                 setTeachers([])
             } else {
                 const data = (result as any).data || []
@@ -76,8 +77,8 @@ export function BookSessionDialog({ userId }: Readonly<{ userId: string }>) { /
                     toast.warning("Liste boş geldi (Hatasız)")
                 }
             }
-        } catch (e) { // NOSONAR
-
+        } catch (e) { // NOSONAR
+            console.error('Error fetching teachers:', e);
             toast.error("Beklenmedik bir hata oluştu")
         } finally {
             setLoadingTeachers(false)
@@ -115,7 +116,7 @@ export function BookSessionDialog({ userId }: Readonly<{ userId: string }>) { /
     const handleEventClick = (event: ScheduleEvent | StudySessionEvent) => {
         // Only allow clicking 'available' study sessions
         if ('scheduled_at' in event) {
-            const session = event as StudySessionEvent // NOSONAR
+            const session = event
             if (session.status === 'available') {
                 setSelectedSession(session)
             }
@@ -138,7 +139,8 @@ export function BookSessionDialog({ userId }: Readonly<{ userId: string }>) { /
                 setSelectedSession(null)
                 setTopic("")
             }
-        } catch (err) { // NOSONAR
+        } catch (err) { // NOSONAR
+            console.error('Error submitting session request:', err);
             toast.error("Bir hata oluştu")
         } finally {
             setSubmitting(false)

@@ -26,7 +26,7 @@ export async function getFinanceCategories(type?: 'income' | 'expense'): Promise
 
     const { data, error: fetchError } = await query;
     if (fetchError) return [];
-    return (data || []) as FinanceCategory[];
+    return (data || []) as any; // Type defined in Promise return
 }
 
 /**
@@ -54,7 +54,7 @@ export async function createFinanceCategory(category: {
         .single();
 
     if (insertError) return { success: false, error: insertError.message };
-    return { success: true, data: data as FinanceCategory };
+    return { success: true, data: data as any };
 }
 
 /**
@@ -147,7 +147,7 @@ export async function getFinanceTransactions(filters?: {
 
     const { data, count, error: fetchError } = await query;
     if (fetchError) return { data: [], count: 0 };
-    return { data: (data || []) as FinanceTransaction[], count: count || 0 };
+    return { data: (data || []) as any, count: count || 0 };
 }
 
 /**

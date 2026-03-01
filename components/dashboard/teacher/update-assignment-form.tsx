@@ -1,4 +1,5 @@
 "use client";
+
 import { CheckCircle2, Loader2, Calendar as CalendarIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -10,12 +11,9 @@ import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {} from '@/components/ui/input'; // NOSONAR
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // NOSONAR
 import { cn } from "@/lib/utils";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // NOSONAR
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface ClassItem {
@@ -41,7 +39,7 @@ interface UpdateAssignmentFormProps {
     initialStudents?: Student[];
 }
 
-export default function UpdateAssignmentForm({ assignment, classes, userId, initialStudents = [] }: Readonly<UpdateAssignmentFormProps>) { // NOSONAR
+export default function UpdateAssignmentForm({ assignment, classes, userId, initialStudents = [] }: Readonly<UpdateAssignmentFormProps>) {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [success, setSuccess] = useState(false);
@@ -66,8 +64,8 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
 
     // Create supabase client once
     const [supabase] = useState(() => createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! // NOSONAR
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     ));
 
     // Fetch students when classId changes
@@ -92,21 +90,22 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
                     .order('full_name');
 
                 if (error) {
-
+                    console.error('Supabase error fetching students:', error);
                     return;
                 }
 
                 setStudents(data || []);
 
                 // If class changed and we are not in initial load (simple check), maybe reset selection?
+                // If class changes and we are not in initial load (simple check), maybe reset selection?
                 // But for update form, we want to keep initial selection if class hasn't changed.
                 // If class changes, existing selection might be invalid.
                 if (classId !== assignment.class_id) {
                     setSelectedStudents([]);
                 }
 
-            } catch (err) { // NOSONAR
-
+            } catch (err) {
+                console.error('Error fetching students:', err);
             } finally {
                 setLoadingStudents(false);
             }
@@ -116,7 +115,7 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
     }, [classId, supabase, assignment.class_id, initialStudents]);
 
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         if (!description || !classId || !date) {
@@ -273,7 +272,6 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
                                     mode="single"
                                     selected={date}
                                     onSelect={setDate}
-                                    initialFocus
                                     locale={tr}
                                 />
                             </PopoverContent>

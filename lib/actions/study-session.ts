@@ -71,7 +71,7 @@ export async function getTeacherSchedule(teacherId: string) {
         }
 
         // Status adını güvenli al
-        const getStatus = (s: Record<string, unknown>) => (s.study_session_statuses as Record<string, string> | null)?.name;
+        const getStatus = (s: any) => s.study_session_statuses?.name;
 
         // Oturumları sanitize et — başkalarının detaylarını gizle
         const sessions = rawSessions?.filter(s => getStatus(s) !== 'cancelled').map(session => {
@@ -417,8 +417,8 @@ async function checkAvailabilityConflicts(
         const classEnd = new Date(`${dateString}T${cls.end_time}+03:00`);
 
         if (startDateTime < classEnd && endDateTime > classStart) {
-            const courseName = (cls as Record<string, unknown>).courses as Record<string, string> | null;
-            return { error: `Bu saatte dersiniz var: ${courseName?.name || 'Ders'}` };
+            const courseData = (cls as any).courses;
+            return { error: `Bu saatte dersiniz var: ${courseData?.name || 'Ders'}` };
         }
     }
 

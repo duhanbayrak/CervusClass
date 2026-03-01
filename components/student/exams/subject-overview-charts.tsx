@@ -209,7 +209,7 @@ function renderSubjectChart(data: any[], isBarChart: boolean, visibleSeries: Vis
     )
 }
 
-export function SubjectOverviewCharts({ // NOSONAR
+export function SubjectOverviewCharts({
     studentExams,
     classSubjectOverview,
     schoolSubjectOverview,
@@ -310,7 +310,8 @@ export function SubjectOverviewCharts({ // NOSONAR
     // Sayfa indekslerine göre her dersin datasını kes
     const pageIndices = getPageData(currentPage)
     const pageStart = pageIndices[0] ?? 0
-    const pageEnd = (pageIndices.at(-1) ?? 0) + 1 // NOSONAR
+    const pageEnd = (pageIndices.at(-1) ?? 0) + 1
+    // NOSONAR
 
     return (
         <>

@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {} from '@/lib/utils'; // NOSONAR
 import Image from "next/image";
 import { Lock, ArrowRight, Eye, EyeOff, Mail, KeyRound, AlertCircle } from 'lucide-react';
 import ForcePasswordResetModal from './force-password-reset-modal';
@@ -15,7 +14,7 @@ interface AuthFormProps {
     role: 'student' | 'teacher' | 'admin' | 'super_admin';
 }
 
-export default function AuthForm({ role }: Readonly<AuthFormProps>) { // NOSONAR
+export default function AuthForm({ role }: Readonly<AuthFormProps>) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -60,7 +59,7 @@ export default function AuthForm({ role }: Readonly<AuthFormProps>) { // NOSONA
 
     const currentConfig = config[role];
 
-    const handleSignIn = async (e: React.FormEvent) => {
+    const handleSignIn = async (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
@@ -79,14 +78,15 @@ export default function AuthForm({ role }: Readonly<AuthFormProps>) { // NOSONA
             router.refresh();
             router.push(`/${role}/dashboard`);
 
-        } catch (err: any) {
-            setError(err.message || 'Giriş yapılamadı. Bilgilerinizi kontrol edin.');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Giriş yapılamadı. Bilgilerinizi kontrol edin.';
+            setError(message);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleSendOtp = async (e: React.FormEvent) => {
+    const handleSendOtp = async (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
@@ -105,14 +105,15 @@ export default function AuthForm({ role }: Readonly<AuthFormProps>) { // NOSONA
             }
 
             setView('otp_verify');
-        } catch (err: any) {
-            setError(err.message || 'Doğrulama kodu gönderilirken bir hata oluştu.');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Doğrulama kodu gönderilirken bir hata oluştu.';
+            setError(message);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleVerifyOtp = async (e: React.FormEvent) => {
+    const handleVerifyOtp = async (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
@@ -136,8 +137,9 @@ export default function AuthForm({ role }: Readonly<AuthFormProps>) { // NOSONA
                 throw new Error("Kullanıcı bilgisi alınamadı.");
             }
 
-        } catch (err: any) {
-            setError(err.message || 'Kod doğrulanamadı. Lütfen tekrar deneyin.');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Kod doğrulanamadı. Lütfen tekrar deneyin.';
+            setError(message);
         } finally {
             setLoading(false);
         }

@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react'
 import { cn } from '@/lib/utils'
-import { } from '@/types/database'
 import { CalendarPlus, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import { CreateAvailabilityDialog } from './create-availability-dialog'
 import { Button } from '../ui/button'

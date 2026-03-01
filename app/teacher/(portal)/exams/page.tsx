@@ -30,9 +30,16 @@ interface ClassExamData {
 
 async function getExamsByClass() {
     const cookieStore = await cookies()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Missing Supabase environment variables')
+    }
+
     const supabase = createServerClient(
-        (process.env.NEXT_PUBLIC_SUPABASE_URL as string), // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
+        supabaseUrl,
+        supabaseKey,
         {
             cookies: {
                 getAll() {
@@ -87,7 +94,9 @@ async function getExamsByClass() {
             })
         }
 
-        const exam = examMap.get(examKey)!
+        const exam = examMap.get(examKey)
+        if (!exam) return
+
         let classData = exam.classes.find(c => c.classId === classId)
 
         if (!classData) {
@@ -122,9 +131,16 @@ async function getExamsByClass() {
 
 export default async function TeacherExamsPage() {
     const cookieStore = await cookies()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Missing Supabase environment variables')
+    }
+
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!, // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
+        supabaseUrl,
+        supabaseKey,
         {
             cookies: {
                 getAll() {

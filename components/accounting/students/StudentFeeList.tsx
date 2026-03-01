@@ -35,7 +35,7 @@ function getStatusStyle(status: string) {
     }
 }
 
-export function StudentFeeList({ fees, currency }: Readonly<StudentFeeListProps>) { // NOSONAR
+export function StudentFeeList({ fees, currency }: Readonly<StudentFeeListProps>) {
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');

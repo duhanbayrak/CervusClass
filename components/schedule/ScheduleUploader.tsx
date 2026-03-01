@@ -32,7 +32,8 @@ export function ScheduleUploader() {
                     duration: 10000
                 })
             }
-        } catch (e) { // NOSONAR
+        } catch (e) {
+            console.error('Error uploading schedule:', e);
             toast.error('Bir hata oluştu.')
         } finally {
             setIsPending(false)

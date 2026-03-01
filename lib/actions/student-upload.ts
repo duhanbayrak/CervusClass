@@ -7,10 +7,17 @@ import { getAuthContext } from '@/lib/auth-context';
 import { getUserRole } from '@/lib/auth-helpers';
 import { Profile } from '@/types/database';
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Missing Supabase environment variables')
+}
+
 // Admin client for user management (Service Role)
 const supabaseAdmin = createClient(
-    (process.env.NEXT_PUBLIC_SUPABASE_URL as string), // NOSONAR
-    process.env.SUPABASE_SERVICE_ROLE_KEY!, // NOSONAR
+    supabaseUrl,
+    supabaseServiceKey,
     {
         auth: {
             autoRefreshToken: false,
@@ -57,7 +64,7 @@ async function prefetchUploadData(
     return {
         classMap: new Map(classes?.map(c => [c.name.trim().toLowerCase(), c.id])),
         studentRoleId: roleData.id,
-        existingProfileMap: new Map(existingProfiles?.map(p => [p.email!.toLowerCase(), p.id])),
+        existingProfileMap: new Map(existingProfiles?.map(p => [(p.email || '').toLowerCase(), p.id])),
     };
 }
 

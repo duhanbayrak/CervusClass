@@ -39,18 +39,23 @@ function getRoleForPath(path: string, role: ProfileRole | undefined, requestUrl:
     return null
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     const path = request.nextUrl.pathname
 
     if (isStaticPath(path)) return NextResponse.next()
 
     let response = NextResponse.next({ request: { headers: request.headers } })
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Missing Supabase environment variables')
+    }
+
     const supabase = createServerClient(
-        (process.env.NEXT_PUBLIC_SUPABASE_URL as string),
-        // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        // NOSONAR
+        supabaseUrl,
+        supabaseAnonKey,
         {
             cookies: {
                 getAll() {
@@ -88,6 +93,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
     matcher: [
-        String.raw`/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)`, // NOSONAR
+        "/((?!_next/static|_next/image|favicon.ico|.*[.] (?:svg|png|jpg|jpeg|gif|webp)$).*)", // Plain string literal for Next.js static analysis
     ],
 }

@@ -29,9 +29,16 @@ interface ClassExamData {
 
 async function getExams(page: number = 1, limit: number = 10) {
     const cookieStore = await cookies()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Missing Supabase environment variables')
+    }
+
     const supabase = createServerClient(
-        (process.env.NEXT_PUBLIC_SUPABASE_URL as string), // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
+        supabaseUrl,
+        supabaseKey,
         {
             cookies: {
                 getAll() {
@@ -120,7 +127,9 @@ async function getExams(page: number = 1, limit: number = 10) {
 
         if (!className || !classId) return
 
-        const exam = examMap.get(examKey)!
+        const exam = examMap.get(examKey)
+        if (!exam) return
+
         let classData = exam.classes.find(c => c.classId === classId)
 
         if (!classData) {
@@ -155,7 +164,8 @@ async function getExams(page: number = 1, limit: number = 10) {
     }
 }
 
-export default async function AdminExamsPage({ searchParams }: Readonly<{ searchParams: { page?: string } }>) { // NOSONAR
+export default async function AdminExamsPage({ searchParams }: Readonly<{ searchParams: { page?: string } }>) {
+    // NOSONAR
     // Await searchParams before accessing properties
     const resolvedSearchParams = await Promise.resolve(searchParams);
     const page = Number(resolvedSearchParams?.page) || 1

@@ -33,24 +33,25 @@ interface PendingStudyRequestsListProps {
     requests: StudyRequest[];
 }
 
-export function PendingStudyRequestsList({ requests }: Readonly<PendingStudyRequestsListProps>) { // NOSONAR
+export function PendingStudyRequestsList({ requests }: Readonly<PendingStudyRequestsListProps>) {
     const [processing, setProcessing] = useState<string | null>(null);
     const [rejectReason, setRejectReason] = useState("");
     const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
     const [isRejectOpen, setIsRejectOpen] = useState(false);
     const router = useRouter();
 
-    const handleApprove = async (id: string) => {
-        setProcessing(id);
+    const handleApprove = async (sessionId: string) => {
+        setProcessing(sessionId);
         try {
-            const res = await approveSession(id);
+            const res = await approveSession(sessionId);
             if (res?.error) {
                 toast.error(res.error);
             } else {
                 toast.success("Etüt talebi onaylandı");
                 router.refresh();
             }
-        } catch (error) { // NOSONAR
+        } catch (error) {
+            console.error('Error approving session:', error);
             toast.error("Bir hata oluştu");
         } finally {
             setProcessing(null);
@@ -75,7 +76,8 @@ export function PendingStudyRequestsList({ requests }: Readonly<PendingStudyRequ
                 setRejectReason("");
                 router.refresh();
             }
-        } catch (error) { // NOSONAR
+        } catch (error) {
+            console.error('Error rejecting session:', error);
             toast.error("Bir hata oluştu");
         } finally {
             setProcessing(null);

@@ -20,16 +20,16 @@ const nextConfig: NextConfig = {
 };
 
 export default withSentryConfig(nextConfig, {
-    org: process.env.SENTRY_ORG,
-    project: process.env.SENTRY_PROJECT,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
 
-    // Source map yüklemeyi sadece CI/prod'da yap
-    silent: !process.env.CI,
+  // Source map yüklemeyi sadece CI/prod'da yap
+  silent: !process.env.CI,
 
-    widenClientFileUpload: true,
+  widenClientFileUpload: true,
 
-    // Tunnel — ad blocker'ların Sentry'yi engellemesini önler
-    tunnelRoute: "/monitoring",
+  // Tunnel — ad blocker'ların Sentry'yi engellemesini önler
+  tunnelRoute: "/monitoring",
 
-    automaticVercelMonitors: false,
+
 });

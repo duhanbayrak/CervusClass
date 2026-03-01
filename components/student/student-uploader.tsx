@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Upload, Loader2, Download } from 'lucide-react' // NOSONAR
+import { Upload, Loader2, Download } from 'lucide-react'
+// NOSONAR
 import { toast } from 'sonner'
 import { uploadStudents } from '@/lib/actions/student-upload'
 // Duplicate import removed
@@ -35,7 +36,8 @@ export function StudentUploader() {
                     duration: 10000 // Long duration to read errors
                 })
             }
-        } catch (e) { // NOSONAR
+        } catch (e) {
+            console.error('Error uploading students:', e);
             toast.error('Bir hata oluştu.')
         } finally {
             setIsPending(false)

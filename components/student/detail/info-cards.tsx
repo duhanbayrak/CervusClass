@@ -8,7 +8,6 @@ import { CheckCheck, Copy } from 'lucide-react';
  * Tıklanınca değeri panoya kopyalar ve geçici olarak onay ikonu gösterir.
  */
 export function CopyableInfoRow({ icon: Icon, label, value, placeholder }: Readonly<{
-    // NOSONAR
     icon: React.ElementType;
     label: string;
     value: string | null | undefined;
@@ -83,7 +82,6 @@ export function CopyableInfoRow({ icon: Icon, label, value, placeholder }: Reado
  * Mini istatistik kartı bileşeni.
  */
 export function StatMiniCard({ icon: Icon, label, value, color }: Readonly<{
-    // NOSONAR
     icon: React.ElementType;
     label: string;
     value: string | number;

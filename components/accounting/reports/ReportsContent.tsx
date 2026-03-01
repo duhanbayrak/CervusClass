@@ -19,7 +19,7 @@ import { CategoryIcon } from '@/components/accounting/CategoryIcon';
 // Props
 // =============================================
 interface ReportsContentProps {
-    categories: FinanceCategory[];
+    readonly categories: FinanceCategory[];
 }
 
 // =============================================
@@ -77,7 +77,7 @@ function exportToCSV(transactions: FinanceTransaction[]) {
 // =============================================
 // Ana Bileşen
 // =============================================
-export default function ReportsContent({ categories }: Readonly<ReportsContentProps>) { // NOSONAR
+export default function ReportsContent({ categories }: Readonly<ReportsContentProps>) {
     const [isPending, startTransition] = useTransition();
 
     // Filtre state

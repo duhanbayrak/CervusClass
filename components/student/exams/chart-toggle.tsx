@@ -5,14 +5,14 @@ interface ChartToggleProps {
     onChange: (isBar: boolean) => void
 }
 
-export function ChartToggle({ isBarChart, onChange }: Readonly<ChartToggleProps>) { // NOSONAR
+export function ChartToggle({ isBarChart, onChange }: Readonly<ChartToggleProps>) {
     return (
         <div className="flex items-center gap-2">
             <button
                 onClick={() => onChange(false)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${!isBarChart // NOSONAR
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${isBarChart
+                    ? 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    : 'bg-primary text-primary-foreground shadow-sm'
                     }`}
                 title="Çizgi Grafik"
             >
@@ -26,8 +26,8 @@ export function ChartToggle({ isBarChart, onChange }: Readonly<ChartToggleProps>
             <button
                 onClick={() => onChange(true)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${isBarChart
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
                     }`}
                 title="Çubuk Grafik"
             >

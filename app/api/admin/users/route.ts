@@ -7,9 +7,16 @@ import { Profile } from '@/types/database'
 
 async function verifyAdminRequest() {
     const cookieStore = await cookies()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Missing Supabase environment variables')
+    }
+
     const supabase = createServerClient(
-        (process.env.NEXT_PUBLIC_SUPABASE_URL as string), // NOSONAR
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // NOSONAR
+        supabaseUrl,
+        supabaseKey,
         { cookies: { getAll() { return cookieStore.getAll() } } }
     )
     const { data: { user } } = await supabase.auth.getUser()

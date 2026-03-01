@@ -21,7 +21,7 @@ import { getMyInstallments } from '@/lib/actions/student-payments';
 // Props
 // =============================================
 interface MyPaymentsContentProps {
-    fees: StudentFee[];
+    readonly fees: StudentFee[];
 }
 
 // =============================================
@@ -88,7 +88,7 @@ function installmentRowClass(status: string) {
 // =============================================
 // Ana Bileşen
 // =============================================
-export default function MyPaymentsContent({ fees }: Readonly<MyPaymentsContentProps>) { // NOSONAR
+export default function MyPaymentsContent({ fees }: Readonly<MyPaymentsContentProps>) {
     // Toplam özet hesapla
     const totalNet = fees.filter(f => f.status !== 'cancelled').reduce((sum, f) => sum + f.net_amount, 0);
 
@@ -173,7 +173,7 @@ export default function MyPaymentsContent({ fees }: Readonly<MyPaymentsContentPr
 // =============================================
 // Alt Bileşen: Ücret Kartı (accordion)
 // =============================================
-function FeeCard({ fee }: { fee: StudentFee }) { // NOSONAR
+function FeeCard({ fee }: Readonly<{ fee: StudentFee }>) {
     const [isOpen, setIsOpen] = useState(false);
     const [installments, setInstallments] = useState<FeeInstallment[]>([]);
     const [isLoading, startTransition] = useTransition();

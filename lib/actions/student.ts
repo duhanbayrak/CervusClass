@@ -63,7 +63,7 @@ export const getStudents = withAction(
             .order('full_name', { ascending: true });
 
         if (dbError) return { success: false, error: dbError.message };
-        return { success: true, data: { students: data as Profile[], count: count || 0 } };
+        return { success: true, data: { students: (data || []) as any, count: count || 0 } };
     }
 );
 
@@ -138,8 +138,8 @@ export const updateStudent = withAction(
 
         if (emailChanged || passwordProvided) {
             const updateData: Record<string, string> = {};
-            if (emailChanged) updateData.email = formData.email!;
-            if (passwordProvided) updateData.password = formData.password!;
+            if (emailChanged && formData.email) updateData.email = formData.email;
+            if (passwordProvided && formData.password) updateData.password = formData.password;
             const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, updateData);
             if (authError) return { success: false, error: 'Profil güncellendi ancak Auth güncellemesi başarısız: ' + authError.message };
         }

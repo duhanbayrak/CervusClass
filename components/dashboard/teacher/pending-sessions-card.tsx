@@ -15,7 +15,8 @@ interface PendingSessionsCardProps {
     initialSessions?: any[];
 }
 
-export function PendingSessionsCard({ initialSessions = [] }: Readonly<PendingSessionsCardProps>) { // NOSONAR
+export function PendingSessionsCard({ initialSessions = [] }: Readonly<PendingSessionsCardProps>) {
+    // NOSONAR
     const [sessions, setSessions] = useState<any[]>(initialSessions);
     const [processing, setProcessing] = useState<string | null>(null);
     const router = useRouter();
@@ -31,7 +32,8 @@ export function PendingSessionsCard({ initialSessions = [] }: Readonly<PendingSe
                 setSessions(prev => prev.filter(s => s.id !== sessionId));
                 router.refresh();
             }
-        } catch (error) { // NOSONAR
+        } catch (error) {
+            console.error('Error updating session status:', error);
             toast.error("İşlem sırasında bir hata oluştu");
         } finally {
             setProcessing(null);
