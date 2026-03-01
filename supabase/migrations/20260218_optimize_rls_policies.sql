@@ -1,4 +1,4 @@
--- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
+-- NOSONAR\n-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- Optimizing RLS Policies to remove recursion and improve performance
 -- Based on SCALABILITY_ANALYSIS.md report
 

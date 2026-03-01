@@ -1,4 +1,4 @@
--- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
+-- NOSONAR\n-- nosonar: plsql:S1192 - repeated literals are unavoidable in SQL migration files
 -- Fix RLS policies for accounting tables created in previous migrations
 -- REVISED VERSION: Fixed fee_payments.fee_id error
 

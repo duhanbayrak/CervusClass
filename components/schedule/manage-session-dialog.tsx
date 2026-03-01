@@ -23,20 +23,28 @@ interface ManageSessionDialogProps {
     onClose: () => void
 }
 
+async function executeSessionAction(
+    action: () => Promise<{ error?: string } | null | undefined>,
+    successMsg: string,
+    setLoading: (v: boolean) => void,
+    onClose: () => void
+): Promise<void> {
+    setLoading(true)
+    try {
+        const res = await action()
+        if (res?.error) toast.error(res.error)
+        else { toast.success(successMsg); onClose() }
+    } catch { toast.error("Hata oluştu") }
+    finally { setLoading(false) }
+}
+
 export function ManageSessionDialog({ session, open, onOpenChange, onClose }: ManageSessionDialogProps) {
     const [loading, setLoading] = useState(false)
 
     if (!session) return null;
 
-    const runAction = async (action: () => Promise<{ error?: string } | null | undefined>, successMsg: string) => {
-        setLoading(true)
-        try {
-            const res = await action()
-            if (res?.error) toast.error(res.error)
-            else { toast.success(successMsg); onClose() }
-        } catch { toast.error("Hata oluştu") }
-        finally { setLoading(false) }
-    }
+    const runAction = (action: () => Promise<{ error?: string } | null | undefined>, successMsg: string) =>
+        executeSessionAction(action, successMsg, setLoading, onClose)
 
     const handleApprove = () => runAction(() => approveSession(session.id), "Talep onaylandı")
     const handleReject = () => {

@@ -2,6 +2,7 @@
 
 import { z } from 'zod';
 import { revalidatePath } from "next/cache";
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { withAction } from "@/lib/actions/utils/with-action";
 import { ROLES } from '@/lib/constants'
 
@@ -189,6 +190,87 @@ function resolveScheduleRow(
     return { class_id: classId, teacher_id: teacherId, course_id: courseId, day_of_week: dayOfWeek, start_time: startTime, end_time: endTime, room_name: data['Oda'] };
 }
 
+type ParsedRow = { rowIndex: number; data: ReturnType<typeof ScheduleRowSchema.parse> }
+type ScheduleMaps = {
+    classMap: Map<string, string>
+    teacherMap: Map<string | undefined, string>
+    courseMap: Map<string, string>
+}
+
+function parseScheduleRows(jsonData: unknown[]): { parsedRows: ParsedRow[]; errors: string[] } {
+    const parsedRows: ParsedRow[] = []
+    const errors: string[] = []
+    for (let i = 0; i < jsonData.length; i++) {
+        const result = ScheduleRowSchema.safeParse(jsonData[i])
+        if (!result.success) {
+            const errorMsg = result.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+            errors.push(`Satır ${i + 2}: Geçersiz veri (${errorMsg})`)
+            continue
+        }
+        parsedRows.push({ rowIndex: i + 2, data: result.data })
+    }
+    return { parsedRows, errors }
+}
+
+async function ensureCoursesExist(
+    supabase: SupabaseClient,
+    organizationId: string,
+    parsedRows: ParsedRow[],
+    courseMap: Map<string, string>
+): Promise<string | null> {
+    const coursesToInsert: { organization_id: string; name: string; code: string }[] = []
+    const newCourseNames = new Set<string>()
+    for (const { data } of parsedRows) {
+        const lowerName = data['Ders Adı'].trim().toLowerCase()
+        if (!courseMap.has(lowerName) && !newCourseNames.has(lowerName)) {
+            coursesToInsert.push({ organization_id: organizationId, name: data['Ders Adı'].trim(), code: data['Ders Kodu'] || '' })
+            newCourseNames.add(lowerName)
+        }
+    }
+    if (coursesToInsert.length === 0) return null
+    const { data: insertedCourses, error: courseInsertError } = await supabase.from('courses').insert(coursesToInsert).select('id, name')
+    if (courseInsertError) return 'Yeni dersler oluşturulurken hata: ' + courseInsertError.message
+    insertedCourses?.forEach(c => courseMap.set(c.name.trim().toLowerCase(), c.id))
+    return null
+}
+
+async function batchInsertScheduleRows(
+    supabase: SupabaseClient,
+    rowsToInsert: object[]
+): Promise<{ successCount: number; insertErrors: string[] }> {
+    const BATCH_SIZE = 100
+    let successCount = 0
+    const insertErrors: string[] = []
+    for (let i = 0; i < rowsToInsert.length; i += BATCH_SIZE) {
+        const { error: batchError } = await supabase.from('schedule').insert(rowsToInsert.slice(i, i + BATCH_SIZE))
+        if (batchError) {
+            insertErrors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1} Hatası: ${batchError.message}`)
+        } else {
+            successCount += Math.min(BATCH_SIZE, rowsToInsert.length - i)
+        }
+    }
+    return { successCount, insertErrors }
+}
+
+function buildScheduleRowsToInsert(
+    parsedRows: ParsedRow[],
+    organizationId: string,
+    maps: ScheduleMaps
+): { rowsToInsert: object[]; errors: string[] } {
+    const rowsToInsert: object[] = []
+    const errors: string[] = []
+    for (const { rowIndex, data } of parsedRows) {
+        const rowResult = resolveScheduleRow(rowIndex, data, maps.classMap, maps.teacherMap, maps.courseMap)
+        if ('error' in rowResult) { errors.push(rowResult.error); continue }
+        rowsToInsert.push({ organization_id: organizationId, ...rowResult })
+    }
+    return { rowsToInsert, errors }
+}
+
+function formatErrors(errors: string[]): string {
+    return errors.slice(0, 10).join('\n') + (errors.length > 10 ? `... ve ${errors.length - 10} hata daha.` : '')
+}
+
 // Excel'den ders programı yükle — FormAction olduğu için withAction kullanılamaz, logger ile korunur
 export async function uploadSchedule(prevState: unknown, formData: FormData) {
     const { getAuthContext } = await import('@/lib/auth-context');
@@ -214,22 +296,8 @@ export async function uploadSchedule(prevState: unknown, formData: FormData) {
 
         if (jsonData.length === 0) return { message: 'Dosya boş.', success: false };
 
-        const parsedRows: { rowIndex: number; data: ReturnType<typeof ScheduleRowSchema.parse> }[] = [];
-        const errors: string[] = [];
-
-        for (let i = 0; i < jsonData.length; i++) {
-            const result = ScheduleRowSchema.safeParse(jsonData[i]);
-            if (!result.success) {
-                const errorMsg = result.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
-                errors.push(`Satır ${i + 2}: Geçersiz veri (${errorMsg})`);
-                continue;
-            }
-            parsedRows.push({ rowIndex: i + 2, data: result.data });
-        }
-
-        if (errors.length > 0) {
-            return { message: errors.slice(0, 10).join('\n') + (errors.length > 10 ? `... ve ${errors.length - 10} hata daha.` : ''), success: false };
-        }
+        const { parsedRows, errors } = parseScheduleRows(jsonData);
+        if (errors.length > 0) return { message: formatErrors(errors), success: false };
 
         const [{ data: classes }, { data: roleData }, { data: courses }] = await Promise.all([
             supabase.from('classes').select('id, name').eq('organization_id', organizationId),
@@ -245,47 +313,13 @@ export async function uploadSchedule(prevState: unknown, formData: FormData) {
         const teacherMap = new Map(teachers?.map(t => [t.email?.trim().toLowerCase(), t.id]));
         const courseMap = new Map(courses?.map(c => [c.name.trim().toLowerCase(), c.id]));
 
-        const coursesToInsert: { organization_id: string; name: string; code: string }[] = [];
-        const newCourseNames = new Set<string>();
+        const courseError = await ensureCoursesExist(supabase, organizationId, parsedRows, courseMap);
+        if (courseError) return { message: courseError, success: false };
 
-        for (const { data } of parsedRows) {
-            const lowerName = data['Ders Adı'].trim().toLowerCase();
-            if (!courseMap.has(lowerName) && !newCourseNames.has(lowerName)) {
-                coursesToInsert.push({ organization_id: organizationId, name: data['Ders Adı'].trim(), code: data['Ders Kodu'] || '' });
-                newCourseNames.add(lowerName);
-            }
-        }
+        const { rowsToInsert, errors: resolveErrors } = buildScheduleRowsToInsert(parsedRows, organizationId, { classMap, teacherMap, courseMap });
+        if (resolveErrors.length > 0) return { message: formatErrors(resolveErrors), success: false };
 
-        if (coursesToInsert.length > 0) {
-            const { data: insertedCourses, error: courseInsertError } = await supabase.from('courses').insert(coursesToInsert).select('id, name');
-            if (courseInsertError) return { message: 'Yeni dersler oluşturulurken hata: ' + courseInsertError.message, success: false };
-            insertedCourses?.forEach(c => courseMap.set(c.name.trim().toLowerCase(), c.id));
-        }
-
-        const rowsToInsert = [];
-        for (const { rowIndex, data } of parsedRows) {
-            const rowResult = resolveScheduleRow(rowIndex, data, classMap, teacherMap, courseMap);
-            if ('error' in rowResult) { errors.push(rowResult.error); continue; }
-            rowsToInsert.push({ organization_id: organizationId, ...rowResult });
-        }
-
-        if (errors.length > 0) {
-            return { message: errors.slice(0, 10).join('\n') + (errors.length > 10 ? `... ve ${errors.length - 10} hata daha.` : ''), success: false };
-        }
-
-        const BATCH_SIZE = 100;
-        let successCount = 0;
-        const insertErrors: string[] = [];
-
-        for (let i = 0; i < rowsToInsert.length; i += BATCH_SIZE) {
-            const { error: batchError } = await supabase.from('schedule').insert(rowsToInsert.slice(i, i + BATCH_SIZE));
-            if (batchError) {
-                insertErrors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1} Hatası: ${batchError.message}`);
-            } else {
-                successCount += Math.min(BATCH_SIZE, rowsToInsert.length - i);
-            }
-        }
-
+        const { successCount, insertErrors } = await batchInsertScheduleRows(supabase, rowsToInsert);
         if (insertErrors.length > 0) {
             return { message: `${successCount} ders yüklendi, ancak bazı hatalar oluştu:\n${insertErrors.join('\n')}`, success: false };
         }

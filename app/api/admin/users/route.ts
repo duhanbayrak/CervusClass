@@ -131,54 +131,56 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true })
 }
 
+type UserUpdateBody = {
+    id: string
+    email?: string
+    password?: string
+    fullName?: string
+    branch?: string
+    phone?: string
+    title?: string
+    bio?: string
+}
+
+async function updateAuthUser(id: string, email?: string, password?: string, fullName?: string): Promise<string | null> {
+    const authUpdates: { email?: string; password?: string; user_metadata?: { full_name: string } } = {}
+    if (email) authUpdates.email = email
+    if (password && password.length > 0) authUpdates.password = password
+    if (fullName) authUpdates.user_metadata = { full_name: fullName }
+    if (Object.keys(authUpdates).length === 0) return null
+    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, authUpdates)
+    if (authError) { console.error("Auth Update Error:", authError); return 'Kullanıcı bilgileri güncellenemedi.' }
+    return null
+}
+
+async function updateUserProfile(id: string, body: UserUpdateBody): Promise<string | null> {
+    const profileUpdates: Partial<Profile> = {}
+    if (body.fullName) profileUpdates.full_name = body.fullName
+    if (body.email) profileUpdates.email = body.email
+    if (body.phone !== undefined) profileUpdates.phone = body.phone
+    if (body.title !== undefined) profileUpdates.title = body.title
+    if (body.bio !== undefined) profileUpdates.bio = body.bio
+    if (body.branch) {
+        const branchId = await resolveOrCreateBranch(body.branch)
+        if (branchId) profileUpdates.branch_id = branchId
+    }
+    const { error: profileError } = await supabaseAdmin.from('profiles').update(profileUpdates as Record<string, unknown>).eq('id', id)
+    if (profileError) { console.error("Profile Update Error:", profileError); return 'Profil güncellenemedi.' }
+    return null
+}
+
 export async function PUT(request: Request) {
     const auth = await verifyAdminRequest()
     if ('error' in auth) return auth.error
 
-    // 2. Parse Body
-    const body = await request.json()
-    const { id, email, password, fullName, branch, phone, title, bio } = body
+    const body: UserUpdateBody = await request.json()
+    if (!body.id) return NextResponse.json({ error: 'Missing user ID' }, { status: 400 })
 
-    if (!id) {
-        return NextResponse.json({ error: 'Missing user ID' }, { status: 400 })
-    }
+    const authError = await updateAuthUser(body.id, body.email, body.password, body.fullName)
+    if (authError) return NextResponse.json({ error: authError }, { status: 500 })
 
-    // 3. Update Auth User (if email/password changed)
-    const authUpdates: { email?: string, password?: string, user_metadata?: { full_name: string } } = {}
-    if (email) authUpdates.email = email
-    if (password && password.length > 0) authUpdates.password = password
-    if (fullName) authUpdates.user_metadata = { full_name: fullName }
-
-    if (Object.keys(authUpdates).length > 0) {
-        const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, authUpdates)
-        if (authError) {
-            console.error("Auth Update Error:", authError);
-            return NextResponse.json({ error: 'Kullanıcı bilgileri güncellenemedi.' }, { status: 500 })
-        }
-    }
-
-    // 4. Update Profile
-    const profileUpdates: Partial<Profile> = {}
-    if (fullName) profileUpdates.full_name = fullName
-    if (email) profileUpdates.email = email // Keep profile email in sync
-    if (phone !== undefined) profileUpdates.phone = phone
-    if (title !== undefined) profileUpdates.title = title
-    if (bio !== undefined) profileUpdates.bio = bio
-
-    if (branch) {
-        const branchId = await resolveOrCreateBranch(branch)
-        if (branchId) profileUpdates.branch_id = branchId
-    }
-
-    const { error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .update(profileUpdates as any)
-        .eq('id', id)
-
-    if (profileError) {
-        console.error("Profile Update Error:", profileError);
-        return NextResponse.json({ error: 'Profil güncellenemedi.' }, { status: 500 })
-    }
+    const profileError = await updateUserProfile(body.id, body)
+    if (profileError) return NextResponse.json({ error: profileError }, { status: 500 })
 
     return NextResponse.json({ success: true })
 }

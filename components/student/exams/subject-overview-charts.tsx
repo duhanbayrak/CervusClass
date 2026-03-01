@@ -64,6 +64,10 @@ interface SubjectOverviewChartsProps {
     schoolSubjectOverview: SubjectOverview[]
 }
 
+function findSubjectOverview(overviews: SubjectOverview[], examName: string, examType: string): SubjectOverview | undefined {
+    return overviews.find(o => o.exam_name === examName && o.exam_type === examType)
+}
+
 function sortExamsByDate(a: ExamResult, b: ExamResult): number {
     const dateA = a.exam_date ? new Date(a.exam_date).getTime() : 0;
     const dateB = b.exam_date ? new Date(b.exam_date).getTime() : 0;
@@ -247,8 +251,8 @@ export function SubjectOverviewCharts({
                     const flatScores = flattenExamScores(exam.scores, activeTab)
                     const studentNet = flatScores[subject] ?? null
 
-                    const classAvg = classSubjectOverview.find(c => c.exam_name === exam.exam_name && c.exam_type === exam.exam_type)
-                    const schoolAvg = schoolSubjectOverview.find(s => s.exam_name === exam.exam_name && s.exam_type === exam.exam_type)
+                    const classAvg = findSubjectOverview(classSubjectOverview, exam.exam_name, exam.exam_type)
+                    const schoolAvg = findSubjectOverview(schoolSubjectOverview, exam.exam_name, exam.exam_type)
 
                     const shortName = exam.exam_name
                         .replace(/\.xlsx?$/i, '')

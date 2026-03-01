@@ -242,6 +242,52 @@ function buildRegInstallmentRows(
     return rows
 }
 
+function calcRegNetAmount(service: RegistrationServiceItem): { netAmount: number; vatAmount: number; totalAmountWithVat: number } {
+    const netAmount = service.discountType === 'percentage'
+        ? service.unitPrice - (service.unitPrice * ((service.discountAmount || 0) / 100))
+        : service.unitPrice - (service.discountAmount || 0)
+    const vatAmount = netAmount * (service.vatRate / 100)
+    return { netAmount, vatAmount, totalAmountWithVat: netAmount + vatAmount }
+}
+
+async function insertRegInstallments(
+    client: SupabaseClient,
+    feeId: string,
+    organizationId: string,
+    studentId: string,
+    service: RegistrationServiceItem,
+    totalAmountWithVat: number,
+    userId: string,
+    fullName: string
+): Promise<void> {
+    const hasDownPayment = service.downPayment > 0
+    const installmentsToInsert: object[] = []
+    let nextNum = 1
+
+    if (hasDownPayment) {
+        if (!service.downPaymentAccountId) throw new Error(`${service.serviceName || 'Hizmet'} peşinatı için kasa/banka hesabı seçilmedi.`)
+        installmentsToInsert.push({
+            fee_id: feeId, organization_id: organizationId,
+            installment_number: nextNum++, amount: service.downPayment,
+            due_date: format(new Date(), 'yyyy-MM-dd'), status: 'paid',
+            paid_amount: service.downPayment, paid_at: new Date().toISOString(),
+        })
+    }
+
+    installmentsToInsert.push(...buildRegInstallmentRows(feeId, organizationId, service, totalAmountWithVat, nextNum))
+
+    if (installmentsToInsert.length === 0) return
+
+    const { data: insertedInstallments, error: installmentError } = await client
+        .from('fee_installments').insert(installmentsToInsert).select()
+    if (installmentError) throw new Error(`${service.serviceName || 'Hizmet'} taksit planı kaydedilemedi: ${installmentError.message}`)
+
+    if (hasDownPayment && insertedInstallments) {
+        const dpInst = insertedInstallments.find(i => i.installment_number === 1)
+        if (dpInst) await recordRegistrationDownPayment(client, organizationId, studentId, service, dpInst.id, userId, fullName)
+    }
+}
+
 async function createServiceFeeAndInstallments(
     client: SupabaseClient,
     organizationId: string,
@@ -253,11 +299,7 @@ async function createServiceFeeAndInstallments(
     fullName: string,
     rollbackActions: Array<() => Promise<void>>
 ): Promise<string> {
-    const netAmount = service.discountType === 'percentage'
-        ? service.unitPrice - (service.unitPrice * ((service.discountAmount || 0) / 100))
-        : service.unitPrice - (service.discountAmount || 0)
-    const vatAmount = netAmount * (service.vatRate / 100)
-    const totalAmountWithVat = netAmount + vatAmount
+    const { vatAmount, totalAmountWithVat } = calcRegNetAmount(service)
     const hasDownPayment = service.downPayment > 0
     const mainInstallmentCount = service.installmentCount > 0 ? service.installmentCount : 1
 
@@ -286,31 +328,7 @@ async function createServiceFeeAndInstallments(
     const feeId = feeData.id
     rollbackActions.push(async () => { await client.from('student_fees').delete().eq('id', feeId) })
 
-    const installmentsToInsert: object[] = []
-    let nextNum = 1
-
-    if (hasDownPayment) {
-        if (!service.downPaymentAccountId) throw new Error(`${service.serviceName || 'Hizmet'} peşinatı için kasa/banka hesabı seçilmedi.`)
-        installmentsToInsert.push({
-            fee_id: feeId, organization_id: organizationId,
-            installment_number: nextNum++, amount: service.downPayment,
-            due_date: format(new Date(), 'yyyy-MM-dd'), status: 'paid',
-            paid_amount: service.downPayment, paid_at: new Date().toISOString(),
-        })
-    }
-
-    installmentsToInsert.push(...buildRegInstallmentRows(feeId, organizationId, service, totalAmountWithVat, nextNum))
-
-    if (installmentsToInsert.length > 0) {
-        const { data: insertedInstallments, error: installmentError } = await client
-            .from('fee_installments').insert(installmentsToInsert).select()
-        if (installmentError) throw new Error(`${service.serviceName || 'Hizmet'} taksit planı kaydedilemedi: ${installmentError.message}`)
-
-        if (hasDownPayment && insertedInstallments) {
-            const dpInst = insertedInstallments.find(i => i.installment_number === 1)
-            if (dpInst) await recordRegistrationDownPayment(client, organizationId, studentId, service, dpInst.id, userId, fullName)
-        }
-    }
+    await insertRegInstallments(client, feeId, organizationId, studentId, service, totalAmountWithVat, userId, fullName)
     return feeId
 }
 
