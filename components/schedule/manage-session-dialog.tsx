@@ -50,7 +50,7 @@ async function executeSessionAction(
     finally { setLoading(false) }
 }
 
-export function ManageSessionDialog({ session, open, onOpenChange, onClose }: ManageSessionDialogProps) { // NOSONAR
+export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Readonly<ManageSessionDialogProps>) { // NOSONAR
     const [loading, setLoading] = useState(false)
 
     if (!session) return null;

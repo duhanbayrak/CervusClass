@@ -30,7 +30,7 @@ export interface TeacherDialogProps {
     onSuccess?: () => void;
 }
 
-export default function TeacherDialog({ open, onOpenChange, teacher, branches, onSuccess }: TeacherDialogProps) { // NOSONAR
+export default function TeacherDialog({ open, onOpenChange, teacher, branches, onSuccess }: Readonly<TeacherDialogProps>) { // NOSONAR
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
 

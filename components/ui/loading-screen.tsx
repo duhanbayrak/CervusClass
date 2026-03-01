@@ -6,7 +6,7 @@ interface LoadingScreenProps {
     message?: string;
 }
 
-export function LoadingScreen({ message = 'Yükleniyor...' }: LoadingScreenProps) { // NOSONAR
+export function LoadingScreen({ message = 'Yükleniyor...' }: Readonly<LoadingScreenProps>) { // NOSONAR
     return (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-[#0d121b] animate-in fade-in duration-300">
             <div className="relative mb-8">

@@ -193,7 +193,7 @@ export async function getExamDetailData(examId: string, studentId?: string) {
     if (!exam) return null
 
     // 3. Aynı sınav adındaki sınıf sonuçlarını al (Sıralama ve Ortalama için)
-    let classSubjectAverages: Record<string, number> = {}
+    const classSubjectAverages: Record<string, number> = {}
     let classTotalAvg = 0
 
     if (profile.class_id) {
@@ -244,7 +244,7 @@ export async function getExamDetailData(examId: string, studentId?: string) {
         .eq('organization_id', profile.organization_id)
         .eq('exam_name', exam.exam_name)
 
-    let schoolSubjectAverages: Record<string, number> = {}
+    const schoolSubjectAverages: Record<string, number> = {}
     let schoolTotalAvg = 0
 
     if (schoolExams && schoolExams.length > 0) {
@@ -306,7 +306,7 @@ export async function getTeacherExamDetailData(examName: string, classId: string
         .eq('exam_name', examName)
         .eq('profiles.class_id', classId)
 
-    let classSubjectAverages: Record<string, number> = {}
+    const classSubjectAverages: Record<string, number> = {}
     let classTotalAvg = 0
 
     if (classExams && classExams.length > 0) {
@@ -337,7 +337,7 @@ export async function getTeacherExamDetailData(examName: string, classId: string
         .eq('exam_name', examName)
         .eq('organization_id', teacherProfile.organization_id)
 
-    let schoolSubjectAverages: Record<string, number> = {}
+    const schoolSubjectAverages: Record<string, number> = {}
     let schoolTotalAvg = 0
 
     if (schoolExams && schoolExams.length > 0) {

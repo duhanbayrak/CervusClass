@@ -7,9 +7,9 @@ import { STUDENT_NAV } from '@/lib/navigation';
 
 export default function StudentLayout({ // NOSONAR
     children,
-}: {
+}: Readonly<{
     children: React.ReactNode;
-}) {
+}>) {
     return (
         <div className="flex h-screen w-full bg-[#f6f6f8] dark:bg-[#101622] overflow-hidden font-sans">
             <Sidebar

@@ -78,7 +78,7 @@ export default async function TeacherHomeworkPage() {
 
     const uniqueClassIds = Array.from(new Set(classIdsToCheck));
 
-    let classStudentsMap: Record<string, number> = {};
+    const classStudentsMap: Record<string, number> = {};
 
     if (uniqueClassIds.length > 0) {
         const { data: students } = await supabase

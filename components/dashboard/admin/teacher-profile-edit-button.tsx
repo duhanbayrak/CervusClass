@@ -10,7 +10,7 @@ interface TeacherProfileEditButtonProps {
     branches: string[];
 }
 
-export default function TeacherProfileEditButton({ teacher, branches }: TeacherProfileEditButtonProps) { // NOSONAR
+export default function TeacherProfileEditButton({ teacher, branches }: Readonly<TeacherProfileEditButtonProps>) { // NOSONAR
     const [open, setOpen] = useState(false);
 
     return (

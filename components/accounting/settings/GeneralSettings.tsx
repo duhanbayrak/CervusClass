@@ -10,7 +10,7 @@ interface GeneralSettingsProps {
     onSave: () => void;
 }
 
-export function GeneralSettings({ settings, onSave }: GeneralSettingsProps) { // NOSONAR
+export function GeneralSettings({ settings, onSave }: Readonly<GeneralSettingsProps>) { // NOSONAR
     const [isPending, startTransition] = useTransition();
     const [currency, setCurrency] = useState(settings?.currency || 'TRY');
     const [defaultInstallments, setDefaultInstallments] = useState(settings?.default_installments || 1);

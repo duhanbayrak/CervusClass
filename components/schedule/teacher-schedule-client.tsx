@@ -11,7 +11,7 @@ interface TeacherScheduleClientProps {
     currentUserId: string
 }
 
-export function TeacherScheduleClient({ events, studySessions, currentUserId }: TeacherScheduleClientProps) { // NOSONAR
+export function TeacherScheduleClient({ events, studySessions, currentUserId }: Readonly<TeacherScheduleClientProps>) { // NOSONAR
     const [selectedSession, setSelectedSession] = useState<StudySessionEvent | null>(null)
     const [open, setOpen] = useState(false)
 

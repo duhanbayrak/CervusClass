@@ -127,7 +127,7 @@ async function getTeacherProfile(id: string) {
     };
 }
 
-export default async function TeacherProfilePage({ params }: TeacherProfilePageProps) { // NOSONAR
+export default async function TeacherProfilePage({ params }: Readonly<TeacherProfilePageProps>) { // NOSONAR
     const { id } = await params;
     const data = await getTeacherProfile(id);
 

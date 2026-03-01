@@ -6,7 +6,7 @@ import { getStudentProfileData } from '@/lib/data/student-profile';
 import { getStudentFees, getStudentFeeDetail } from '@/lib/actions/student-fees';
 import { getFeePayments } from '@/lib/actions/fee-payments';
 
-export default async function StudentDetailPage(props: { params: Promise<{ id: string }> }) { // NOSONAR
+export default async function StudentDetailPage(props: Readonly<{ params: Promise<{ id: string }> }>) { // NOSONAR
     const params = await props.params;
     const { id } = params;
     const cookieStore = await cookies();

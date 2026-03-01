@@ -120,7 +120,7 @@ function renderChart(chartData: any[], isBarChart: boolean, yDomain: [number, nu
     )
 }
 
-export function ExamOverviewChart({ studentExams, classAverages, schoolAverages }: ExamOverviewChartProps) { // NOSONAR
+export function ExamOverviewChart({ studentExams, classAverages, schoolAverages }: Readonly<ExamOverviewChartProps>) { // NOSONAR
     const [isBarChart, setIsBarChart] = useState(false)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [activeTab, setActiveTab] = useState<'TYT' | 'AYT'>('TYT')

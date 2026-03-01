@@ -93,7 +93,7 @@ async function getData(query?: string, className?: string) {
     };
 }
 
-export default async function TeacherStudentsPage(props: PageProps) { // NOSONAR
+export default async function TeacherStudentsPage(props: Readonly<PageProps>) { // NOSONAR
     const searchParams = await props.searchParams;
     const query = searchParams.query;
     const className = searchParams.class;

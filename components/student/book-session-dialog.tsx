@@ -9,7 +9,7 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
-    DialogFooter, // NOSONAR
+     // NOSONAR
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -31,7 +31,7 @@ import { WeeklyScheduler } from "@/components/schedule/WeeklyScheduler"
 import { ScheduleEvent, StudySessionEvent } from "@/types/schedule";
 import { cn } from "@/lib/utils"
 
-export function BookSessionDialog({ userId }: { userId: string }) { // NOSONAR
+export function BookSessionDialog({ userId }: Readonly<{ userId: string }>) { // NOSONAR
     const [open, setOpen] = useState(false)
     const [step, setStep] = useState<'select-teacher' | 'select-slot'>('select-teacher')
 

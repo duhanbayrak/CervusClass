@@ -18,7 +18,7 @@ export function SettingsContent({ // NOSONAR
     settings,
     incomeCategories,
     expenseCategories,
-}: SettingsContentProps) {
+}: Readonly<SettingsContentProps>) {
     const [activeTab, setActiveTab] = useState<'general' | 'categories'>('general');
     const router = useRouter();
 

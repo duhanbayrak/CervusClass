@@ -23,7 +23,7 @@ export function TransactionFilters({ // NOSONAR
     onAccountChange,
     categories,
     accounts,
-}: TransactionFiltersProps) {
+}: Readonly<TransactionFiltersProps>) {
     const selectClass = 'pl-10 pr-8 py-2.5 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer';
 
     return (

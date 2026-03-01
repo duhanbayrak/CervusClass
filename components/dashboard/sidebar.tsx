@@ -7,7 +7,7 @@ import { NavItem } from '@/lib/navigation';
 import { LogOut, ChevronUp, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useUserRole } from '@/components/providers/auth-provider';
-import { Button } from '@/components/ui/button'; // NOSONAR
+import {} from '@/components/ui/button'; // NOSONAR
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 

@@ -88,7 +88,7 @@ function installmentRowClass(status: string) {
 // =============================================
 // Ana Bileşen
 // =============================================
-export default function MyPaymentsContent({ fees }: MyPaymentsContentProps) { // NOSONAR
+export default function MyPaymentsContent({ fees }: Readonly<MyPaymentsContentProps>) { // NOSONAR
     // Toplam özet hesapla
     const totalNet = fees.filter(f => f.status !== 'cancelled').reduce((sum, f) => sum + f.net_amount, 0);
 

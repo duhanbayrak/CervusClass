@@ -2,8 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react'
 import { cn } from '@/lib/utils'
-import { Schedule } from '@/types/database'
-import { Loader2, CalendarPlus, User, Plus, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { } from '@/types/database'
+import { CalendarPlus, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import { CreateAvailabilityDialog } from './create-availability-dialog'
 import { Button } from '../ui/button'
 
@@ -21,7 +21,7 @@ interface WeeklySchedulerProps {
     currentUserId?: string
 }
 
-export function WeeklyScheduler({ events, studySessions = [], role, onDelete, onEventClick, onSlotClick, currentUserId }: WeeklySchedulerProps) {
+export function WeeklyScheduler({ events, studySessions = [], role, onDelete, onEventClick, onSlotClick, currentUserId }: Readonly<WeeklySchedulerProps>) {
 
 
 
@@ -69,7 +69,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
             setIsDragging(false);
             try {
                 e.currentTarget.releasePointerCapture(e.pointerId);
-            } catch (err) { }
+            } catch (err) { console.error("Ignored error:", err); }
         }
     };
 
@@ -164,7 +164,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                     </Button>
                     <span className="text-sm font-medium ml-2">
                         {startDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })} - {' '}
-                        {dates[dates.length - 1].toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        {dates.at(-1)?.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </span>
                 </div>
             </div>

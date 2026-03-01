@@ -126,7 +126,7 @@ export function ExamDetailCharts({ // NOSONAR
     classTotalAvg,
     schoolSubjectAverages,
     schoolTotalAvg,
-}: ExamDetailChartsProps) {
+}: Readonly<ExamDetailChartsProps>) {
     const [mainModalOpen, setMainModalOpen] = useState(false)
     const [expandedSubject, setExpandedSubject] = useState<string | null>(null)
     const [totalModalOpen, setTotalModalOpen] = useState(false)

@@ -33,7 +33,7 @@ interface PendingStudyRequestsListProps {
     requests: StudyRequest[];
 }
 
-export function PendingStudyRequestsList({ requests }: PendingStudyRequestsListProps) { // NOSONAR
+export function PendingStudyRequestsList({ requests }: Readonly<PendingStudyRequestsListProps>) { // NOSONAR
     const [processing, setProcessing] = useState<string | null>(null);
     const [rejectReason, setRejectReason] = useState("");
     const [selectedRequest, setSelectedRequest] = useState<string | null>(null);

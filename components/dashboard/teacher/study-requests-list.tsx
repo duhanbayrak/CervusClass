@@ -28,7 +28,7 @@ interface StudyRequestsListProps {
     pastRequests: StudySession[];
 }
 
-export default function StudyRequestsList({ pendingRequests, pastRequests }: StudyRequestsListProps) { // NOSONAR
+export default function StudyRequestsList({ pendingRequests, pastRequests }: Readonly<StudyRequestsListProps>) { // NOSONAR
     const [isUpdating, setIsUpdating] = useState(false);
     const router = useRouter();
     const { toast } = useToast();

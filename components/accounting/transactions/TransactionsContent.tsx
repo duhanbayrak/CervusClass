@@ -19,7 +19,7 @@ export function TransactionsContent({ // NOSONAR
     categories,
     accounts,
     type,
-}: TransactionsContentProps) {
+}: Readonly<TransactionsContentProps>) {
     const [showForm, setShowForm] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');

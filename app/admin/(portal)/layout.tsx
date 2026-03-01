@@ -9,9 +9,9 @@ import UserSelectionDialog from '@/components/dashboard/admin/user-selection-dia
 
 export default function AdminLayout({ // NOSONAR
     children,
-}: {
+}: Readonly<{
     children: React.ReactNode;
-}) {
+}>) {
     const [isUserSelectionOpen, setIsUserSelectionOpen] = useState(false);
 
     return (

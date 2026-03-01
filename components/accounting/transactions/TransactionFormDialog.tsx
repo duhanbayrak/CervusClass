@@ -45,7 +45,7 @@ export function TransactionFormDialog({ // NOSONAR
     categories,
     accounts,
     onClose,
-}: TransactionFormDialogProps) {
+}: Readonly<TransactionFormDialogProps>) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [message, setMessage] = useState('');

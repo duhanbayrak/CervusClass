@@ -15,7 +15,7 @@ type RegistrationState = {
 
 const RegistrationContext = createContext<RegistrationState | undefined>(undefined);
 
-export function RegistrationProvider({ children }: { children: ReactNode }) { // NOSONAR
+export function RegistrationProvider({ children }: Readonly<{ children: ReactNode }>) { // NOSONAR
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState<Partial<RegistrationFormData>>({
         services: []
@@ -33,7 +33,7 @@ export function RegistrationProvider({ children }: { children: ReactNode }) { /
         updateFormData,
         isSubmitting,
         setIsSubmitting,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     }), [step, formData, isSubmitting]);
 
     return (

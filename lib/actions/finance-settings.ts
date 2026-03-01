@@ -52,7 +52,7 @@ export async function updateFinanceSettings(settings: {
     const { supabase, organizationId, error } = await getAuthContext();
     if (error || !organizationId) return { success: false, error: error || 'Yetkilendirme hatası' };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase Json ↔ AcademicPeriod[] uyumsuzluğu
+     
     const { error: updateError } = await supabase
         .from('finance_settings')
         .update({

@@ -21,7 +21,7 @@ interface StudentNotesProps {
     studentId: string;
 }
 
-export function StudentNotes({ studentId }: StudentNotesProps) { // NOSONAR
+export function StudentNotes({ studentId }: Readonly<StudentNotesProps>) { // NOSONAR
     const [notes, setNotes] = useState<Note[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);

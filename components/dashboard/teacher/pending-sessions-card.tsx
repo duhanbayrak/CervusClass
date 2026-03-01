@@ -15,7 +15,7 @@ interface PendingSessionsCardProps {
     initialSessions?: any[];
 }
 
-export function PendingSessionsCard({ initialSessions = [] }: PendingSessionsCardProps) { // NOSONAR
+export function PendingSessionsCard({ initialSessions = [] }: Readonly<PendingSessionsCardProps>) { // NOSONAR
     const [sessions, setSessions] = useState<any[]>(initialSessions);
     const [processing, setProcessing] = useState<string | null>(null);
     const router = useRouter();

@@ -16,7 +16,7 @@ interface UserSelectionDialogProps {
     onOpenChange: (open: boolean) => void;
 }
 
-export default function UserSelectionDialog({ open, onOpenChange }: UserSelectionDialogProps) { // NOSONAR
+export default function UserSelectionDialog({ open, onOpenChange }: Readonly<UserSelectionDialogProps>) { // NOSONAR
     const router = useRouter();
 
     const handleSelect = (type: 'teacher' | 'student') => {

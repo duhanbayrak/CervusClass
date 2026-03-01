@@ -35,7 +35,7 @@ function formatCurrency(amount: number, currency: string): string {
     }).format(amount);
 }
 
-export function ServiceFormDialog({ service, currency, onClose }: ServiceFormDialogProps) { // NOSONAR
+export function ServiceFormDialog({ service, currency, onClose }: Readonly<ServiceFormDialogProps>) { // NOSONAR
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [message, setMessage] = useState('');

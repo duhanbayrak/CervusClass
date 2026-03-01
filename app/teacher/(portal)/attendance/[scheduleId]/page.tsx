@@ -99,7 +99,7 @@ async function getScheduleWithStudents(scheduleId: string) {
     };
 }
 
-export default async function TakeAttendancePage({ params }: { params: any }) { // NOSONAR
+export default async function TakeAttendancePage({ params }: Readonly<{ params: any }>) { // NOSONAR
     const resolvedParams = await Promise.resolve(params);
     const scheduleId = resolvedParams.scheduleId;
 

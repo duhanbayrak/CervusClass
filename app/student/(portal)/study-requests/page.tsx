@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; // NOSONAR
+import { Card } from '@/components/ui/card'; // NOSONAR
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Library, Plus } from 'lucide-react'; // NOSONAR

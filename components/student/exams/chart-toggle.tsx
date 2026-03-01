@@ -5,7 +5,7 @@ interface ChartToggleProps {
     onChange: (isBar: boolean) => void
 }
 
-export function ChartToggle({ isBarChart, onChange }: ChartToggleProps) { // NOSONAR
+export function ChartToggle({ isBarChart, onChange }: Readonly<ChartToggleProps>) { // NOSONAR
     return (
         <div className="flex items-center gap-2">
             <button

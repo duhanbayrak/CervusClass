@@ -10,7 +10,7 @@ interface ChartModalProps {
     children: ReactNode
 }
 
-export function ChartModal({ isOpen, onClose, title, subtitle, children }: ChartModalProps) { // NOSONAR
+export function ChartModal({ isOpen, onClose, title, subtitle, children }: Readonly<ChartModalProps>) { // NOSONAR
     const handleEscape = useCallback((e: KeyboardEvent) => {
         if (e.key === 'Escape') onClose()
     }, [onClose])
@@ -80,11 +80,11 @@ export function ExpandableChartWrapper({ // NOSONAR
     children,
     onClick,
     className = '',
-}: {
+}: Readonly<{
     children: ReactNode
     onClick: () => void
     className?: string
-}) {
+}>) {
     return (
         <div className={`relative group ${className}`}>
             <button

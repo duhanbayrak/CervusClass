@@ -43,7 +43,7 @@ export function TeacherExamCharts({ // NOSONAR
     classTotalAvg,
     schoolSubjectAverages,
     schoolTotalAvg,
-}: TeacherExamChartsProps) {
+}: Readonly<TeacherExamChartsProps>) {
     const [mainModalOpen, setMainModalOpen] = useState(false)
     const [expandedSubject, setExpandedSubject] = useState<string | null>(null)
     const [totalModalOpen, setTotalModalOpen] = useState(false)

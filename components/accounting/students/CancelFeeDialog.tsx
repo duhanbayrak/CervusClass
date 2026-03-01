@@ -28,7 +28,7 @@ function formatCurrency(amount: number, currency: string): string {
     }).format(amount);
 }
 
-export function CancelFeeDialog({ fee, installments, currency, onClose }: CancelFeeDialogProps) { // NOSONAR
+export function CancelFeeDialog({ fee, installments, currency, onClose }: Readonly<CancelFeeDialogProps>) { // NOSONAR
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [message, setMessage] = useState('');

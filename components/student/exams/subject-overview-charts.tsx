@@ -213,7 +213,7 @@ export function SubjectOverviewCharts({ // NOSONAR
     studentExams,
     classSubjectOverview,
     schoolSubjectOverview,
-}: SubjectOverviewChartsProps) {
+}: Readonly<SubjectOverviewChartsProps>) {
     const [isBarChart, setIsBarChart] = useState(false)
     const [expandedSubject, setExpandedSubject] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<'TYT' | 'AYT'>('TYT')
@@ -310,7 +310,7 @@ export function SubjectOverviewCharts({ // NOSONAR
     // Sayfa indekslerine göre her dersin datasını kes
     const pageIndices = getPageData(currentPage)
     const pageStart = pageIndices[0] ?? 0
-    const pageEnd = (pageIndices[pageIndices.length - 1] ?? 0) + 1 // NOSONAR
+    const pageEnd = (pageIndices.at(-1) ?? 0) + 1 // NOSONAR
 
     return (
         <>

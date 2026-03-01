@@ -79,7 +79,7 @@ async function getData(id: string) {
     }
 }
 
-export default async function CheckAssignmentPage(props: { params: Promise<{ id: string }> }) { // NOSONAR
+export default async function CheckAssignmentPage(props: Readonly<{ params: Promise<{ id: string }> }>) { // NOSONAR
     const params = await props.params;
     const id = params.id;
     const { user, assignment, submissions } = await getData(id);

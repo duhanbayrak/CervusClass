@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input'; // NOSONAR
+import {} from '@/components/ui/input'; // NOSONAR
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // NOSONAR
@@ -42,7 +42,7 @@ interface UpdateAssignmentFormProps {
     initialStudents?: Student[];
 }
 
-export default function UpdateAssignmentForm({ assignment, classes, userId, initialStudents = [] }: UpdateAssignmentFormProps) { // NOSONAR
+export default function UpdateAssignmentForm({ assignment, classes, userId, initialStudents = [] }: Readonly<UpdateAssignmentFormProps>) { // NOSONAR
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [success, setSuccess] = useState(false);

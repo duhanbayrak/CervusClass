@@ -32,7 +32,7 @@ type Props = {
     searchParams: { [key: string]: string | string[] | undefined } | Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export default async function AccountingDashboardPage(props: Props) { // NOSONAR
+export default async function AccountingDashboardPage(props: Readonly<Props>) { // NOSONAR
     const rawParams = await props.searchParams;
     const periodValue = rawParams?.period;
     const period = typeof periodValue === 'string' ? periodValue : 'yearly';

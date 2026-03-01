@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { StudentDetailView } from '@/components/student/student-detail-view';
 import { getStudentProfileData } from '@/lib/data/student-profile';
 
-export default async function StudentDetailPage({ params }: { params: any }) { // NOSONAR
+export default async function StudentDetailPage({ params }: Readonly<{ params: any }>) { // NOSONAR
     const resolvedParams = await Promise.resolve(params);
     const id = resolvedParams.id;
     const cookieStore = await cookies();

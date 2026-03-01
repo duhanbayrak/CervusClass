@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 import { useState } from 'react';
 
-export default function SignOutButton({ variant = "outline", className }: { variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link", className?: string }) { // NOSONAR
+export default function SignOutButton({ variant = "outline", className }: Readonly<{ variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link", className?: string }>) { // NOSONAR
     const [loading, setLoading] = useState(false);
 
     // We use a form submission to the server-side route handler

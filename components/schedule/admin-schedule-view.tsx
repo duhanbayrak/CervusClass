@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
-export function AdminScheduleView({ events, studySessions = [], teachers, courses, classes }: AdminScheduleViewProps) { // NOSONAR
+export function AdminScheduleView({ events, studySessions = [], teachers, courses, classes }: Readonly<AdminScheduleViewProps>) { // NOSONAR
     const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [selectedTeacherId, setSelectedTeacherId] = useState<string>(teachers[0]?.id || '');

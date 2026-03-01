@@ -50,6 +50,3 @@ CREATE POLICY "view_homework_submissions_teacher" ON homework_submissions
     );
 
 -- 7. PROFILES (Ensure strict org visibility)
--- (Already handled in previous migration, but good to double check if needed. 
--- The previous one was: organization_id = (SELECT organization_id FROM profiles WHERE id = auth.uid()) -- NOSONAR
--- which covers all users in the org).

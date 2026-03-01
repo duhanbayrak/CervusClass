@@ -95,7 +95,7 @@ export default function DashboardContent({ // NOSONAR
     expenseDistribution,
     overdueInstallments,
     recentTransactions,
-}: DashboardContentProps) {
+}: Readonly<DashboardContentProps>) {
     const [distributionTab, setDistributionTab] = useState<'income' | 'expense'>('income');
 
     const router = useRouter();

@@ -45,7 +45,7 @@ interface StudentExamChartProps {
     }[];
 }
 
-export function StudentExamChart({ data }: StudentExamChartProps) { // NOSONAR
+export function StudentExamChart({ data }: Readonly<StudentExamChartProps>) { // NOSONAR
     if (!data || data.length < 2) {
         return null;
     }

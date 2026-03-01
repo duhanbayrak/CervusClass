@@ -34,7 +34,7 @@ interface ExamHistoryProps {
     studentId?: string
 }
 
-export function ExamHistory({ exams, role = 'student', studentId }: ExamHistoryProps) { // NOSONAR
+export function ExamHistory({ exams, role = 'student', studentId }: Readonly<ExamHistoryProps>) { // NOSONAR
     const [filter, setFilter] = useState<'ALL' | 'TYT' | 'AYT'>('ALL')
 
     const filteredExams = exams.filter(exam => {

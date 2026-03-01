@@ -40,7 +40,7 @@ export default function AttendanceForm({ // NOSONAR
     students,
     attendanceMap,
     date
-}: AttendanceFormProps) {
+}: Readonly<AttendanceFormProps>) {
     const router = useRouter();
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);

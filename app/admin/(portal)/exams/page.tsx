@@ -155,7 +155,7 @@ async function getExams(page: number = 1, limit: number = 10) {
     }
 }
 
-export default async function AdminExamsPage({ searchParams }: { searchParams: { page?: string } }) { // NOSONAR
+export default async function AdminExamsPage({ searchParams }: Readonly<{ searchParams: { page?: string } }>) { // NOSONAR
     // Await searchParams before accessing properties
     const resolvedSearchParams = await Promise.resolve(searchParams);
     const page = Number(resolvedSearchParams?.page) || 1

@@ -60,7 +60,7 @@ interface DashboardStats {
 
 const defaultOrder = ['totalActiveBalance', 'expectedCollectionThisMonth', 'delayedPayments', 'newRegistrations', 'students', 'teachers', 'classes'];
 
-export function DashboardGrid({ stats }: { stats: DashboardStats | null }) { // NOSONAR
+export function DashboardGrid({ stats }: Readonly<{ stats: DashboardStats | null }>) { // NOSONAR
     const [items, setItems] = useState<string[]>([]);
     const [mounted, setMounted] = useState(false);
 

@@ -28,7 +28,7 @@ export function PaymentRecordDialog({ // NOSONAR
     currency,
     defaultAmount,
     onClose,
-}: PaymentRecordDialogProps) {
+}: Readonly<PaymentRecordDialogProps>) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [message, setMessage] = useState('');
