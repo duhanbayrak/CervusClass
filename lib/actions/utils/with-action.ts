@@ -81,7 +81,7 @@ export function withAction<TSchema extends z.ZodTypeAny, TReturn>(
     // Overload 1: schema + handler
     const schema = schemaOrHandler
     return async (input: unknown): Promise<ActionResult<TReturn>> => {
-        return executeAction(input, schema, undefined, handler!) // NOSONAR
+        return executeAction(input, schema, undefined, handler) // NOSONAR
     }
 }
 

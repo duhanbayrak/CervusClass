@@ -153,7 +153,7 @@ export function ExamOverviewChart({ studentExams, classAverages, schoolAverages 
             const shortName = exam.exam_name
                 .replace(/\.xlsx?$/i, '')
                 .replace(/mock_exam_/i, 'Deneme ')
-                .replaceAll(/_/g, ' ')
+                .replaceAll('_', ' ')
                 .trim()
             const dateStr = exam.exam_date
                 ? format(new Date(exam.exam_date), 'd MMM', { locale: tr })
