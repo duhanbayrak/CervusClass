@@ -1,7 +1,6 @@
-
-const { createClient: createSupabaseClient } = require('@supabase/supabase-js')
-const dotenv = require('dotenv')
-const path = require('path')
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import dotenv from 'dotenv'
+import path from 'node:path'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
@@ -24,14 +23,15 @@ async function testStudentDataIsolation(
 ): Promise<{ passed: number; failed: number }> {
     console.log('\n--- TC_SEC_003: Student Data Isolation ---')
     const emailStudent = 'barisozturk@cervus.com'
-    const studentClient = createSupabaseClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
+    const studentClient = createSupabaseClient(supabaseUrl, anonKey)
     const { data: { session: studentSession }, error: loginError } = await studentClient.auth.signInWithPassword({
         email: emailStudent,
         password: passStudent
     })
 
-    if (loginError) {
-        console.error('Student Login Failed:', loginError.message)
+    if (loginError || !studentSession) {
+        console.error('Student Login Failed:', loginError?.message)
         return { passed: 0, failed: 1 }
     }
 
@@ -51,9 +51,10 @@ async function testStudentDataIsolation(
 
     console.log(`PASS: Student see only their own records (Total: ${results.length})`)
 
+    const invalidPassword = process.env.TEST_INVALID_PASSWORD ?? 'test-invalid-pw'
     const { error: invalidError } = await studentClient.auth.signInWithPassword({
         email: emailStudent,
-        password: 'invalid-password-for-testing'
+        password: invalidPassword
     })
 
     if (invalidError?.message === 'Invalid login credentials') {
@@ -71,14 +72,15 @@ async function testTeacherAccessControl(
 ): Promise<{ passed: number; failed: number }> {
     console.log('\n--- TC_SEC_002: Teacher Access Control ---')
     const emailTea = 'cervusteacher@gmail.com'
-    const teacherClient = createSupabaseClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
+    const teacherClient = createSupabaseClient(supabaseUrl, anonKey)
     const { data: { session: teacherSession }, error: tLoginError } = await teacherClient.auth.signInWithPassword({
         email: emailTea,
         password: passTea
     })
 
-    if (tLoginError) {
-        console.error('Teacher Login Failed:', tLoginError.message)
+    if (tLoginError || !teacherSession) {
+        console.error('Teacher Login Failed:', tLoginError?.message)
         return { passed: 0, failed: 1 }
     }
 
@@ -127,6 +129,4 @@ async function runTests() {
     console.log(`FAILED: ${failed}`)
 }
 
-runTests()
-
-export { }
+await runTests()
