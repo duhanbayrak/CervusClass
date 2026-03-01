@@ -143,7 +143,7 @@ export default async function StudentGradesPage() {
                                             </div>
                                             <div className="text-center hidden sm:block">
                                                 <span className="block text-xs text-slate-400 font-medium uppercase">Sıralama</span>
-                                                <span className="font-bold text-slate-700 dark:text-slate-200">#{Math.floor(Math.random() * 50) + 1}</span>
+                                                <span className="font-bold text-slate-700 dark:text-slate-200">-</span>
                                             </div>
                                             <div className="text-center">
                                                 <Badge variant="outline" className="border-purple-200 bg-purple-50 text-purple-700">Sonuçlandı</Badge>
