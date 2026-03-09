@@ -19,9 +19,10 @@ interface WeeklySchedulerProps {
     onEventClick?: (event: ScheduleEvent | StudySessionEvent) => void
     onSlotClick?: (date: Date) => void // For empty slots
     currentUserId?: string
+    selectedSessionIds?: string[]
 }
 
-export function WeeklyScheduler({ events, studySessions = [], role, onDelete, onEventClick, onSlotClick, currentUserId }: WeeklySchedulerProps) {
+export function WeeklyScheduler({ events, studySessions = [], role, onDelete, onEventClick, onSlotClick, currentUserId, selectedSessionIds = [] }: WeeklySchedulerProps) {
 
 
 
@@ -310,25 +311,51 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
 
                                     {/* Study Sessions */}
                                     {daySessions.map(session => {
-                                        const { top, height } = getStudySessionPosition(session.scheduled_at);
+                                        let duration = 60 / 60 * HOUR_HEIGHT; // default 1 hour
+                                        if (session.end_time) {
+                                            const startD = new Date(session.scheduled_at);
+                                            const endD = new Date(session.end_time);
+                                            duration = ((endD.getTime() - startD.getTime()) / (1000 * 60 * 60)) * HOUR_HEIGHT;
+                                        }
+
+                                        const { top, height } = { ...getStudySessionPosition(session.scheduled_at), height: duration };
                                         const eventTime = new Date(session.scheduled_at);
-                                        const endTime = new Date(eventTime.getTime() + 60 * 60 * 1000); // 1 hour fixed
+                                        const endTime = session.end_time ? new Date(session.end_time) : new Date(eventTime.getTime() + 60 * 60 * 1000);
                                         const timeRange = `${eventTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} - ${endTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
-                                        const classes = getEventClasses(session, true, currentUserId, role);
+                                        
+                                        // Çakışma kontrolü (Sadece öğrenci için ve boş slotlar için)
+                                        let hasConflict = false;
+                                        if (role === 'student' && session.status === 'available') {
+                                            const sessionStartMs = eventTime.getTime();
+                                            const sessionEndMs = endTime.getTime();
+                                            const sessionDay = eventTime.getDay() || 7;
+                                            
+                                            hasConflict = events.some(e => {
+                                                if (e.day_of_week !== sessionDay) return false;
+                                                const eStart = new Date(`${session.scheduled_at.split('T')[0]}T${e.start_time}+03:00`).getTime();
+                                                const eEnd = new Date(`${session.scheduled_at.split('T')[0]}T${e.end_time}+03:00`).getTime();
+                                                return sessionStartMs < eEnd && sessionEndMs > eStart;
+                                            });
+                                        }
+
+                                        const classes = getEventClasses(session, true, currentUserId, role, hasConflict);
+                                        
+                                        const isSelected = selectedSessionIds.includes(session.id);
 
                                         return (
                                             <div
                                                 key={session.id}
                                                 className={cn(
-                                                    "absolute rounded px-2 py-1 text-xs border shadow-sm cursor-pointer hover:brightness-95 transition-all overflow-hidden z-20",
+                                                    "absolute rounded px-2 py-1 text-xs border shadow-sm cursor-pointer transition-all overflow-hidden z-20",
                                                     "flex flex-col justify-start",
-                                                    classes.container
+                                                    classes.container,
+                                                    isSelected ? "ring-2 ring-primary border-primary shadow-md scale-[1.02] bg-emerald-100" : "hover:brightness-95"
                                                 )}
                                                 style={{
                                                     top: `${top}px`,
                                                     height: `${height}px`,
-                                                    left: '4px',
-                                                    right: '4px'
+                                                    left: isSelected ? '2px' : '4px',
+                                                    right: isSelected ? '2px' : '4px'
                                                 }}
                                                 onClick={(e) => {
                                                     e.stopPropagation();

@@ -15,6 +15,13 @@ import { createAvailability } from "@/lib/actions/study-session"
 import { Loader2 } from "lucide-react"
 import { useState } from "react"
 import { useToast } from "@/components/ui/use-toast"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 
 interface CreateAvailabilityDialogProps {
     date: Date | null
@@ -32,6 +39,7 @@ export function CreateAvailabilityDialog({ date, open, onOpenChange, initialStar
         const [h, m] = initialStartTime.split(':').map(Number);
         return `${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     })
+    const [slotCount, setSlotCount] = useState("1")
 
     if (!date) return null;
 
@@ -50,7 +58,7 @@ export function CreateAvailabilityDialog({ date, open, onOpenChange, initialStar
         setIsSubmitting(true)
 
         try {
-            const result = await createAvailability(isoDate, startTime, endTime)
+            const result = await createAvailability(isoDate, startTime, endTime, parseInt(slotCount))
 
             if (result?.error) {
                 toast({
@@ -115,6 +123,23 @@ export function CreateAvailabilityDialog({ date, open, onOpenChange, initialStar
                                 />
                             </div>
                         </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="slots">Kaç Etüde Bölünsün?</Label>
+                            <Select value={slotCount} onValueChange={setSlotCount}>
+                                <SelectTrigger id="slots">
+                                    <SelectValue placeholder="Bölüm sayısı seçin" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="1">Bölme (1 Etüt)</SelectItem>
+                                    <SelectItem value="2">2'ye Böl</SelectItem>
+                                    <SelectItem value="3">3'e Böl</SelectItem>
+                                    <SelectItem value="4">4'e Böl</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-[11px] text-muted-foreground mt-1">
+                                Örn: 1 saatlik aralığı 4'e bölerseniz her biri 15 dakikalık 4 etüt açılır.
+                            </p>
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button type="submit" disabled={isSubmitting}>
@@ -127,3 +152,4 @@ export function CreateAvailabilityDialog({ date, open, onOpenChange, initialStar
         </Dialog>
     )
 }
+

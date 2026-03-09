@@ -27,7 +27,8 @@ async function getRequests(userId: string) {
             teacher:profiles!teacher_id(full_name)
         `)
         .eq('student_id', userId)
-        .order('created_at', { ascending: false });
+        .gte('scheduled_at', new Date().toISOString())
+        .order('scheduled_at', { ascending: true });
 
     const requests = requestsData?.map(req => ({
         ...req,
@@ -89,10 +90,22 @@ export default async function StudentStudyRequestsPage() {
                                                 {req.status === 'pending' ? 'Bekliyor' : req.status === 'approved' ? 'Onaylandı' : 'Reddedildi'}
                                             </Badge>
                                         </div>
-                                        <p className="text-slate-500 flex items-center gap-2 text-sm">
+                                        <p className="text-slate-500 flex items-center flex-wrap gap-2 text-sm">
                                             <span className="font-medium text-slate-700 dark:text-slate-300">{req.teacher?.full_name}</span>
                                             <span>•</span>
                                             <span>{new Date(req.scheduled_at).toLocaleDateString('tr-TR', { dateStyle: 'full' })} - {new Date(req.scheduled_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                            {(() => {
+                                                const timeDiff = new Date(req.scheduled_at).getTime() - new Date().getTime();
+                                                const hoursLeft = Math.floor(timeDiff / (1000 * 60 * 60));
+                                                if (hoursLeft >= 0 && hoursLeft <= 24) {
+                                                    return (
+                                                        <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700 hover:bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400">
+                                                            ⏳ {hoursLeft === 0 ? "1 saatten az" : `Son ${hoursLeft} saat`}
+                                                        </Badge>
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
                                         </p>
                                         {req.notes && (
                                             <p className="text-sm text-slate-500 mt-2 bg-slate-50 dark:bg-slate-900 p-2 rounded-md italic">

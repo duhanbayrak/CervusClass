@@ -9,12 +9,16 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { approveSession, cancelSession } from "@/lib/actions/study-session"
+import { approveSession, cancelSession, assignStudentToSession } from "@/lib/actions/study-session"
 import { updateStudySessionStatus } from "@/lib/actions/study-session-admin"
+import { getStudents } from "@/lib/actions/student"
 import { Check, X, Ban } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { StudySessionEvent } from "@/types/schedule";
+import { Profile } from "@/types/database"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 
 interface ManageSessionDialogProps {
     session: StudySessionEvent | null
@@ -25,9 +29,40 @@ interface ManageSessionDialogProps {
 
 export function ManageSessionDialog({ session, open, onOpenChange, onClose }: ManageSessionDialogProps) {
     const [loading, setLoading] = useState(false)
+    const [students, setStudents] = useState<Profile[]>([])
+    const [selectedStudentId, setSelectedStudentId] = useState<string>('')
+    const [topic, setTopic] = useState<string>('')
 
+    useEffect(() => {
+        if (session?.status === 'available' && open) {
+            getStudents('', 'all', 1, 100).then(res => {
+                if (res.success) setStudents(res.data)
+            })
+        }
+        if (!open) {
+            setSelectedStudentId('')
+            setTopic('')
+        }
+    }, [session?.status, open])
 
     if (!session) return null;
+
+    const handleAssign = async () => {
+        if (!selectedStudentId) {
+            toast.error("Lütfen bir öğrenci seçin")
+            return
+        }
+        setLoading(true)
+        try {
+            const res = await assignStudentToSession(session.id, selectedStudentId, topic)
+            if (res.error) toast.error(res.error)
+            else {
+                toast.success("Öğrenci başarıyla atandı")
+                onClose()
+            }
+        } catch (e) { toast.error("Hata oluştu") }
+        finally { setLoading(false) }
+    }
 
     const handleApprove = async () => {
         setLoading(true)
@@ -93,16 +128,44 @@ export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Ma
                 </DialogHeader>
 
                 <div className="py-4 space-y-4">
-                    <div className="flex flex-col gap-1">
-                        <span className="text-sm text-muted-foreground">Öğrenci</span>
-                        <span className="font-medium text-lg">{session.status === 'available' ? '-' : studentName}</span>
-                    </div>
+                    {session.status === 'available' ? (
+                        <>
+                            <div className="flex flex-col gap-2">
+                                <span className="text-sm font-medium">Öğrenci Seçin</span>
+                                <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Öğrenci seçin..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {students.map(s => (
+                                            <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <span className="text-sm font-medium">Konu (Opsiyonel)</span>
+                                <Input 
+                                    placeholder="Etüt konusu" 
+                                    value={topic} 
+                                    onChange={(e) => setTopic(e.target.value)} 
+                                />
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-sm text-muted-foreground">Öğrenci</span>
+                                <span className="font-medium text-lg">{session.status === 'available' ? '-' : studentName}</span>
+                            </div>
 
-                    {session.topic && (
-                        <div className="flex flex-col gap-1">
-                            <span className="text-sm text-muted-foreground">Konu</span>
-                            <span className="font-medium">{session.topic}</span>
-                        </div>
+                            {session.topic && (
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-sm text-muted-foreground">Konu</span>
+                                    <span className="font-medium">{session.topic}</span>
+                                </div>
+                            )}
+                        </>
                     )}
 
                     <div className="flex flex-col gap-1">
@@ -127,6 +190,12 @@ export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Ma
                     )}
 
                     <div className="flex gap-2 justify-end w-full sm:w-auto">
+                        {session.status === 'available' && (
+                            <Button onClick={handleAssign} isLoading={loading} className="bg-primary hover:bg-primary/90">
+                                Kaydet ve Ata
+                            </Button>
+                        )}
+
                         {isApprovable && (
                             <Button onClick={handleApprove} isLoading={loading} className="bg-green-600 hover:bg-green-700">
                                 Onayla

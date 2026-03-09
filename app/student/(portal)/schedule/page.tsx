@@ -13,33 +13,15 @@ export default async function StudentSchedulePage() {
 
     if (!profile || !profile.class_id) return <div>Sınıf bilginiz bulunamadı.</div>
 
-    const [scheduleResponse, studySessionsResponse] = await Promise.all([
-        supabase
-            .from('schedule')
-            .select(`
-                *,
-                courses ( name, code ),
-                classes ( name ),
-                profiles ( full_name ) 
-            `)
-            .eq('class_id', profile.class_id!),
-
-        supabase
-            .from('study_sessions')
-            .select(`
-                *,
-                profiles:teacher_id ( full_name ),
-                teacher:teacher_id ( full_name ),
-                study_session_statuses ( name )
-            `)
-            .eq('student_id', user.id)
-    ]);
-
-    const events = scheduleResponse.data;
-    const studySessions = studySessionsResponse.data?.filter((s: any) => {
-        const status = s.study_session_statuses?.name || s.status_legacy;
-        return status !== 'rejected' && status !== 'cancelled'; // Filter out rejected/cancelled
-    });
+    const { data: events } = await supabase
+        .from('schedule')
+        .select(`
+            *,
+            courses ( name, code ),
+            classes ( name ),
+            profiles ( full_name ) 
+        `)
+        .eq('class_id', profile.class_id!);
 
     return (
         <div className="space-y-6 h-full">
@@ -50,7 +32,6 @@ export default async function StudentSchedulePage() {
                     <CardContent className="h-full p-2">
                         <WeeklyScheduler
                             events={(events as any) || []}
-                            studySessions={(studySessions as any) || []}
                             role="student"
                             currentUserId={user.id}
                         />

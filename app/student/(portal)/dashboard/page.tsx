@@ -66,6 +66,7 @@ export default async function StudentDashboardPage() {
             .eq('student_id', user.id)
             .neq('study_session_statuses.name', 'completed')
             .neq('study_session_statuses.name', 'cancelled')
+            .gte('scheduled_at', new Date().toISOString())
             .order('scheduled_at', { ascending: true })
     ]);
 
@@ -290,8 +291,20 @@ export default async function StudentDashboardPage() {
                                             }`}></div>
                                         <div className="flex-1">
                                             <h5 className="text-sm font-bold text-slate-800 dark:text-slate-200">{etut.topic}</h5>
-                                            <p className="text-xs text-slate-500">
-                                                {etut.teacher?.full_name} • {new Date(etut.scheduled_at).toLocaleDateString('tr-TR')}
+                                            <p className="text-xs text-slate-500 flex items-center flex-wrap gap-1">
+                                                <span>{etut.teacher?.full_name} • {new Date(etut.scheduled_at).toLocaleDateString('tr-TR')}</span>
+                                                {(() => {
+                                                    const timeDiff = new Date(etut.scheduled_at).getTime() - new Date().getTime();
+                                                    const hoursLeft = Math.floor(timeDiff / (1000 * 60 * 60));
+                                                    if (hoursLeft >= 0 && hoursLeft <= 24) {
+                                                        return (
+                                                            <span className="text-orange-600 dark:text-orange-400 font-medium ml-1">
+                                                                ⏳ {hoursLeft === 0 ? "< 1 sa" : `${hoursLeft} sa`}
+                                                            </span>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                             </p>
                                         </div>
                                         <Badge variant="outline" className={`capitalize text-[10px] ${status === 'pending' ? 'text-yellow-600 border-yellow-200 bg-yellow-50' :
