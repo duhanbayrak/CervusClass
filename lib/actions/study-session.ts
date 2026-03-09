@@ -134,7 +134,7 @@ export async function getTeacherSchedule(teacherId: string) {
 }
 
 // Müsaitlik oluştur (öğretmen)
-export async function createAvailability(date: string, startTime: string, endTime: string) {
+export async function createAvailability(date: string, startTime: string, endTime: string, slotCount: number = 1) {
     const { supabase, user, organizationId, error } = await getAuthContext();
     if (error || !user || !organizationId) return { error: error || 'Unauthorized' };
 
@@ -156,7 +156,7 @@ export async function createAvailability(date: string, startTime: string, endTim
         return { error: 'Bitiş saati başlangıç saatinden sonra olmalıdır.' };
     }
 
-    // Çakışma kontrolü
+    // Çakışma kontrolü (Tüm blok için yapıyoruz)
     const conflictResult = await checkAvailabilityConflicts(supabase, user.id, date, startDateTime, endDateTime);
     if (conflictResult.error) {
         return { error: conflictResult.error };
@@ -164,14 +164,29 @@ export async function createAvailability(date: string, startTime: string, endTim
 
     try {
         const availableId = await getStatusId(supabaseAdmin, 'available');
-        const { error: dbError } = await supabase.from('study_sessions').insert({
-            teacher_id: user.id,
-            organization_id: organizationId,
-            student_id: null,
-            status_id: availableId,
-            scheduled_at: startDateTime.toISOString(),
-            topic: ''
-        });
+        
+        // Toplam süreyi dakika cinsinden bul
+        const totalMinutes = (endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60);
+        const slotDuration = totalMinutes / slotCount;
+
+        const sessionsToInsert = [];
+
+        for (let i = 0; i < slotCount; i++) {
+            const slotStart = new Date(startDateTime.getTime() + (i * slotDuration * 60 * 1000));
+            const slotEnd = new Date(startDateTime.getTime() + ((i + 1) * slotDuration * 60 * 1000));
+
+            sessionsToInsert.push({
+                teacher_id: user.id,
+                organization_id: organizationId,
+                student_id: null,
+                status_id: availableId,
+                scheduled_at: slotStart.toISOString(),
+                end_time: slotEnd.toISOString(),
+                topic: ''
+            });
+        }
+
+        const { error: dbError } = await supabase.from('study_sessions').insert(sessionsToInsert);
 
         if (dbError) throw dbError;
     } catch (e: unknown) {
@@ -425,7 +440,7 @@ async function checkAvailabilityConflicts(
 
     const { data: existingSessions, error: sessionError } = await supabase
         .from('study_sessions')
-        .select('scheduled_at, study_session_statuses!inner(name)')
+        .select('scheduled_at, end_time, study_session_statuses!inner(name)')
         .eq('teacher_id', userId)
         .gte('scheduled_at', dayStart)
         .lte('scheduled_at', dayEnd)
@@ -437,7 +452,8 @@ async function checkAvailabilityConflicts(
 
     for (const session of existingSessions || []) {
         const sessionStart = new Date(session.scheduled_at);
-        const sessionEnd = new Date(sessionStart.getTime() + 60 * 60 * 1000); // 1 saat varsayım
+        // Eğer end_time null/undefined gelirse (hata paylı veriler), 1 saat var say. Yeni verilerde end_time olacak.
+        const sessionEnd = session.end_time ? new Date(session.end_time) : new Date(sessionStart.getTime() + 60 * 60 * 1000); 
 
         if (startDateTime < sessionEnd && endDateTime > sessionStart) {
             return { error: 'Bu saat aralığında zaten bir etüt veya müsaitlik var.' };
@@ -448,3 +464,54 @@ async function checkAvailabilityConflicts(
 }
 
 // Hata yönetimi helper kaldırıldı -> lib/utils/error.ts kullanılıyor
+
+// Öğretmen tarafından etüt atama (Assign Student to Session)
+export async function assignStudentToSession(sessionId: string, studentId: string, topic?: string) {
+    const { supabase, user, error } = await getAuthContext();
+    if (error || !user) return { error: error || "Unauthorized" };
+
+    try {
+        const { data: session, error: sessionError } = await supabase
+            .from('study_sessions')
+            .select('teacher_id')
+            .eq('id', sessionId)
+            .single();
+
+        if (sessionError || !session) return { error: "Oturum bulunamadı." };
+
+        const userRole = user.app_metadata?.role || user.user_metadata?.role;
+        const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+
+        if (!isAdmin && session.teacher_id !== user.id) {
+            return { error: "Bu işlemi sadece ilgili öğretmen veya yönetici yapabilir." };
+        }
+
+        const approvedId = await getStatusId(supabaseAdmin, 'approved');
+        
+        const { error: dbError } = await supabase
+            .from('study_sessions')
+            .update({ 
+                student_id: studentId,
+                status_id: approvedId,
+                topic: topic || 'Öğretmen Ataması'
+            })
+            .eq('id', sessionId);
+
+        if (dbError) throw dbError;
+
+        // Öğrenciye bildirim gönder
+        await createNotification({
+            userId: studentId,
+            title: 'Yeni Etüt Ataması 📚',
+            message: 'Öğretmeniniz size yeni bir etüt atadı. Takviminizden detayları kontrol edebilirsiniz.',
+            type: 'info',
+        });
+        
+    } catch (e: unknown) {
+        return { error: handleError(e) };
+    }
+
+    revalidatePath('/teacher/schedule');
+    revalidatePath('/teacher/dashboard');
+    return { success: true };
+}

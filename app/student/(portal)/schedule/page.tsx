@@ -21,7 +21,7 @@ export default async function StudentSchedulePage() {
                 classes ( name ),
                 profiles ( full_name ) 
             `)
-            .eq('class_id', profile.class_id), // NOSONAR
+            .eq('class_id', profile.class_id),
 
         supabase
             .from('study_sessions')
@@ -37,7 +37,7 @@ export default async function StudentSchedulePage() {
     const events = scheduleResponse.data;
     const studySessions = studySessionsResponse.data?.filter((s: any) => {
         const status = s.study_session_statuses?.name || s.status_legacy;
-        return status !== 'rejected' && status !== 'cancelled'; // Filter out rejected/cancelled
+        return status !== 'rejected' && status !== 'cancelled';
     });
 
     return (
@@ -49,7 +49,6 @@ export default async function StudentSchedulePage() {
                     <CardContent className="h-full p-2">
                         <WeeklyScheduler
                             events={(events as any) || []}
-                            studySessions={(studySessions as any) || []}
                             role="student"
                             currentUserId={user.id}
                         />
