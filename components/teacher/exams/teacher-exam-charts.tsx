@@ -34,8 +34,8 @@ const tooltipStyle = {
 }
 
 const tooltipFormatter = (value?: number | string) => {
-    const num = typeof value === 'number' ? value : parseFloat(String(value ?? '0'))
-    return isNaN(num) ? '-' : num.toFixed(2)
+    const num = typeof value === 'number' ? value : Number.parseFloat(String(value ?? '0'))
+    return Number.isNaN(num) ? '-' : num.toFixed(2)
 }
 
 export function TeacherExamCharts({
@@ -43,7 +43,7 @@ export function TeacherExamCharts({
     classTotalAvg,
     schoolSubjectAverages,
     schoolTotalAvg,
-}: TeacherExamChartsProps) {
+}: Readonly<TeacherExamChartsProps>) {
     const [mainModalOpen, setMainModalOpen] = useState(false)
     const [expandedSubject, setExpandedSubject] = useState<string | null>(null)
     const [totalModalOpen, setTotalModalOpen] = useState(false)
@@ -174,8 +174,8 @@ export function TeacherExamCharts({
                                             <YAxis tick={{ fontSize: 11 }} />
                                             <Tooltip contentStyle={tooltipStyle} formatter={tooltipFormatter} />
                                             <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>
-                                                {[COLORS.class, COLORS.school].map((color, i) => (
-                                                    <rect key={i} fill={color} />
+                                                {[COLORS.class, COLORS.school].map((color) => (
+                                                    <rect key={color} fill={color} />
                                                 ))}
                                             </Bar>
                                         </BarChart>
@@ -254,8 +254,8 @@ export function TeacherExamCharts({
                                     <YAxis tick={{ fontSize: 16 }} />
                                     <Tooltip contentStyle={tooltipStyle} formatter={tooltipFormatter} />
                                     <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={100}>
-                                        {[COLORS.class, COLORS.school].map((color, i) => (
-                                            <rect key={i} fill={color} />
+                                        {[COLORS.class, COLORS.school].map((color) => (
+                                            <rect key={color} fill={color} />
                                         ))}
                                     </Bar>
                                 </BarChart>

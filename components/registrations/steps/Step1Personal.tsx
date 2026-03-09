@@ -17,7 +17,7 @@ const personalSchema = z.object({
     firstName: z.string().min(2, 'Ad en az 2 karakter olmalıdır'),
     lastName: z.string().min(2, 'Soyad en az 2 karakter olmalıdır'),
     email: z.string().email('Geçerli bir e-posta adresi giriniz'),
-    tcNo: z.string().length(11, 'TC Kimlik No tam 11 haneli olmalıdır').regex(/^[0-9]+$/, 'Sadece rakam giriniz'),
+    tcNo: z.string().length(11, 'TC Kimlik No tam 11 haneli olmalıdır').regex(/^\d+$/, 'Sadece rakam giriniz'),
     studentNumber: z.string().optional(),
     phone: z.string().optional(),
     birthDate: z.string().optional(),
@@ -25,7 +25,7 @@ const personalSchema = z.object({
     parentLastName: z.string().min(2, 'Veli soyadı en az 2 karakter olmalıdır'),
     parentPhone: z.string().min(10, 'Geçerli bir telefon numarası giriniz'),
     parentEmail: z.string().email('Geçerli bir e-posta adresi giriniz').optional().or(z.literal('')),
-    parentTcNo: z.string().optional().refine(val => !val || (val.length === 11 && /^[0-9]+$/.test(val)), 'TC Kimlik No tam 11 haneli rakam olmalıdır'),
+    parentTcNo: z.string().optional().refine(val => !val || (val.length === 11 && /^\d+$/.test(val)), 'TC Kimlik No tam 11 haneli rakam olmalıdır'),
     parentRelationship: z.string().min(2, 'Yakınlık derecesi zorunludur'),
     parentAddress: z.string().optional(),
 });

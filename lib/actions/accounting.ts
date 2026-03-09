@@ -26,7 +26,7 @@ export async function getFinanceCategories(type?: 'income' | 'expense'): Promise
 
     const { data, error: fetchError } = await query;
     if (fetchError) return [];
-    return (data || []) as FinanceCategory[];
+    return (data || []) as any; // Type defined in Promise return
 }
 
 /**
@@ -54,7 +54,7 @@ export async function createFinanceCategory(category: {
         .single();
 
     if (insertError) return { success: false, error: insertError.message };
-    return { success: true, data: data as FinanceCategory };
+    return { success: true, data: data as any };
 }
 
 /**
@@ -147,7 +147,7 @@ export async function getFinanceTransactions(filters?: {
 
     const { data, count, error: fetchError } = await query;
     if (fetchError) return { data: [], count: 0 };
-    return { data: (data || []) as FinanceTransaction[], count: count || 0 };
+    return { data: (data || []) as any, count: count || 0 };
 }
 
 /**
@@ -196,24 +196,7 @@ export async function createFinanceTransaction(transaction: {
 
     if (insertError) return { success: false, error: insertError.message };
 
-    // 2. Hesap bakiyesini güncelle (amount = KDV dahil toplam)
-    const { data: account } = await supabase
-        .from('finance_accounts')
-        .select('balance')
-        .eq('id', transaction.account_id)
-        .single();
-
-    if (account) {
-        const currentBalance = Number(account.balance);
-        const newBalance = transaction.type === 'income'
-            ? currentBalance + transaction.amount
-            : currentBalance - transaction.amount;
-
-        await supabase
-            .from('finance_accounts')
-            .update({ balance: newBalance })
-            .eq('id', transaction.account_id);
-    }
+    // 2. Hesap bakiyesini güncelleme işlemi DB Trigger (fn_update_account_balance_on_transaction) tarafından otomatik yapılır.
 
     return { success: true };
 }

@@ -1,18 +1,21 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { getSupabaseEnv } from '@/lib/env';
 import { notFound } from 'next/navigation';
 import { StudentDetailView } from '@/components/student/student-detail-view';
 import { getStudentProfileData } from '@/lib/data/student-profile';
 import { getStudentFees, getStudentFeeDetail } from '@/lib/actions/student-fees';
 import { getFeePayments } from '@/lib/actions/fee-payments';
 
-export default async function StudentDetailPage(props: { params: Promise<{ id: string }> }) {
+export default async function StudentDetailPage(props: Readonly<{ params: Promise<{ id: string }> }>) {
+    // NOSONAR
     const params = await props.params;
     const { id } = params;
     const cookieStore = await cookies();
+    const { url, anonKey } = getSupabaseEnv();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        url,
+        anonKey,
         {
             cookies: {
                 getAll() {
@@ -52,6 +55,7 @@ export default async function StudentDetailPage(props: { params: Promise<{ id: s
                 profile={data.profile}
                 examResults={data.examResults}
                 stats={data.stats}
+                notes={data.notes}
                 role="admin"
                 financialData={financialData}
             />

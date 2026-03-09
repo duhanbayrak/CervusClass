@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { getSupabaseEnv } from '@/lib/env';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from "@/components/ui/progress";
@@ -7,9 +8,10 @@ import { Award, TrendingUp, TrendingDown, BarChart2 } from 'lucide-react';
 
 async function getGradesData(userId: string) {
     const cookieStore = await cookies();
+    const { url, anonKey } = getSupabaseEnv();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        url,
+        anonKey,
         {
             cookies: {
                 getAll() {
@@ -31,9 +33,10 @@ async function getGradesData(userId: string) {
 
 export default async function StudentGradesPage() {
     const cookieStore = await cookies();
+    const { url, anonKey } = getSupabaseEnv();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        url,
+        anonKey,
         {
             cookies: {
                 getAll() {
@@ -55,7 +58,7 @@ export default async function StudentGradesPage() {
 
     // Determine Trend (Simple logic: compare last exam with average)
     const lastExamNet = exams.length > 0 ? exams[0].total_net : 0;
-    const isTrendingUp = parseFloat(lastExamNet.toString()) >= parseFloat(averageNet.toString());
+    const isTrendingUp = Number.parseFloat(lastExamNet.toString()) >= Number.parseFloat(averageNet.toString());
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -143,7 +146,7 @@ export default async function StudentGradesPage() {
                                             </div>
                                             <div className="text-center hidden sm:block">
                                                 <span className="block text-xs text-slate-400 font-medium uppercase">Sıralama</span>
-                                                <span className="font-bold text-slate-700 dark:text-slate-200">#{Math.floor(Math.random() * 50) + 1}</span>
+                                                <span className="font-bold text-slate-700 dark:text-slate-200">-</span>
                                             </div>
                                             <div className="text-center">
                                                 <Badge variant="outline" className="border-purple-200 bg-purple-50 text-purple-700">Sonuçlandı</Badge>
@@ -173,8 +176,7 @@ export default async function StudentGradesPage() {
                                     <span className="font-medium">Matematik</span>
                                     <span className="text-slate-500">32.5 / 40</span>
                                 </div>
-                                <Progress value={81} className="h-2 bg-slate-100 dark:bg-slate-700" /> {/* Need to verify generic div color or check shadcn */}
-                                {/* Shadcn progress usually has an Indicator. Assuming standard setup */}
+                                <Progress value={81} className="h-2 bg-slate-100 dark:bg-slate-700" />
                             </div>
                             <div className="space-y-2">
                                 <div className="flex justify-between text-sm">
@@ -210,7 +212,7 @@ export default async function StudentGradesPage() {
                         <CardContent>
                             <p className="text-sm text-blue-900 dark:text-blue-100 leading-relaxed">
                                 Matematik netlerinizde istikrarlı bir artış var, ancak Kimya konularında eksiğiniz görünüyor.
-                                <span className="font-bold"> "Asitler ve Bazlar"</span> konusuna odaklanmanızı öneririz.
+                                {' '}<span className="font-bold">&quot;Asitler ve Bazlar&quot;</span>{' '}konusuna odaklanmanızı öneririz.
                             </p>
                         </CardContent>
                     </Card>

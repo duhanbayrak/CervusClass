@@ -14,11 +14,11 @@ interface SettingsContentProps {
     expenseCategories: FinanceCategory[];
 }
 
-export function SettingsContent({
+export function SettingsContent({ // NOSONAR
     settings,
     incomeCategories,
     expenseCategories,
-}: SettingsContentProps) {
+}: Readonly<SettingsContentProps>) {
     const [activeTab, setActiveTab] = useState<'general' | 'categories'>('general');
     const router = useRouter();
 

@@ -18,19 +18,19 @@ export function GenerateMockButton() {
                 const byteCharacters = atob(result.data)
                 const byteNumbers = new Array(byteCharacters.length)
                 for (let i = 0; i < byteCharacters.length; i++) {
-                    byteNumbers[i] = byteCharacters.charCodeAt(i)
+                    byteNumbers[i] = byteCharacters.codePointAt(i) || 0
                 }
                 const byteArray = new Uint8Array(byteNumbers)
                 const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
 
-                const url = window.URL.createObjectURL(blob)
+                const url = globalThis.URL.createObjectURL(blob)
                 const a = document.createElement('a')
                 a.href = url
                 a.download = result.filename || `mock_exam_${type}.xlsx`
                 document.body.appendChild(a)
                 a.click()
-                window.URL.revokeObjectURL(url)
-                document.body.removeChild(a)
+                globalThis.URL.revokeObjectURL(url)
+                a.remove()
 
                 toast.success(`${type} deneme excel dosyası indirildi.`)
             } else {

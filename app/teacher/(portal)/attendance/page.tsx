@@ -1,9 +1,10 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { getSupabaseEnv } from '@/lib/env';
 import Link from 'next/link';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin, CheckCircle2, AlertCircle, ClipboardList, Eye } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, AlertCircle, ClipboardList, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { redirect } from 'next/navigation';
 import { format } from 'date-fns';
@@ -29,9 +30,10 @@ const days = [
 
 async function getSchedule(dayOfWeek: number) {
     const cookieStore = await cookies();
+    const { url, anonKey } = getSupabaseEnv();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        url,
+        anonKey,
         {
             cookies: {
                 getAll() {
@@ -53,7 +55,13 @@ async function getSchedule(dayOfWeek: number) {
     const dayDifference = dayOfWeek - currentDayISO;
     const targetDateObj = new Date(now);
     targetDateObj.setDate(now.getDate() + dayDifference);
+    targetDateObj.setHours(0, 0, 0, 0); // Normalize time
     const targetDate = format(targetDateObj, 'yyyy-MM-dd');
+
+    // Determine if the target date is in the future
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isFuture = targetDateObj > today;
 
     // 1. Fetch Basic Schedule
     const { data: schedules, error } = await supabase
@@ -87,21 +95,23 @@ async function getSchedule(dayOfWeek: number) {
         return {
             ...item,
             isAttendanceTaken: !!attendanceId,
-            attendanceId: attendanceId
+            attendanceId: attendanceId,
+            isFuture: isFuture
         };
     });
 
     return processedSchedules;
 }
 
-export default async function AttendancePage(props: PageProps) {
+export default async function AttendancePage(props: Readonly<PageProps>) {
+    // NOSONAR
     const searchParams = await props.searchParams;
 
     // Default to today if no param, converted to 1-7 range (ISO)
     const todayJS = new Date().getDay(); // 0=Sun, 1=Mon
     const todayISO = todayJS === 0 ? 7 : todayJS;
 
-    const selectedDay = searchParams.day ? parseInt(searchParams.day) : todayISO;
+    const selectedDay = searchParams.day ? Number.parseInt(searchParams.day) : todayISO;
     const items = await getSchedule(selectedDay);
 
     if (items === null) {
@@ -164,27 +174,38 @@ export default async function AttendancePage(props: PageProps) {
                                 </CardDescription>
                             </CardHeader>
                             <CardFooter>
-                                <Link href={`/teacher/attendance/${item.id}`} className="w-full">
+                                {item.isFuture ? (
                                     <Button
-                                        className={item.isAttendanceTaken
-                                            ? "w-full border-zinc-300 text-zinc-700 hover:bg-zinc-50 group hover:border-zinc-400"
-                                            : "w-full bg-indigo-600 hover:bg-indigo-700 shadow-md hover:shadow-lg transition-all text-white group"
-                                        }
-                                        variant={item.isAttendanceTaken ? "outline" : "default"}
+                                        className="w-full bg-slate-100 text-slate-400 cursor-not-allowed border-slate-200"
+                                        variant="outline"
+                                        disabled
                                     >
-                                        {item.isAttendanceTaken ? (
-                                            <>
-                                                <Eye className="w-4 h-4 mr-2 text-zinc-500 group-hover:text-zinc-700" />
-                                                Düzenle / Göster
-                                            </>
-                                        ) : (
-                                            <>
-                                                <ClipboardList className="w-4 h-4 mr-2" />
-                                                Yoklama Al
-                                            </>
-                                        )}
+                                        <Clock className="w-4 h-4 mr-2" />
+                                        Henüz Zamanı Gelmedi
                                     </Button>
-                                </Link>
+                                ) : (
+                                    <Link href={`/teacher/attendance/${item.id}`} className="w-full">
+                                        <Button
+                                            className={item.isAttendanceTaken
+                                                ? "w-full border-zinc-300 text-zinc-700 hover:bg-zinc-50 group hover:border-zinc-400"
+                                                : "w-full bg-indigo-600 hover:bg-indigo-700 shadow-md hover:shadow-lg transition-all text-white group"
+                                            }
+                                            variant={item.isAttendanceTaken ? "outline" : "default"}
+                                        >
+                                            {item.isAttendanceTaken ? (
+                                                <>
+                                                    <Eye className="w-4 h-4 mr-2 text-zinc-500 group-hover:text-zinc-700" />
+                                                    Düzenle / Göster
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ClipboardList className="w-4 h-4 mr-2" />
+                                                    Yoklama Al
+                                                </>
+                                            )}
+                                        </Button>
+                                    </Link>
+                                )}
                             </CardFooter>
                         </Card>
                     ))

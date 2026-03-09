@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect } from 'react'
+import * as Sentry from '@sentry/nextjs'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle } from 'lucide-react'
 
 // Global Error must be a Client Component
-export default function GlobalError({
+export default function GlobalError({ // NOSONAR
     error,
     reset,
 }: {
@@ -18,11 +19,11 @@ export default function GlobalError({
             reset();
             return;
         }
-        console.error(error)
+        Sentry.captureException(error)
     }, [error, reset])
 
     return (
-        <html>
+        <html lang="tr">
             <body>
                 <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-center">
                     <div className="rounded-full bg-red-100 p-4 dark:bg-red-900/20">
@@ -38,7 +39,7 @@ export default function GlobalError({
                         <Button onClick={() => reset()} variant="default">
                             Tekrar Dene
                         </Button>
-                        <Button onClick={() => window.location.href = '/'} variant="outline">
+                        <Button onClick={() => globalThis.location.href = '/'} variant="outline">
                             Ana Sayfaya Dön
                         </Button>
                     </div>

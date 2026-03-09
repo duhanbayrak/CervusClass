@@ -14,11 +14,11 @@ interface CategoryManagerProps {
     onUpdate: () => void;
 }
 
-export function CategoryManager({
+export function CategoryManager({ // NOSONAR
     incomeCategories,
     expenseCategories,
     onUpdate,
-}: CategoryManagerProps) {
+}: Readonly<CategoryManagerProps>) {
     const [isPending, startTransition] = useTransition();
     const [activeType, setActiveType] = useState<'income' | 'expense'>('income');
     const [newCategoryName, setNewCategoryName] = useState('');

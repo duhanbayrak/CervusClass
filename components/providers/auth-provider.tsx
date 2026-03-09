@@ -3,15 +3,21 @@
 import { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { User } from '@supabase/supabase-js';
 import { createClient } from "@/lib/supabase";
+import { getSupabaseEnv } from "@/lib/env";
 import { Profile, ProfileRole } from '@/types/database';
-import { useRouter } from 'next/navigation';
 
 const supabase = createClient();
+
+export interface OrganizationData {
+    name: string;
+    logo_url: string | null;
+}
 
 interface AuthContextType {
     user: User | null;
     profile: Profile | null;
     role: ProfileRole | null;
+    organization: OrganizationData | null;
     loading: boolean;
     signOut: () => Promise<void>;
 }
@@ -48,12 +54,10 @@ function profileFromJwt(authUser: User): Profile {
     } as unknown as Profile;
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { readonly children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
-    const router = useRouter();
-
     useEffect(() => {
         let mounted = true;
         const controller = new AbortController();
@@ -66,10 +70,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // DB'den profili çeker — doğrudan PostgREST fetch ile (client library bypass)
         const fetchDbProfile = async (userId: string, accessToken: string) => {
             try {
-                const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/profiles?select=*,roles(name)&id=eq.${userId}`;
+                const { url: baseUrl, anonKey } = getSupabaseEnv();
+                const url = `${baseUrl}/rest/v1/profiles?select=*,roles(name),organizations(name,logo_url)&id=eq.${userId}`;
                 const res = await fetch(url, {
                     headers: {
-                        'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                        'apikey': anonKey,
                         'Authorization': `Bearer ${accessToken}`,
                         'Accept': 'application/json',
                     },
@@ -134,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } finally {
             setUser(null);
             setProfile(null);
-            window.location.href = '/';
+            globalThis.location.href = '/';
         }
     };
 
@@ -142,13 +147,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const rolesData = (profile as any)?.roles as { name: string } | { name: string }[] | null;
     const roleName = Array.isArray(rolesData) ? rolesData[0]?.name : rolesData?.name;
 
+    // Organizasyon bilgisini profil verisinden çıkar
+    const orgData = (profile as any)?.organizations as OrganizationData | null;
+
     const value = useMemo(() => ({
         user,
         profile,
         role: (roleName as ProfileRole) || null,
+        organization: orgData || null,
         loading,
         signOut,
-    }), [user, profile, roleName, loading]);
+    }), [user, profile, roleName, orgData, loading]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

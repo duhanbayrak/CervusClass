@@ -30,9 +30,16 @@ interface ClassExamData {
 
 async function getExamsByClass() {
     const cookieStore = await cookies()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Missing Supabase environment variables')
+    }
+
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        supabaseUrl,
+        supabaseKey,
         {
             cookies: {
                 getAll() {
@@ -87,7 +94,9 @@ async function getExamsByClass() {
             })
         }
 
-        const exam = examMap.get(examKey)!
+        const exam = examMap.get(examKey)
+        if (!exam) return
+
         let classData = exam.classes.find(c => c.classId === classId)
 
         if (!classData) {
@@ -122,9 +131,16 @@ async function getExamsByClass() {
 
 export default async function TeacherExamsPage() {
     const cookieStore = await cookies()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Missing Supabase environment variables')
+    }
+
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        supabaseUrl,
+        supabaseKey,
         {
             cookies: {
                 getAll() {
@@ -202,8 +218,8 @@ export default async function TeacherExamsPage() {
                         </p>
                     </div>
                 ) : (
-                    exams.map((exam, idx) => (
-                        <div key={idx} className="border rounded-xl overflow-hidden bg-card">
+                    exams.map((exam) => (
+                        <div key={exam.examName} className="border rounded-xl overflow-hidden bg-card">
                             {/* Exam Header */}
                             <div className="p-6 border-b bg-muted/30">
                                 <div className="flex items-start justify-between">

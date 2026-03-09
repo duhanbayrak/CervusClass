@@ -13,7 +13,6 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea"; // Assuming this exists, otherwise Input or standard textarea
@@ -34,17 +33,17 @@ interface PendingStudyRequestsListProps {
     requests: StudyRequest[];
 }
 
-export function PendingStudyRequestsList({ requests }: PendingStudyRequestsListProps) {
+export function PendingStudyRequestsList({ requests }: Readonly<PendingStudyRequestsListProps>) {
     const [processing, setProcessing] = useState<string | null>(null);
     const [rejectReason, setRejectReason] = useState("");
     const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
     const [isRejectOpen, setIsRejectOpen] = useState(false);
     const router = useRouter();
 
-    const handleApprove = async (id: string) => {
-        setProcessing(id);
+    const handleApprove = async (sessionId: string) => {
+        setProcessing(sessionId);
         try {
-            const res = await approveSession(id);
+            const res = await approveSession(sessionId);
             if (res?.error) {
                 toast.error(res.error);
             } else {
@@ -52,6 +51,7 @@ export function PendingStudyRequestsList({ requests }: PendingStudyRequestsListP
                 router.refresh();
             }
         } catch (error) {
+            console.error('Error approving session:', error);
             toast.error("Bir hata oluştu");
         } finally {
             setProcessing(null);
@@ -77,6 +77,7 @@ export function PendingStudyRequestsList({ requests }: PendingStudyRequestsListP
                 router.refresh();
             }
         } catch (error) {
+            console.error('Error rejecting session:', error);
             toast.error("Bir hata oluştu");
         } finally {
             setProcessing(null);

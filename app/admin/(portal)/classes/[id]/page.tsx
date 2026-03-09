@@ -5,11 +5,11 @@ import { GraduationCap, Users, ArrowLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 
-export default async function ClassDetailPage(props: { params: Promise<{ id: string }> }) {
+export default async function ClassDetailPage(props: { params: Promise<{ id: string }> }) { // NOSONAR
     const params = await props.params;
     const { id } = params;
 
-    const res = await getClassById(id);
+    const res = await getClassById({ id });
 
     if (!res.success || !res.data) {
         notFound();

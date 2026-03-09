@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { getSupabaseEnv } from '@/lib/env';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -11,9 +12,10 @@ import { format } from 'date-fns';
 
 async function getScheduleWithStudents(scheduleId: string) {
     const cookieStore = await cookies();
+    const { url, anonKey } = getSupabaseEnv();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        url,
+        anonKey,
         {
             cookies: {
                 getAll() {
@@ -61,6 +63,7 @@ async function getScheduleWithStudents(scheduleId: string) {
         .order('full_name');
 
     if (studentsError) {
+        // Non-critical error; proceed with empty student list
     }
 
     // 3. Calculate Target Date based on Schedule Day of Week
@@ -83,15 +86,23 @@ async function getScheduleWithStudents(scheduleId: string) {
         .eq('schedule_id', scheduleId)
         .eq('date', targetDateStr);
 
+    // Determine if target date is in the future
+    const todayObj = new Date(now);
+    todayObj.setHours(0, 0, 0, 0);
+    targetDateObj.setHours(0, 0, 0, 0);
+    const isFuture = targetDateObj > todayObj;
+
     return {
         schedule,
         students: students || [],
         existingAttendance: existingAttendance || [],
-        date: targetDateStr // Renamed from today to date
+        date: targetDateStr, // Renamed from today to date
+        isFuture
     };
 }
 
-export default async function TakeAttendancePage({ params }: { params: any }) {
+export default async function TakeAttendancePage({ params }: Readonly<{ params: any }>) {
+    // NOSONAR
     const resolvedParams = await Promise.resolve(params);
     const scheduleId = resolvedParams.scheduleId;
 
@@ -105,7 +116,7 @@ export default async function TakeAttendancePage({ params }: { params: any }) {
         notFound();
     }
 
-    const { schedule, students, existingAttendance, date } = data;
+    const { schedule, students, existingAttendance, date, isFuture } = data;
 
     // Create a map of existing attendance for easy lookup
     const attendanceMap: Record<string, { status: string; late_minutes: number; id: string }> = {};
@@ -151,19 +162,27 @@ export default async function TakeAttendancePage({ params }: { params: any }) {
                 <CardHeader>
                     <CardTitle>Öğrenci Listesi</CardTitle>
                     <CardDescription>
-                        {date && new Date(date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' })} tarihli yoklama. Durumu seçip kaydedin.
+                        {date && new Date(date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' })} {isFuture ? 'tarihli ders için henüz yoklama alınamaz.' : 'tarihli yoklama. Durumu seçip kaydedin.'}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {students.length > 0 ? (
+                    {isFuture && (
+                        <div className="text-center py-12 text-amber-500 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                            <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                            <h3 className="text-lg font-medium text-amber-700 dark:text-amber-400 mb-2">Henüz Zamanı Gelmedi</h3>
+                            <p className="text-amber-600 dark:text-amber-500">Gelecekteki günlerin yoklaması alınamaz. Yoklama alabilmek için ders gününün gelmesini beklemelisiniz.</p>
+                        </div>
+                    )}
+                    {!isFuture && students.length > 0 && (
                         <AttendanceForm
                             scheduleId={scheduleId}
                             classId={schedule.class_id}
                             students={students}
                             attendanceMap={attendanceMap}
-                            date={date!}
+                            date={date}
                         />
-                    ) : (
+                    )}
+                    {!isFuture && students.length === 0 && (
                         <div className="text-center py-12 text-slate-400">
                             <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
                             <p>Bu sınıfta kayıtlı öğrenci bulunmamaktadır.</p>

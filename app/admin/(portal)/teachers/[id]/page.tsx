@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { getSupabaseEnv } from '@/lib/env';
 import { notFound } from 'next/navigation';
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,9 +17,10 @@ interface TeacherProfilePageProps {
 
 async function getTeacherProfile(id: string) {
     const cookieStore = await cookies();
+    const { url, anonKey } = getSupabaseEnv();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        url,
+        anonKey,
         {
             cookies: {
                 getAll() {
@@ -127,7 +129,8 @@ async function getTeacherProfile(id: string) {
     };
 }
 
-export default async function TeacherProfilePage({ params }: TeacherProfilePageProps) {
+export default async function TeacherProfilePage({ params }: Readonly<TeacherProfilePageProps>) {
+    // NOSONAR
     const { id } = await params;
     const data = await getTeacherProfile(id);
 

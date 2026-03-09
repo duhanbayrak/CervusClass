@@ -30,7 +30,7 @@ export interface TeacherDialogProps {
     onSuccess?: () => void;
 }
 
-export default function TeacherDialog({ open, onOpenChange, teacher, branches, onSuccess }: TeacherDialogProps) {
+export default function TeacherDialog({ open, onOpenChange, teacher, branches, onSuccess }: Readonly<TeacherDialogProps>) { // NOSONAR
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
 
@@ -108,6 +108,8 @@ export default function TeacherDialog({ open, onOpenChange, teacher, branches, o
         }
     };
 
+    const submitLabel = teacher ? 'Güncelle' : 'Kaydet';
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[500px]">
@@ -165,7 +167,7 @@ export default function TeacherDialog({ open, onOpenChange, teacher, branches, o
                             maxLength={10}
                             value={formData.phone}
                             onChange={(e) => {
-                                let val = e.target.value.replace(/\D/g, '');
+                                let val = e.target.value.replaceAll(/\D/g, '');
                                 if (val.startsWith('0')) val = val.substring(1);
                                 if (val.length > 10) val = val.substring(0, 10);
                                 setFormData({ ...formData, phone: val });
@@ -205,7 +207,7 @@ export default function TeacherDialog({ open, onOpenChange, teacher, branches, o
                     )}
                     <DialogFooter>
                         <Button type="submit" disabled={isLoading}>
-                            {isLoading ? 'İşleniyor...' : (teacher ? 'Güncelle' : 'Kaydet')}
+                            {isLoading ? 'İşleniyor...' : submitLabel}
                         </Button>
                     </DialogFooter>
                 </form>

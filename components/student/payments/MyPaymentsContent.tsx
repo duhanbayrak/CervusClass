@@ -8,7 +8,6 @@ import {
     Clock,
     CheckCircle2,
     AlertTriangle,
-    XCircle,
     Loader2,
 } from 'lucide-react';
 import type { StudentFee, FeeInstallment } from '@/types/accounting';
@@ -22,7 +21,7 @@ import { getMyInstallments } from '@/lib/actions/student-payments';
 // Props
 // =============================================
 interface MyPaymentsContentProps {
-    fees: StudentFee[];
+    readonly fees: StudentFee[];
 }
 
 // =============================================
@@ -58,6 +57,14 @@ function feeStatusColor(status: string) {
     }
 }
 
+/** Taksit durumuna göre metin rengi */
+function installmentStatusColor(status: string): string {
+    if (status === 'paid') return 'text-emerald-600 dark:text-emerald-400';
+    if (status === 'overdue') return 'text-red-500 dark:text-red-400';
+    if (status === 'partial') return 'text-amber-600 dark:text-amber-400';
+    return 'text-gray-500';
+}
+
 /** Taksit durumuna göre ikon */
 function installmentIcon(status: string) {
     switch (status) {
@@ -81,7 +88,7 @@ function installmentRowClass(status: string) {
 // =============================================
 // Ana Bileşen
 // =============================================
-export default function MyPaymentsContent({ fees }: MyPaymentsContentProps) {
+export default function MyPaymentsContent({ fees }: Readonly<MyPaymentsContentProps>) {
     // Toplam özet hesapla
     const totalNet = fees.filter(f => f.status !== 'cancelled').reduce((sum, f) => sum + f.net_amount, 0);
 
@@ -166,7 +173,7 @@ export default function MyPaymentsContent({ fees }: MyPaymentsContentProps) {
 // =============================================
 // Alt Bileşen: Ücret Kartı (accordion)
 // =============================================
-function FeeCard({ fee }: { fee: StudentFee }) {
+function FeeCard({ fee }: Readonly<{ fee: StudentFee }>) {
     const [isOpen, setIsOpen] = useState(false);
     const [installments, setInstallments] = useState<FeeInstallment[]>([]);
     const [isLoading, startTransition] = useTransition();
@@ -239,15 +246,17 @@ function FeeCard({ fee }: { fee: StudentFee }) {
             {/* Taksit detayları (accordion) */}
             {isOpen && (
                 <div className="border-t border-gray-100 dark:border-white/5">
-                    {isLoading ? (
+                    {isLoading && (
                         <div className="flex items-center justify-center py-8">
                             <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
                         </div>
-                    ) : installments.length === 0 ? (
+                    )}
+                    {!isLoading && installments.length === 0 && (
                         <p className="text-sm text-gray-400 text-center py-6">
                             Taksit bilgisi bulunamadı
                         </p>
-                    ) : (
+                    )}
+                    {!isLoading && installments.length > 0 && (
                         <>
                             {/* İlerleme çubuğu */}
                             <div className="px-5 pt-4 pb-2">
@@ -286,14 +295,7 @@ function FeeCard({ fee }: { fee: StudentFee }) {
                                             <p className="text-sm font-semibold text-gray-900 dark:text-white">
                                                 {formatCurrency(inst.amount)}
                                             </p>
-                                            <span className={`text-xs font-medium ${inst.status === 'paid'
-                                                    ? 'text-emerald-600 dark:text-emerald-400'
-                                                    : inst.status === 'overdue'
-                                                        ? 'text-red-500 dark:text-red-400'
-                                                        : inst.status === 'partial'
-                                                            ? 'text-amber-600 dark:text-amber-400'
-                                                            : 'text-gray-500'
-                                                }`}>
+                                            <span className={`text-xs font-medium ${installmentStatusColor(inst.status)}`}>
                                                 {INSTALLMENT_STATUS_LABELS[inst.status]}
                                                 {inst.status === 'partial' && ` (${formatCurrency(inst.paid_amount)})`}
                                             </span>
@@ -305,6 +307,7 @@ function FeeCard({ fee }: { fee: StudentFee }) {
                     )}
                 </div>
             )}
+
         </div>
     );
 }

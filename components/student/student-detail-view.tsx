@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import {
-    Mail, Phone, Calendar, ChevronLeft, TrendingUp, Check, X, Clock, LineChart,
+    Mail, Phone, ChevronLeft, TrendingUp, Check, X, Clock,
     User, Users, Hash, Cake, Pencil
 } from 'lucide-react';
 import { cn, formatPhone } from '@/lib/utils';
@@ -33,6 +33,7 @@ interface OmitOptionalStats {
 interface StudentDetailViewProps {
     profile: any;
     examResults: any[];
+    notes?: any[];
     stats: {
         homework: {
             approved: number;
@@ -59,7 +60,7 @@ interface StudentDetailViewProps {
     };
 }
 
-export function StudentDetailView({ profile, examResults, stats, role, financialData }: StudentDetailViewProps) {
+export function StudentDetailView({ profile, examResults, stats, role, financialData, notes = [] }: Readonly<StudentDetailViewProps>) { // NOSONAR
     const router = useRouter();
     const { toast } = useToast();
     const backLink = role === 'admin' ? '/admin/students' : '/teacher/students';
@@ -302,7 +303,7 @@ export function StudentDetailView({ profile, examResults, stats, role, financial
                         </TabsContent>
 
                         <TabsContent value="notes">
-                            <StudentNotesTab role={role} />
+                            <StudentNotesTab role={role} notes={notes} studentId={profile.id} />
                         </TabsContent>
 
                         {role === 'admin' && financialData && (

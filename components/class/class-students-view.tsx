@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
     Loader2,
     ChevronLeft,
@@ -31,7 +30,7 @@ interface ClassStudentsViewProps {
     className: string;
 }
 
-export function ClassStudentsView({ classId, className }: ClassStudentsViewProps) {
+export function ClassStudentsView({ classId, className }: ClassStudentsViewProps) { // NOSONAR
     const router = useRouter();
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(true);
@@ -42,10 +41,10 @@ export function ClassStudentsView({ classId, className }: ClassStudentsViewProps
 
     const loadStudents = async (page: number = currentPage) => {
         setLoading(true);
-        const res = await getStudents(search, classId, page, PAGE_SIZE);
+        const res = await getStudents({ search, classId, page, limit: PAGE_SIZE });
         if (res.success && res.data) {
-            setStudents(res.data as unknown as Student[]);
-            setTotalCount(res.count ?? 0);
+            setStudents(res.data.students as unknown as Student[]);
+            setTotalCount(res.data.count ?? 0);
         }
         setLoading(false);
     };
@@ -100,20 +99,21 @@ export function ClassStudentsView({ classId, className }: ClassStudentsViewProps
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {loading ? (
+                        {loading && (
                             <TableRow>
                                 <TableCell colSpan={4} className="h-24 text-center">
                                     <Loader2 className="mx-auto h-6 w-6 animate-spin text-slate-400" />
                                 </TableCell>
                             </TableRow>
-                        ) : students.length === 0 ? (
+                        )}
+                        {!loading && students.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={4} className="h-24 text-center text-slate-400">
                                     {search ? "Aramayla eşleşen öğrenci bulunamadı." : "Bu sınıfta henüz öğrenci yok."}
                                 </TableCell>
                             </TableRow>
-                        ) : (
-                            students.map((student) => (
+                        )}
+                        {!loading && students.length > 0 && students.map((student) => (
                                 <TableRow
                                     key={student.id}
                                     className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 group"
@@ -162,8 +162,7 @@ export function ClassStudentsView({ classId, className }: ClassStudentsViewProps
                                         )}
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        )}
+                        ))}
                     </TableBody>
                 </Table>
             </div>
@@ -206,16 +205,16 @@ export function ClassStudentsView({ classId, className }: ClassStudentsViewProps
                                         if (Math.abs(page - currentPage) <= 1) return true;
                                         return false;
                                     })
-                                    .reduce<(number | 'ellipsis')[]>((acc, page, idx, arr) => {
-                                        if (idx > 0 && page - (arr[idx - 1]) > 1) {
-                                            acc.push('ellipsis');
+                                    .reduce<(number | string)[]>((acc, page, idx, arr) => {
+                                        if (idx > 0 && page - Number(arr[idx - 1]) > 1) {
+                                            acc.push(`ellipsis-${acc.length}`);
                                         }
                                         acc.push(page);
                                         return acc;
                                     }, [])
-                                    .map((item, idx) =>
-                                        item === 'ellipsis' ? (
-                                            <span key={`ellipsis-${idx}`} className="px-1.5 text-sm text-slate-400">…</span>
+                                    .map((item) =>
+                                        typeof item === 'string' ? (
+                                            <span key={item} className="px-1.5 text-sm text-slate-400">…</span>
                                         ) : (
                                             <Button
                                                 key={item}

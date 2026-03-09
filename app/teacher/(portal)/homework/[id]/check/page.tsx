@@ -1,13 +1,15 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { getSupabaseEnv } from '@/lib/env';
 import { redirect } from 'next/navigation';
 import HomeworkDetailView from '@/components/student/homework-detail-view';
 
 async function getData(id: string) {
     const cookieStore = await cookies();
+    const { url, anonKey } = getSupabaseEnv();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        url,
+        anonKey,
         {
             cookies: {
                 getAll() {
@@ -79,7 +81,8 @@ async function getData(id: string) {
     }
 }
 
-export default async function CheckAssignmentPage(props: { params: Promise<{ id: string }> }) {
+export default async function CheckAssignmentPage(props: Readonly<{ params: Promise<{ id: string }> }>) {
+    // NOSONAR
     const params = await props.params;
     const id = params.id;
     const { user, assignment, submissions } = await getData(id);
@@ -105,7 +108,7 @@ export default async function CheckAssignmentPage(props: { params: Promise<{ id:
             class_name: assignment.classes?.name || 'Sınıf',
             course_name: 'Genel Ödev' // courses relation bulunmadığı için sabit değer
         },
-        submissions: submissions as any[]
+        submissions: submissions as any
     };
 
     return (

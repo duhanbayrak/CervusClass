@@ -19,7 +19,7 @@ import { CategoryIcon } from '@/components/accounting/CategoryIcon';
 // Props
 // =============================================
 interface ReportsContentProps {
-    categories: FinanceCategory[];
+    readonly categories: FinanceCategory[];
 }
 
 // =============================================
@@ -62,7 +62,7 @@ function exportToCSV(transactions: FinanceTransaction[]) {
 
     // BOM ile CSV oluştur (Türkçe karakter desteği)
     const csvContent = '\uFEFF' + [headers, ...rows].map(row =>
-        row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(';')
+        row.map(cell => `"${cell.replaceAll('"', '""')}"`).join(';')
     ).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -77,7 +77,7 @@ function exportToCSV(transactions: FinanceTransaction[]) {
 // =============================================
 // Ana Bileşen
 // =============================================
-export default function ReportsContent({ categories }: ReportsContentProps) {
+export default function ReportsContent({ categories }: Readonly<ReportsContentProps>) {
     const [isPending, startTransition] = useTransition();
 
     // Filtre state

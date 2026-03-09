@@ -18,7 +18,7 @@ export const getStudySessionPosition = (scheduledAt: string) => {
     const h = date.getHours();
     const m = date.getMinutes();
     const startOffset = (h - 8) * HOUR_HEIGHT + (m / 60) * HOUR_HEIGHT
-    const duration = 60 / 60 * HOUR_HEIGHT; // 1 hour fixed
+    const duration = HOUR_HEIGHT; // 1 hour fixed
     return { top: startOffset, height: duration }
 }
 

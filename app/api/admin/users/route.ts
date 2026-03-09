@@ -5,36 +5,41 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getUserRole } from '@/lib/auth-helpers'
 import { Profile } from '@/types/database'
 
-export async function POST(request: Request) {
-    // 1. Verify Request: Check if caller is Admin
+async function verifyAdminRequest() {
     const cookieStore = await cookies()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Missing Supabase environment variables')
+    }
+
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() }
-            }
-        }
+        supabaseUrl,
+        supabaseKey,
+        { cookies: { getAll() { return cookieStore.getAll() } } }
     )
-
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    if (!user) return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
 
-    // Check if user is admin or super_admin AND Get Organization ID
-    const { data: requesterProfile } = await supabase
-        .from('profiles')
-        .select('roles(name), organization_id')
-        .eq('id', user.id)
-        .single();
+    const { data: requesterProfile } = await supabase.from('profiles').select('roles(name), organization_id').eq('id', user.id).single()
+    const roleName = getUserRole(requesterProfile as unknown as Profile)
+    if (roleName !== 'admin' && roleName !== 'super_admin') return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
 
-    const roleName = getUserRole(requesterProfile as unknown as Profile);
+    return { user, requesterProfile }
+}
 
-    if (roleName !== 'admin' && roleName !== 'super_admin') {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+async function resolveOrCreateBranch(branchName: string): Promise<string | null> {
+    const { data: existing } = await supabaseAdmin.from('branches').select('id').eq('name', branchName).single()
+    if (existing) return existing.id
+    const { data: newBranch } = await supabaseAdmin.from('branches').insert({ name: branchName }).select('id').single()
+    return newBranch?.id || null
+}
+
+export async function POST(request: Request) {
+    const auth = await verifyAdminRequest()
+    if ('error' in auth) return auth.error
+    const { requesterProfile } = auth
 
     // 2. Parse Body
     const body = await request.json()
@@ -88,30 +93,9 @@ export async function POST(request: Request) {
         start_date: new Date().toISOString() // Set default start date to now
     };
 
-    // Handle Branch for teachers (convert name to ID)
     if (branch && role === 'teacher') {
-        const { data: existingBranch } = await supabaseAdmin
-            .from('branches')
-            .select('id')
-            .eq('name', branch)
-            .single();
-
-        if (existingBranch) {
-            profileData.branch_id = existingBranch.id;
-        } else {
-            // Create new branch automatically if not exists
-            const { data: newBranch, error: branchError } = await supabaseAdmin
-                .from('branches')
-                .insert({ name: branch })
-                .select('id')
-                .single();
-
-            if (!branchError && newBranch) {
-                profileData.branch_id = newBranch.id;
-            } else {
-                console.error("Failed to create branch:", branchError);
-            }
-        }
+        const branchId = await resolveOrCreateBranch(branch)
+        if (branchId) profileData.branch_id = branchId
     }
 
     // 4. Upsert Profile
@@ -129,31 +113,8 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    // 1. Verify Admin (Copy logic)
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() }
-            }
-        }
-    )
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    const { data: requesterProfile } = await supabase
-        .from('profiles')
-        .select('roles(name)')
-        .eq('id', user.id)
-        .single();
-
-    const roleName = getUserRole(requesterProfile as unknown as Profile);
-
-    if (roleName !== 'admin' && roleName !== 'super_admin') {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    const auth = await verifyAdminRequest()
+    if ('error' in auth) return auth.error
 
     // 2. Get User ID from URL
     const { searchParams } = new URL(request.url)
@@ -177,96 +138,56 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true })
 }
 
-export async function PUT(request: Request) {
-    // 1. Verify Admin (Copy logic)
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() }
-            }
-        }
-    )
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+type UserUpdateBody = {
+    id: string
+    email?: string
+    password?: string
+    fullName?: string
+    branch?: string
+    phone?: string
+    title?: string
+    bio?: string
+}
 
-    const { data: requesterProfile } = await supabase
-        .from('profiles')
-        .select('roles(name)')
-        .eq('id', user.id)
-        .single();
-
-    const roleName = getUserRole(requesterProfile as unknown as Profile);
-
-    if (roleName !== 'admin' && roleName !== 'super_admin') {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-
-    // 2. Parse Body
-    const body = await request.json()
-    const { id, email, password, fullName, branch, phone, title, bio } = body
-
-    if (!id) {
-        return NextResponse.json({ error: 'Missing user ID' }, { status: 400 })
-    }
-
-    // 3. Update Auth User (if email/password changed)
-    const authUpdates: { email?: string, password?: string, user_metadata?: { full_name: string } } = {}
+async function updateAuthUser(id: string, email?: string, password?: string, fullName?: string): Promise<string | null> {
+    const authUpdates: { email?: string; password?: string; user_metadata?: { full_name: string } } = {}
     if (email) authUpdates.email = email
     if (password && password.length > 0) authUpdates.password = password
     if (fullName) authUpdates.user_metadata = { full_name: fullName }
+    if (Object.keys(authUpdates).length === 0) return null
+    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, authUpdates)
+    if (authError) { console.error("Auth Update Error:", authError); return 'Kullanıcı bilgileri güncellenemedi.' }
+    return null
+}
 
-    if (Object.keys(authUpdates).length > 0) {
-        const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, authUpdates)
-        if (authError) {
-            console.error("Auth Update Error:", authError);
-            return NextResponse.json({ error: 'Kullanıcı bilgileri güncellenemedi.' }, { status: 500 })
-        }
-    }
-
-    // 4. Update Profile
+async function updateUserProfile(id: string, body: UserUpdateBody): Promise<string | null> {
     const profileUpdates: Partial<Profile> = {}
-    if (fullName) profileUpdates.full_name = fullName
-    if (email) profileUpdates.email = email // Keep profile email in sync
-    if (phone !== undefined) profileUpdates.phone = phone
-    if (title !== undefined) profileUpdates.title = title
-    if (bio !== undefined) profileUpdates.bio = bio
-
-    // Handle Branch
-    if (branch) {
-        const { data: existingBranch } = await supabaseAdmin
-            .from('branches')
-            .select('id')
-            .eq('name', branch)
-            .single();
-
-        if (existingBranch) {
-            profileUpdates.branch_id = existingBranch.id;
-        } else {
-            // Create new branch
-            const { data: newBranch, error: branchError } = await supabaseAdmin
-                .from('branches')
-                .insert({ name: branch })
-                .select('id')
-                .single();
-
-            if (!branchError && newBranch) {
-                profileUpdates.branch_id = newBranch.id;
-            }
-        }
+    if (body.fullName) profileUpdates.full_name = body.fullName
+    if (body.email) profileUpdates.email = body.email
+    if (body.phone !== undefined) profileUpdates.phone = body.phone
+    if (body.title !== undefined) profileUpdates.title = body.title
+    if (body.bio !== undefined) profileUpdates.bio = body.bio
+    if (body.branch) {
+        const branchId = await resolveOrCreateBranch(body.branch)
+        if (branchId) profileUpdates.branch_id = branchId
     }
+    const { error: profileError } = await supabaseAdmin.from('profiles').update(profileUpdates as Record<string, unknown>).eq('id', id)
+    if (profileError) { console.error("Profile Update Error:", profileError); return 'Profil güncellenemedi.' }
+    return null
+}
 
-    const { error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .update(profileUpdates as any)
-        .eq('id', id)
+export async function PUT(request: Request) {
+    const auth = await verifyAdminRequest()
+    if ('error' in auth) return auth.error
 
-    if (profileError) {
-        console.error("Profile Update Error:", profileError);
-        return NextResponse.json({ error: 'Profil güncellenemedi.' }, { status: 500 })
-    }
+    const body: UserUpdateBody = await request.json()
+    if (!body.id) return NextResponse.json({ error: 'Missing user ID' }, { status: 400 })
+
+    const authError = await updateAuthUser(body.id, body.email, body.password, body.fullName)
+    if (authError) return NextResponse.json({ error: authError }, { status: 500 })
+
+    const profileError = await updateUserProfile(body.id, body)
+    if (profileError) return NextResponse.json({ error: profileError }, { status: 500 })
 
     return NextResponse.json({ success: true })
 }

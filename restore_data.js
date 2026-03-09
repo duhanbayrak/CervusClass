@@ -1,17 +1,17 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const debugFile = path.join(__dirname, 'debug_exams.json');
 const exams = JSON.parse(fs.readFileSync(debugFile, 'utf8'));
 
 const sqlValues = exams.map(exam => {
-    const name = exam.exam_name.replace(/'/g, "''");
+    const name = exam.exam_name.replaceAll("'", "''");
 
     let scoresStr = typeof exam.scores === 'string' ? exam.scores : JSON.stringify(exam.scores);
-    const scoresSql = `'${scoresStr.replace(/'/g, "''")}'`;
+    const scoresSql = `'${scoresStr.replaceAll("'", "''")}'`;
 
     let detailsStr = typeof exam.details === 'string' ? exam.details : JSON.stringify(exam.details || {});
-    const detailsSql = `'${detailsStr.replace(/'/g, "''")}'`;
+    const detailsSql = `'${detailsStr.replaceAll("'", "''")}'`;
 
     const deletedAt = exam.deleted_at ? `'${exam.deleted_at}'` : 'NULL';
 

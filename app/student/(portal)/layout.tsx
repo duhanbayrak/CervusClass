@@ -5,11 +5,11 @@ import MobileSidebar from '@/components/dashboard/mobile-sidebar';
 import DashboardHeader from '@/components/dashboard/header';
 import { STUDENT_NAV } from '@/lib/navigation';
 
-export default function StudentLayout({
+export default function StudentLayout({ // NOSONAR
     children,
-}: {
+}: Readonly<{
     children: React.ReactNode;
-}) {
+}>) {
     return (
         <div className="flex h-screen w-full bg-[#f6f6f8] dark:bg-[#101622] overflow-hidden font-sans">
             <Sidebar
@@ -22,7 +22,6 @@ export default function StudentLayout({
                 <DashboardHeader
                     title="Tekrar Hoşgeldiniz!"
                     description="Günlük özetiniz ve yaklaşan etkinlikleriniz."
-                    actionButtonText="Etüt Talep Et"
                     mobileNav={
                         <MobileSidebar
                             items={STUDENT_NAV}

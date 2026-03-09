@@ -1,23 +1,21 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { createBrowserClient } from '@supabase/ssr';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CheckCircle2, Loader2, Calendar as CalendarIcon } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import { Calendar as CalendarIcon, Loader2, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { createBrowserClient } from '@supabase/ssr';
+import { getSupabaseEnv } from "@/lib/env";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from "@/lib/utils";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ClassItem {
     id: string;
@@ -42,18 +40,18 @@ interface UpdateAssignmentFormProps {
     initialStudents?: Student[];
 }
 
-export default function UpdateAssignmentForm({ assignment, classes, userId, initialStudents = [] }: UpdateAssignmentFormProps) {
+export default function UpdateAssignmentForm({ assignment, classes, userId, initialStudents = [] }: Readonly<UpdateAssignmentFormProps>) {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [success, setSuccess] = useState(false);
 
     // Form State
     const [description, setDescription] = useState(assignment.description);
-    const [classId, setClassId] = useState(assignment.class_id);
+    const [classId] = useState(assignment.class_id);
     const [date, setDate] = useState<Date | undefined>(new Date(assignment.due_date));
 
     // Assignment Mode State
-    const [assignmentMode, setAssignmentMode] = useState<'entire_class' | 'selected_students'>(
+    const [assignmentMode] = useState<'entire_class' | 'selected_students'>(
         assignment.assigned_student_ids && assignment.assigned_student_ids.length > 0
             ? 'selected_students'
             : 'entire_class'
@@ -66,10 +64,10 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
     const [loadingStudents, setLoadingStudents] = useState(false);
 
     // Create supabase client once
-    const [supabase] = useState(() => createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    ));
+    const [supabase] = useState(() => {
+        const { url, anonKey } = getSupabaseEnv();
+        return createBrowserClient(url, anonKey);
+    });
 
     // Fetch students when classId changes
     useEffect(() => {
@@ -93,13 +91,14 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
                     .order('full_name');
 
                 if (error) {
-
+                    console.error('Supabase error fetching students:', error);
                     return;
                 }
 
                 setStudents(data || []);
 
                 // If class changed and we are not in initial load (simple check), maybe reset selection?
+                // If class changes and we are not in initial load (simple check), maybe reset selection?
                 // But for update form, we want to keep initial selection if class hasn't changed.
                 // If class changes, existing selection might be invalid.
                 if (classId !== assignment.class_id) {
@@ -107,7 +106,7 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
                 }
 
             } catch (err) {
-
+                console.error('Error fetching students:', err);
             } finally {
                 setLoadingStudents(false);
             }
@@ -116,23 +115,8 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
         fetchStudents();
     }, [classId, supabase, assignment.class_id, initialStudents]);
 
-    const handleStudentToggle = (studentId: string) => {
-        setSelectedStudents(prev =>
-            prev.includes(studentId)
-                ? prev.filter(id => id !== studentId)
-                : [...prev, studentId]
-        );
-    };
 
-    const handleSelectAll = (checked: boolean) => {
-        if (checked) {
-            setSelectedStudents(students.map(s => s.id));
-        } else {
-            setSelectedStudents([]);
-        }
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         if (!description || !classId || !date) {
@@ -148,8 +132,6 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
         setIsLoading(true);
 
         try {
-            const assignedIds = assignmentMode === 'selected_students' ? selectedStudents : null;
-
             const { error } = await supabase
                 .from('homework')
                 .update({
@@ -242,13 +224,15 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
                                 </div>
                             </div>
 
-                            {loadingStudents ? (
+                            {loadingStudents && (
                                 <div className="flex justify-center p-4">
                                     <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
                                 </div>
-                            ) : students.length === 0 ? (
+                            )}
+                            {!loadingStudents && students.length === 0 && (
                                 <p className="text-sm text-muted-foreground text-center py-4">Bu sınıfta kayıtlı öğrenci bulunamadı.</p>
-                            ) : (
+                            )}
+                            {!loadingStudents && students.length > 0 && (
                                 <ScrollArea className="h-[200px] pr-4">
                                     <div className="space-y-2">
                                         {students.map((student) => (
@@ -289,7 +273,6 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
                                     mode="single"
                                     selected={date}
                                     onSelect={setDate}
-                                    initialFocus
                                     locale={tr}
                                 />
                             </PopoverContent>

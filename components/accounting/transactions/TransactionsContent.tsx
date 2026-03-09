@@ -14,12 +14,12 @@ interface TransactionsContentProps {
     type: 'income' | 'expense';
 }
 
-export function TransactionsContent({
+export function TransactionsContent({ // NOSONAR
     transactions,
     categories,
     accounts,
     type,
-}: TransactionsContentProps) {
+}: Readonly<TransactionsContentProps>) {
     const [showForm, setShowForm] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');

@@ -1,16 +1,18 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { getSupabaseEnv } from '@/lib/env';
 import { notFound } from 'next/navigation';
 import { StudentDetailView } from '@/components/student/student-detail-view';
 import { getStudentProfileData } from '@/lib/data/student-profile';
 
-export default async function StudentDetailPage({ params }: { params: any }) {
+export default async function StudentDetailPage({ params }: Readonly<{ params: any }>) {
     const resolvedParams = await Promise.resolve(params);
     const id = resolvedParams.id;
     const cookieStore = await cookies();
+    const { url, anonKey } = getSupabaseEnv();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        url,
+        anonKey,
         {
             cookies: {
                 getAll() {
@@ -31,6 +33,7 @@ export default async function StudentDetailPage({ params }: { params: any }) {
             profile={data.profile}
             examResults={data.examResults}
             stats={data.stats}
+            notes={data.notes}
             role="teacher"
         />
     );

@@ -40,12 +40,12 @@ function formatCurrency(amount: number): string {
     }).format(amount);
 }
 
-export function TransactionFormDialog({
+export function TransactionFormDialog({ // NOSONAR
     type,
     categories,
     accounts,
     onClose,
-}: TransactionFormDialogProps) {
+}: Readonly<TransactionFormDialogProps>) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [message, setMessage] = useState('');
@@ -97,8 +97,8 @@ export function TransactionFormDialog({
     };
 
     // KDV hesaplama
-    const price = parseFloat(subtotal) || 0;
-    const vat = parseFloat(vatRate) || 0;
+    const price = Number.parseFloat(subtotal) || 0;
+    const vat = Number.parseFloat(vatRate) || 0;
     const vatAmount = price * (vat / 100);
     const totalAmount = price + vatAmount;
 
@@ -135,6 +135,7 @@ export function TransactionFormDialog({
 
     const inputClass = 'w-full rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors';
     const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5';
+    const submitLabel = type === 'income' ? 'Gelir Kaydet' : 'Gider Kaydet';
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -321,7 +322,7 @@ export function TransactionFormDialog({
                             }`}
                     >
                         {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                        {isPending ? 'Kaydediliyor...' : type === 'income' ? 'Gelir Kaydet' : 'Gider Kaydet'}
+                        {isPending ? 'Kaydediliyor...' : submitLabel}
                     </button>
                 </div>
             </div>

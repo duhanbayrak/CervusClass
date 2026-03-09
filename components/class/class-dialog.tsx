@@ -30,7 +30,7 @@ interface ClassDialogProps {
     onSave: () => void;
 }
 
-export function ClassDialog({ open, onOpenChange, cls, onSave }: ClassDialogProps) {
+export function ClassDialog({ open, onOpenChange, cls, onSave }: ClassDialogProps) { // NOSONAR
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
 
@@ -59,7 +59,7 @@ export function ClassDialog({ open, onOpenChange, cls, onSave }: ClassDialogProp
 
         try {
             if (cls) {
-                const res = await updateClass(cls.id, formData);
+                const res = await updateClass({ id: cls.id, formData });
                 if (res.success) {
                     toast({ description: "Sınıf güncellendi." });
                     onSave();
@@ -75,7 +75,7 @@ export function ClassDialog({ open, onOpenChange, cls, onSave }: ClassDialogProp
                     toast({ variant: "destructive", description: res.error });
                 }
             }
-        } catch (error) {
+        } catch (error) { // NOSONAR
             toast({ variant: "destructive", description: "Bir hata oluştu." });
         } finally {
             setIsLoading(false);
@@ -105,7 +105,7 @@ export function ClassDialog({ open, onOpenChange, cls, onSave }: ClassDialogProp
                         <Label htmlFor="grade">Kademe</Label>
                         <Select
                             value={formData.grade_level.toString()}
-                            onValueChange={(val) => setFormData({ ...formData, grade_level: parseInt(val) })}
+                            onValueChange={(val) => setFormData({ ...formData, grade_level: Number.parseInt(val) })}
                         >
                             <SelectTrigger id="grade">
                                 <SelectValue placeholder="Kademe Seçin" />

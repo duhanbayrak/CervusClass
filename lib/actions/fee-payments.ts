@@ -2,6 +2,7 @@
 
 import { getAuthContext } from '@/lib/auth-context';
 import type { FeePayment, PaymentMethod } from '@/types/accounting';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Ödeme kayıtlarını filtreli getirir.
@@ -55,7 +56,7 @@ export async function createFeePayment(payment: {
     reference_no?: string;
     notes?: string;
     payment_date?: string;
-}): Promise<{ success: boolean; error?: string }> {
+}): Promise<{ success: boolean; paymentId?: string; error?: string }> {
     const { supabase, organizationId, user, error } = await getAuthContext();
     if (error || !organizationId || !user) return { success: false, error: error || 'Yetkilendirme hatası' };
 
@@ -100,154 +101,84 @@ export async function createFeePayment(payment: {
 
     if (insertError) return { success: false, error: insertError.message };
 
-    // 1b. Muhasebe kaydı — "Öğrenci Ücreti" kategorisini bul veya oluştur
-    let studentFeeCategoryId: string | null = null;
+    await recordPaymentTransaction(supabase, organizationId, user.id, payment, paymentDate, insertedPayment?.id)
+    await updateInstallmentStatus(supabase, payment.installment_id, payment.amount)
 
-    const { data: existingCategory } = await supabase
-        .from('finance_categories')
-        .select('id')
-        .eq('organization_id', organizationId)
-        .eq('name', 'Öğrenci Ücreti')
-        .eq('type', 'income')
-        .maybeSingle();
+    return { success: true, paymentId: insertedPayment?.id };
+}
 
-    if (existingCategory) {
-        studentFeeCategoryId = existingCategory.id;
-    } else {
-        // Kategori yoksa oluştur
-        const { data: newCategory } = await supabase
-            .from('finance_categories')
-            .insert({
-                organization_id: organizationId,
-                name: 'Öğrenci Ücreti',
-                type: 'income',
-                icon: '🎓',
-            })
-            .select('id')
-            .single();
+async function getOrCreateStudentFeeCategory(supabase: SupabaseClient, organizationId: string): Promise<string | null> {
+    const { data: existing } = await supabase.from('finance_categories').select('id')
+        .eq('organization_id', organizationId).eq('name', 'Öğrenci Ücreti').eq('type', 'income').maybeSingle()
+    if (existing?.id) return existing.id
+    const { data: newCat } = await supabase.from('finance_categories')
+        .insert({ organization_id: organizationId, name: 'Öğrenci Ücreti', type: 'income', icon: '🎓' })
+        .select('id').single()
+    return newCat?.id || null
+}
 
-        studentFeeCategoryId = newCategory?.id || null;
+async function getVatForInstallment(supabase: SupabaseClient, installmentId: string, amount: number) {
+    const { data: instData } = await supabase.from('fee_installments')
+        .select('fee_id, student_fees ( vat_rate )').eq('id', installmentId).single() as { data: { student_fees: { vat_rate?: number } } | null }
+    const vatRate = Number(instData?.student_fees?.vat_rate || 0)
+    if (vatRate <= 0) return { vat_rate: 0, subtotal: amount, vat_amount: 0 }
+    const subtotal = Number((amount / (1 + vatRate / 100)).toFixed(2))
+    return { vat_rate: vatRate, subtotal, vat_amount: Number((amount - subtotal).toFixed(2)) }
+}
+
+async function recordPaymentTransaction(
+    supabase: SupabaseClient,
+    organizationId: string,
+    userId: string,
+    payment: { student_id: string; installment_id?: string; account_id: string; amount: number; notes?: string; reference_no?: string },
+    paymentDate: string,
+    paymentId?: string
+): Promise<void> {
+    const categoryId = await getOrCreateStudentFeeCategory(supabase, organizationId)
+    if (!categoryId) return
+
+    const { data: studentProfile } = await supabase.from('profiles').select('full_name').eq('id', payment.student_id).single()
+    const studentName = studentProfile?.full_name || 'Öğrenci'
+    const description = payment.notes || `${studentName} - Taksit ödemesi`
+
+    const vatData = payment.installment_id
+        ? await getVatForInstallment(supabase, payment.installment_id, payment.amount)
+        : { vat_rate: 0, subtotal: payment.amount, vat_amount: 0 }
+
+    await supabase.from('finance_transactions').insert({
+        organization_id: organizationId,
+        account_id: payment.account_id,
+        category_id: categoryId,
+        type: 'income',
+        amount: payment.amount,
+        subtotal: vatData.subtotal,
+        vat_rate: vatData.vat_rate,
+        vat_amount: vatData.vat_amount,
+        description,
+        transaction_date: paymentDate,
+        reference_no: payment.reference_no || null,
+        related_payment_id: paymentId || null,
+        created_by: userId,
+    })
+}
+
+async function updateInstallmentStatus(supabase: SupabaseClient, installmentId: string | undefined, amount: number): Promise<void> {
+    if (!installmentId) return
+    const { data: installment } = await supabase.from('fee_installments').select('amount, paid_amount').eq('id', installmentId).single()
+    if (!installment) return
+
+    const newPaidAmount = Number(installment.paid_amount) + amount
+    const newStatus: 'pending' | 'paid' | 'partial' = newPaidAmount >= Number(installment.amount) ? 'paid' : 'partial'
+
+    await supabase.from('fee_installments').update({
+        paid_amount: newPaidAmount, status: newStatus,
+        paid_at: newStatus === 'paid' ? new Date().toISOString() : null,
+    }).eq('id', installmentId)
+
+    const { data: related } = await supabase.from('fee_installments').select('fee_id').eq('id', installmentId).single()
+    if (!related) return
+    const { data: allInstallments } = await supabase.from('fee_installments').select('status').eq('fee_id', related.fee_id)
+    if (allInstallments?.every(i => i.status === 'paid')) {
+        await supabase.from('student_fees').update({ status: 'completed', updated_at: new Date().toISOString() }).eq('id', related.fee_id)
     }
-
-    // 1c. finance_transactions tablosuna gelir kaydı ekle
-    if (studentFeeCategoryId) {
-        // Öğrenci adını açıklama için çek
-        const { data: studentProfile } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', payment.student_id)
-            .single();
-
-        const studentName = studentProfile?.full_name || 'Öğrenci';
-        const description = payment.notes || `${studentName} - Taksit ödemesi`;
-
-        // KDV Hesaplaması (Eğer taksite bağlıysa, ilgili fee'den oran çekilir)
-        let vat_rate = 0;
-        let subtotal = payment.amount;
-        let vat_amount = 0;
-
-        if (payment.installment_id) {
-            const { data: instData } = await supabase
-                .from('fee_installments')
-                .select(`
-                    fee_id,
-                    student_fees ( vat_rate )
-                `)
-                .eq('id', payment.installment_id)
-                .single() as any;
-
-            if (instData?.student_fees?.vat_rate) {
-                vat_rate = Number(instData.student_fees.vat_rate);
-                if (vat_rate > 0) {
-                    subtotal = Number((payment.amount / (1 + vat_rate / 100)).toFixed(2));
-                    vat_amount = Number((payment.amount - subtotal).toFixed(2));
-                }
-            }
-        }
-
-        await supabase
-            .from('finance_transactions')
-            .insert({
-                organization_id: organizationId,
-                account_id: payment.account_id,
-                category_id: studentFeeCategoryId,
-                type: 'income',
-                amount: payment.amount,
-                subtotal: subtotal,
-                vat_rate: vat_rate,
-                vat_amount: vat_amount,
-                description,
-                transaction_date: paymentDate,
-                reference_no: payment.reference_no || null,
-                related_payment_id: insertedPayment?.id || null,
-                created_by: user.id,
-            });
-    }
-
-    // 2. Taksit durumunu güncelle (eğer taksit belirtilmişse)
-    if (payment.installment_id) {
-        const { data: installment } = await supabase
-            .from('fee_installments')
-            .select('amount, paid_amount')
-            .eq('id', payment.installment_id)
-            .single();
-
-        if (installment) {
-            const newPaidAmount = Number(installment.paid_amount) + payment.amount;
-            const installmentAmount = Number(installment.amount);
-
-            // Taksit durumunu belirle
-            let newStatus: 'pending' | 'paid' | 'partial' = 'partial';
-            if (newPaidAmount >= installmentAmount) {
-                newStatus = 'paid';
-            }
-
-            await supabase
-                .from('fee_installments')
-                .update({
-                    paid_amount: newPaidAmount,
-                    status: newStatus,
-                    paid_at: newStatus === 'paid' ? new Date().toISOString() : null,
-                })
-                .eq('id', payment.installment_id);
-
-            // Fee durumunu kontrol et — tüm taksitler ödendiyse 'completed' yap
-            const { data: relatedInstallment } = await supabase
-                .from('fee_installments')
-                .select('fee_id')
-                .eq('id', payment.installment_id)
-                .single();
-
-            if (relatedInstallment) {
-                const { data: allInstallments } = await supabase
-                    .from('fee_installments')
-                    .select('status')
-                    .eq('fee_id', relatedInstallment.fee_id);
-
-                if (allInstallments && allInstallments.every(i => i.status === 'paid')) {
-                    await supabase
-                        .from('student_fees')
-                        .update({ status: 'completed', updated_at: new Date().toISOString() })
-                        .eq('id', relatedInstallment.fee_id);
-                }
-            }
-        }
-    }
-
-    // 3. Hesap bakiyesini güncelle
-    const { data: account } = await supabase
-        .from('finance_accounts')
-        .select('balance')
-        .eq('id', payment.account_id)
-        .single();
-
-    if (account) {
-        const newBalance = Number(account.balance) + payment.amount;
-        await supabase
-            .from('finance_accounts')
-            .update({ balance: newBalance })
-            .eq('id', payment.account_id);
-    }
-
-    return { success: true };
 }

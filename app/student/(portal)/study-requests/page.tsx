@@ -1,15 +1,17 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { getSupabaseEnv } from '@/lib/env';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Library, Plus } from 'lucide-react';
+import { Library } from 'lucide-react';
 
 async function getRequests(userId: string) {
     const cookieStore = await cookies();
+    const { url, anonKey } = getSupabaseEnv();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        url,
+        anonKey,
         {
             cookies: {
                 getAll() {
@@ -32,7 +34,7 @@ async function getRequests(userId: string) {
 
     const requests = requestsData?.map(req => ({
         ...req,
-        status: (req.study_session_statuses as any)?.name
+        status: (req.study_session_statuses)?.name
     })) || [];
 
     return requests;
@@ -42,9 +44,10 @@ import { BookSessionDialog } from '@/components/student/book-session-dialog';
 
 export default async function StudentStudyRequestsPage() {
     const cookieStore = await cookies();
+    const { url, anonKey } = getSupabaseEnv();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        url,
+        anonKey,
         {
             cookies: {
                 getAll() {
@@ -74,21 +77,29 @@ export default async function StudentStudyRequestsPage() {
                     requests.map((req) => (
                         <Card key={req.id} className="border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden hover:border-blue-200 transition-colors">
                             <div className="flex flex-col sm:flex-row">
-                                <div className={`w-full sm:w-2 ${req.status === 'pending' ? 'bg-yellow-400' :
-                                    req.status === 'approved' ? 'bg-green-500' :
-                                        req.status === 'rejected' ? 'bg-red-500' : 'bg-slate-300'
-                                    } h-2 sm:h-auto`}></div>
+                                {(() => {
+                                    let statusColor = 'bg-slate-300';
+                                    if (req.status === 'pending') statusColor = 'bg-yellow-400';
+                                    else if (req.status === 'approved') statusColor = 'bg-green-500';
+                                    else if (req.status === 'rejected') statusColor = 'bg-red-500';
+                                    return <div className={`w-full sm:w-2 ${statusColor} h-2 sm:h-auto`} />;
+                                })()}
 
                                 <div className="p-6 flex-1 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-2">
                                             <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">{req.topic}</h3>
-                                            <Badge variant="outline" className={`capitalize ${req.status === 'pending' ? 'text-yellow-600 border-yellow-200 bg-yellow-50' :
-                                                req.status === 'approved' ? 'text-green-600 border-green-200 bg-green-50' :
-                                                    'text-slate-500'
-                                                }`}>
-                                                {req.status === 'pending' ? 'Bekliyor' : req.status === 'approved' ? 'Onaylandı' : 'Reddedildi'}
-                                            </Badge>
+                                            {(() => {
+                                                let badgeClass = 'text-slate-500';
+                                                let badgeLabel = 'Reddedildi';
+                                                if (req.status === 'pending') { badgeClass = 'text-yellow-600 border-yellow-200 bg-yellow-50'; badgeLabel = 'Bekliyor'; }
+                                                else if (req.status === 'approved') { badgeClass = 'text-green-600 border-green-200 bg-green-50'; badgeLabel = 'Onaylandı'; }
+                                                return (
+                                                    <Badge variant="outline" className={`capitalize ${badgeClass}`}>
+                                                        {badgeLabel}
+                                                    </Badge>
+                                                );
+                                            })()}
                                         </div>
                                         <p className="text-slate-500 flex items-center flex-wrap gap-2 text-sm">
                                             <span className="font-medium text-slate-700 dark:text-slate-300">{req.teacher?.full_name}</span>

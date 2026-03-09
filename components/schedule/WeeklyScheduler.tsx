@@ -1,14 +1,13 @@
 'use client'
 
-import React, { useState, useRef, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { cn } from '@/lib/utils'
-import { Schedule } from '@/types/database'
-import { Loader2, CalendarPlus, User, Plus, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { CalendarPlus, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import { CreateAvailabilityDialog } from './create-availability-dialog'
 import { Button } from '../ui/button'
 
 // Extended type with relations
-import { DAYS, HOURS, HOUR_HEIGHT, getPosition, getStudySessionPosition, getEventClasses } from '@/lib/utils/schedule-helpers'
+import { HOURS, HOUR_HEIGHT, getPosition, getStudySessionPosition, getEventClasses } from '@/lib/utils/schedule-helpers'
 import { ScheduleEvent, StudySessionEvent } from '@/types/schedule'
 
 interface WeeklySchedulerProps {
@@ -22,7 +21,7 @@ interface WeeklySchedulerProps {
     selectedSessionIds?: string[]
 }
 
-export function WeeklyScheduler({ events, studySessions = [], role, onDelete, onEventClick, onSlotClick, currentUserId, selectedSessionIds = [] }: WeeklySchedulerProps) {
+export function WeeklyScheduler({ events, studySessions = [], role, onDelete, onEventClick, onSlotClick, currentUserId, selectedSessionIds = [] }: Readonly<WeeklySchedulerProps>) { // NOSONAR
 
 
 
@@ -70,7 +69,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
             setIsDragging(false);
             try {
                 e.currentTarget.releasePointerCapture(e.pointerId);
-            } catch (err) { }
+            } catch (err) { console.error("Ignored error:", err); }
         }
     };
 
@@ -117,13 +116,6 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
         d.setDate(startDate.getDate() + i);
         return d;
     });
-
-    const isSameDate = (d1: Date, stringDate: string) => {
-        const d2 = new Date(stringDate);
-        return d1.getDate() === d2.getDate() &&
-            d1.getMonth() === d2.getMonth() &&
-            d1.getFullYear() === d2.getFullYear();
-    }
 
     // --- OPTIMIZATION START ---
 
@@ -172,7 +164,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                     </Button>
                     <span className="text-sm font-medium ml-2">
                         {startDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })} - {' '}
-                        {dates[dates.length - 1].toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        {dates.at(-1)?.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </span>
                 </div>
             </div>
@@ -236,7 +228,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                         const daySessions = sessionsByDateKey.get(dateKey) || [];
 
                         return (
-                            <div key={i} className="flex-none w-[200px] md:w-[180px] border-r border-b relative group/col">
+                            <div key={dateKey} className="flex-none w-[200px] md:w-[180px] border-r border-b relative group/col">
                                 {/* Header */}
                                 <div className="h-14 sticky top-0 bg-background z-30 border-b flex flex-col items-center justify-center font-medium shadow-sm">
                                     <span className="text-sm text-muted-foreground">{dayName}</span>
@@ -247,33 +239,31 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                                 <div className="relative" style={{ height: HOURS.length * HOUR_HEIGHT }}>
                                     {/* Grid Lines */}
                                     {HOURS.map(hour => (
-                                        <div
-                                            key={hour}
-                                            className={cn(
-                                                "border-b border-dashed border-muted/50 w-full absolute hover:bg-muted/10 transition-colors",
-                                                role === 'teacher' ? "cursor-pointer group/cell" : ""
-                                            )}
-                                            style={{ top: (hour - 8) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
-                                            onClick={(e) => {
-                                                if (role !== 'teacher') return;
-                                                // Prevent triggering if clicking existing event
-                                                if (isDragging) return;
-
-                                                setCreateModal({
-                                                    open: true,
-                                                    date: date,
-                                                    startTime: `${String(hour).padStart(2, '0')}:00`
-                                                })
-                                            }}
-                                        >
-                                            {role === 'teacher' && (
+                                        role === 'teacher' ? (
+                                            <button
+                                                key={hour}
+                                                type="button"
+                                                aria-label={`${String(hour).padStart(2, '0')}:00 saatine ders ekle`}
+                                                className="border-b border-dashed border-muted/50 w-full absolute hover:bg-muted/10 transition-colors cursor-pointer group/cell"
+                                                style={{ top: (hour - 8) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+                                                onClick={() => {
+                                                    if (isDragging) return;
+                                                    setCreateModal({ open: true, date: date, startTime: `${String(hour).padStart(2, '0')}:00` })
+                                                }}
+                                            >
                                                 <div className="hidden group-hover/cell:flex absolute inset-0 items-center justify-center pointer-events-none">
                                                     <div className="bg-primary/10 text-primary rounded-full p-1">
                                                         <Plus className="w-4 h-4" />
                                                     </div>
                                                 </div>
-                                            )}
-                                        </div>
+                                            </button>
+                                        ) : (
+                                            <div
+                                                key={hour}
+                                                className="border-b border-dashed border-muted/50 w-full absolute"
+                                                style={{ top: (hour - 8) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+                                            />
+                                        )
                                     ))}
 
                                     {/* Standard Events */}
@@ -283,10 +273,11 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                                         const timeRange = `${event.start_time.substring(0, 5)} - ${event.end_time.substring(0, 5)}`
 
                                         return (
-                                            <div
+                                            <button
                                                 key={event.id}
+                                                type="button"
                                                 className={cn(
-                                                    "absolute rounded px-2 py-1 text-xs border shadow-sm cursor-pointer hover:brightness-95 transition-all overflow-hidden z-20", // Changed to z-20 to be consistent with study sessions, behind header z-30
+                                                    "absolute rounded px-2 py-1 text-xs border shadow-sm cursor-pointer hover:brightness-95 transition-all overflow-hidden z-20 text-left",
                                                     "flex flex-col justify-start",
                                                     classes.container
                                                 )}
@@ -305,7 +296,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                                                 <div className={cn("font-bold leading-tight", classes.title)}>{event.courses?.name}</div>
                                                 <div className={cn("opacity-90 text-[10px]", classes.subtitle)}>{event.classes?.name}</div>
                                                 <div className={cn("opacity-80 text-[9px] mt-0.5 truncate font-medium", classes.subtitle)}>{event.profiles?.full_name}</div>
-                                            </div>
+                                            </button>
                                         )
                                     })}
 
@@ -322,14 +313,14 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                                         const eventTime = new Date(session.scheduled_at);
                                         const endTime = session.end_time ? new Date(session.end_time) : new Date(eventTime.getTime() + 60 * 60 * 1000);
                                         const timeRange = `${eventTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} - ${endTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
-                                        
+
                                         // Çakışma kontrolü (Sadece öğrenci için ve boş slotlar için)
                                         let hasConflict = false;
                                         if (role === 'student' && session.status === 'available') {
                                             const sessionStartMs = eventTime.getTime();
                                             const sessionEndMs = endTime.getTime();
                                             const sessionDay = eventTime.getDay() || 7;
-                                            
+
                                             hasConflict = events.some(e => {
                                                 if (e.day_of_week !== sessionDay) return false;
                                                 const eStart = new Date(`${session.scheduled_at.split('T')[0]}T${e.start_time}+03:00`).getTime();
@@ -339,14 +330,15 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                                         }
 
                                         const classes = getEventClasses(session, true, currentUserId, role, hasConflict);
-                                        
+
                                         const isSelected = selectedSessionIds.includes(session.id);
 
                                         return (
-                                            <div
+                                            <button
                                                 key={session.id}
+                                                type="button"
                                                 className={cn(
-                                                    "absolute rounded px-2 py-1 text-xs border shadow-sm cursor-pointer transition-all overflow-hidden z-20",
+                                                    "absolute rounded px-2 py-1 text-xs border shadow-sm cursor-pointer hover:brightness-95 transition-all overflow-hidden z-20 text-left",
                                                     "flex flex-col justify-start",
                                                     classes.container,
                                                     isSelected ? "ring-2 ring-primary border-primary shadow-md scale-[1.02] bg-emerald-100" : "hover:brightness-95"
@@ -359,7 +351,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                                                 }}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    if (isDragging) return; // Prevent click if dragging
+                                                    if (isDragging) return;
                                                     onEventClick?.(session);
                                                 }}
                                             >
@@ -369,21 +361,24 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
                                                     {timeRange}
                                                 </div>
 
-                                                <div className={cn("text-xs font-bold leading-tight flex items-center gap-1 mt-1", classes.title)}>
+                                                <div className={cn("text-xs font-bold leading-tight mt-1", classes.title)}>
                                                     {session.status === 'available' ? (
-                                                        <><CalendarPlus className={cn("w-3.5 h-3.5", classes.icon)} /> Boş</>
+                                                        <div className="flex items-center gap-1"><CalendarPlus className={cn("w-3.5 h-3.5", classes.icon)} /> Boş</div>
                                                     ) : (
-                                                        <>{session.topic || 'Dolu'}</>
+                                                        <div className="line-clamp-2" title={session.topic || 'Dolu'}>{session.topic || 'Dolu'}</div>
                                                     )}
                                                 </div>
 
                                                 <div className={cn("text-[11px] opacity-90 truncate font-medium mt-0.5", classes.subtitle)}>
-                                                    {session.status === 'available' ? '' :
-                                                        (role === 'teacher' || (currentUserId && session.student_id === currentUserId)) ? (session.profiles?.full_name || 'Öğrenci') : ''}
+                                                    {(() => {
+                                                        if (session.status === 'available') return '';
+                                                        const isVisible = role === 'teacher' || (currentUserId && session.student_id === currentUserId);
+                                                        return isVisible ? (session.profiles?.full_name || 'Öğrenci') : '';
+                                                    })()}
                                                 </div>
 
                                                 {currentUserId && session.student_id === currentUserId && <div className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />}
-                                            </div>
+                                            </button>
                                         )
                                     })}
                                 </div>

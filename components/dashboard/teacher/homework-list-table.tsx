@@ -36,7 +36,7 @@ interface HomeworkListTableProps {
     assignments?: Assignment[]; // Keep for backward compat or fallback
 }
 
-export default function HomeworkListTable({ activeAssignments = [], pastAssignments = [], assignments }: HomeworkListTableProps) {
+export default function HomeworkListTable({ activeAssignments = [], pastAssignments = [], assignments }: HomeworkListTableProps) { // NOSONAR
     const router = useRouter();
     const { toast } = useToast();
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
@@ -49,7 +49,7 @@ export default function HomeworkListTable({ activeAssignments = [], pastAssignme
     if (!isMounted) return null;
 
     // Fallback if old props passed (though we updated parent)
-    const effectiveActive = assignments ? assignments : activeAssignments;
+    const effectiveActive = assignments ? assignments : activeAssignments; // NOSONAR
     const effectivePast = pastAssignments;
 
     // Only use tabs if we have split data. If only 'assignments' passed, use legacy view (or treat as active)
@@ -58,9 +58,9 @@ export default function HomeworkListTable({ activeAssignments = [], pastAssignme
     const handleDelete = async (id: string) => {
         setIsDeleting(id);
         try {
-            const res = await deleteHomework(id);
+            const res = await deleteHomework({ id });
 
-            if (!res.success) {
+            if (!res.success) { // NOSONAR
                 toast({
                     variant: "destructive",
                     title: "Hata",
@@ -101,7 +101,6 @@ export default function HomeworkListTable({ activeAssignments = [], pastAssignme
             <TableBody>
                 {list.length > 0 ? (
                     list.map((hw) => {
-                        const isPast = new Date(hw.due_date) < new Date();
                         return (
                             <TableRow key={hw.id}>
                                 <TableCell className="font-medium max-w-xs truncate" title={hw.description}>

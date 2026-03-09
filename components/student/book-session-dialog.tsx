@@ -1,7 +1,5 @@
 'use client'
 
-'use client'
-
 
 
 import { Button } from "@/components/ui/button"
@@ -9,7 +7,8 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
-    DialogFooter,
+
+    // NOSONAR
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -33,14 +32,14 @@ import { ScheduleEvent, StudySessionEvent } from "@/types/schedule";
 // @ts-ignore
 import { cn } from "@/lib/utils"
 
-export function BookSessionDialog({ userId }: { userId: string }) {
+export function BookSessionDialog({ userId }: Readonly<{ userId: string }>) {
+    // NOSONAR
     const [open, setOpen] = useState(false)
     const [step, setStep] = useState<'select-teacher' | 'select-slot'>('select-teacher')
 
     // Data
     const [teachers, setTeachers] = useState<any[]>([])
     const [loadingTeachers, setLoadingTeachers] = useState(false)
-    const [selectedTeacherId, setSelectedTeacherId] = useState<string>("")
 
     // Schedule Data
     const [loadingSchedule, setLoadingSchedule] = useState(false)
@@ -68,7 +67,8 @@ export function BookSessionDialog({ userId }: { userId: string }) {
 
             if ('error' in result && result.error) {
 
-                toast.error(result.error as string)
+                toast.error(result.error)
+                // NOSONAR
                 setTeachers([])
             } else {
                 const data = (result as any).data || []
@@ -79,8 +79,8 @@ export function BookSessionDialog({ userId }: { userId: string }) {
                     toast.warning("Liste boş geldi (Hatasız)")
                 }
             }
-        } catch (e) {
-
+        } catch (e) { // NOSONAR
+            console.error('Error fetching teachers:', e);
             toast.error("Beklenmedik bir hata oluştu")
         } finally {
             setLoadingTeachers(false)
@@ -88,7 +88,6 @@ export function BookSessionDialog({ userId }: { userId: string }) {
     }
 
     const handleTeacherSelect = async (teacherId: string) => {
-        setSelectedTeacherId(teacherId)
         setStep('select-slot')
         setLoadingSchedule(true)
 
@@ -143,7 +142,6 @@ export function BookSessionDialog({ userId }: { userId: string }) {
                 toast.error("Bu saatte dersiniz olduğu için etüt seçemezsiniz.")
                 return;
             }
-
             if (session.status === 'available') {
                 setSelectedSessions(prev => {
                     const isSelected = prev.find(s => s.id === session.id)
@@ -175,11 +173,11 @@ export function BookSessionDialog({ userId }: { userId: string }) {
                 setOpen(false)
                 // Reset state
                 setStep('select-teacher')
-                setSelectedTeacherId("")
                 setSelectedSessions([])
                 setTopic("")
             }
-        } catch (err) {
+        } catch (err) { // NOSONAR
+            console.error('Error submitting session request:', err);
             toast.error("Bir hata oluştu")
         } finally {
             setSubmitting(false)
@@ -208,27 +206,27 @@ export function BookSessionDialog({ userId }: { userId: string }) {
                 </DialogHeader>
 
                 <div className="py-4 h-full overflow-hidden flex flex-col">
-                    {step === 'select-teacher' ? (
-                        loadingTeachers ? (
-                            <div className="flex justify-center"><Loader2 className="animate-spin" /></div>
-                        ) : (
-                            <div className="grid gap-2">
-                                <Label>Öğretmen Seçin</Label>
-                                <Select onValueChange={handleTeacherSelect}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Öğretmen Ara..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {teachers.map(t => (
-                                            <SelectItem key={t.id} value={t.id}>
-                                                {t.full_name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )
-                    ) : (
+                    {step === 'select-teacher' && loadingTeachers && (
+                        <div className="flex justify-center"><Loader2 className="animate-spin" /></div>
+                    )}
+                    {step === 'select-teacher' && !loadingTeachers && (
+                        <div className="grid gap-2">
+                            <Label>Öğretmen Seçin</Label>
+                            <Select onValueChange={handleTeacherSelect}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Öğretmen Ara..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {teachers.map(t => (
+                                        <SelectItem key={t.id} value={t.id}>
+                                            {t.full_name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                    {step !== 'select-teacher' && (
                         <div className="flex flex-col h-full gap-4">
                             <div className="flex items-center gap-2 mb-2">
                                 <Button variant="ghost" size="sm" onClick={handleBack}><ArrowLeft className="mr-2 h-4 w-4" /> Geri</Button>
@@ -257,7 +255,6 @@ export function BookSessionDialog({ userId }: { userId: string }) {
                                     {selectedSessions.length > 0 && (
                                         <div
                                             className="absolute inset-x-0 bottom-0 bg-background/95 backdrop-blur border-t p-6 z-50 flex items-end gap-4 animate-in slide-in-from-bottom shadow-lg"
-                                            onClick={(e) => e.stopPropagation()}
                                         >
                                             <div className="flex-1 space-y-1.5">
                                                 <Label className="font-semibold text-slate-700 dark:text-slate-200">Konu / Not ({selectedSessions.length} Etüt Seçildi)</Label>

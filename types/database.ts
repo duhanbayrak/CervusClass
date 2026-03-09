@@ -371,6 +371,7 @@ export type Database = {
         Row: {
           account_type: string
           balance: number
+          initial_balance: number
           created_at: string
           currency: string
           id: string
@@ -381,6 +382,7 @@ export type Database = {
         Insert: {
           account_type?: string
           balance?: number
+          initial_balance?: number
           created_at?: string
           currency?: string
           id?: string
@@ -391,6 +393,7 @@ export type Database = {
         Update: {
           account_type?: string
           balance?: number
+          initial_balance?: number
           created_at?: string
           currency?: string
           id?: string
@@ -1148,6 +1151,58 @@ export type Database = {
           },
         ]
       }
+      student_notes: {
+        Row: {
+          id: string
+          organization_id: string
+          student_id: string
+          teacher_id: string
+          content: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          student_id: string
+          teacher_id: string
+          content: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          student_id?: string
+          teacher_id?: string
+          content?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_notes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_notes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_notes_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       study_session_statuses: {
         Row: {
           id: string
@@ -1408,7 +1463,8 @@ export type Enums<
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"]
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+  | keyof DefaultSchema["CompositeTypes"] // NOSONAR
   | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
@@ -1445,3 +1501,5 @@ export interface ClassWithCount extends Class {
   student_count?: number;
   profiles?: { count: number }[];
 }
+/** Öğrenci notu satır tipi */
+export type StudentNote = Tables<'student_notes'>;

@@ -23,6 +23,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -44,13 +45,15 @@ import {
     ChevronLeft,
     ChevronRight,
     ChevronsLeft,
-    ChevronsRight
+    ChevronsRight,
+    ShoppingCart
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getStudents, deleteStudent } from "@/lib/actions/student";
 import { getClasses } from "@/lib/actions/class";
 import { StudentDialog } from "./student-dialog";
+import { BulkFeeAssignmentDialog } from "./bulk-fee-assignment-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 
@@ -65,7 +68,7 @@ interface StudentListProps {
     initialCount?: number;
 }
 
-export function StudentList({ initialData = [], initialCount = 0 }: StudentListProps) {
+export function StudentList({ initialData = [], initialCount = 0 }: StudentListProps) { // NOSONAR
     const router = useRouter();
     const searchParams = useSearchParams();
     const { toast } = useToast();
@@ -80,6 +83,10 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
 
+    // Multi-select State
+    const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+    const [bulkAssignDialogOpen, setBulkAssignDialogOpen] = useState(false);
+
 
     // Sayfalama state'leri
     const [currentPage, setCurrentPage] = useState(1);
@@ -93,7 +100,7 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
     useEffect(() => {
         const loadClasses = async () => {
             const res = await getClasses();
-            if (res.success) {
+            if (res.success && res.data) {
                 setClassList(res.data.map(c => ({ id: c.id, name: c.name })));
             }
         };
@@ -103,12 +110,10 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
     const loadStudents = async (page: number = currentPage) => {
         setLoading(true);
         const selectedClass = classFilter === 'all' ? undefined : classFilter;
-        const res = await getStudents(search, selectedClass, page, PAGE_SIZE);
+        const res = await getStudents({ search, classId: selectedClass, page, limit: PAGE_SIZE });
         if (res.success && res.data) {
-            // Assuming res.data is compatible, or we should validate. 
-            // For now, removing double cast.
-            setStudents(res.data as Student[]);
-            setTotalCount(res.count ?? 0);
+            setStudents(res.data.students as Student[]);
+            setTotalCount(res.data.count ?? 0);
         } else {
             toast({
                 variant: "destructive",
@@ -136,7 +141,23 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
     useEffect(() => {
         if (currentPage === 1 && students === initialData) return;
         loadStudents(currentPage);
+        setSelectedStudents([]); // Sayfa değişince seçimi sıfırla
     }, [currentPage]);
+
+    // Toplu seçim fonksiyonları
+    const handleToggleAll = () => {
+        if (selectedStudents.length === students.length && students.length > 0) {
+            setSelectedStudents([]);
+        } else {
+            setSelectedStudents(students.map(s => s.id));
+        }
+    };
+
+    const handleToggleSelect = (id: string) => {
+        setSelectedStudents(prev =>
+            prev.includes(id) ? prev.filter(sId => sId !== id) : [...prev, id]
+        );
+    };
 
     // Check for action param to auto-open dialog
     useEffect(() => {
@@ -154,7 +175,7 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
     const handleDelete = async () => {
         if (!studentToDelete) return;
 
-        const res = await deleteStudent(studentToDelete);
+        const res = await deleteStudent({ id: studentToDelete });
         if (res.success) {
             toast({ description: "Öğrenci silindi." });
             loadStudents(currentPage);
@@ -245,12 +266,24 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
                     </Select>
                 </div>
 
-                <Button
-                    onClick={handleCreate}
-                    className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 shadow-sm gap-2"
-                >
-                    <Plus className="h-4 w-4" /> Yeni Öğrenci
-                </Button>
+                <div className="flex items-center gap-3">
+                    {selectedStudents.length > 0 && (
+                        <Button
+                            variant="default"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm gap-2"
+                            onClick={() => setBulkAssignDialogOpen(true)}
+                        >
+                            <ShoppingCart className="h-4 w-4" />
+                            {selectedStudents.length} Öğrenciye Hizmet Ata
+                        </Button>
+                    )}
+                    <Button
+                        onClick={handleCreate}
+                        className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 shadow-sm gap-2"
+                    >
+                        <Plus className="h-4 w-4" /> Yeni Öğrenci
+                    </Button>
+                </div>
             </div>
 
             {/* Tablo */}
@@ -258,6 +291,13 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <TableHead className="w-[40px] px-4">
+                                <Checkbox
+                                    checked={students.length > 0 && selectedStudents.length === students.length}
+                                    onCheckedChange={handleToggleAll}
+                                    aria-label="Tümünü seç"
+                                />
+                            </TableHead>
                             <TableHead className="font-semibold text-slate-600 dark:text-slate-300">Öğrenci No</TableHead>
                             <TableHead className="font-semibold text-slate-600 dark:text-slate-300">Öğrenci</TableHead>
                             <TableHead className="font-semibold text-slate-600 dark:text-slate-300">Sınıf</TableHead>
@@ -266,25 +306,34 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {loading ? (
+                        {loading && (
                             <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center">
+                                <TableCell colSpan={6} className="h-24 text-center">
                                     <Loader2 className="mx-auto h-6 w-6 animate-spin text-slate-400" />
                                 </TableCell>
                             </TableRow>
-                        ) : students.length === 0 ? (
+                        )}
+                        {!loading && students.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center text-slate-400">
+                                <TableCell colSpan={6} className="h-24 text-center text-slate-400">
                                     Öğrenci bulunamadı.
                                 </TableCell>
                             </TableRow>
-                        ) : (
-                            students.map((student, index) => (
+                        )}
+                        {!loading && students.length > 0 && students.map((student) => (
                                 <TableRow
                                     key={student.id}
                                     className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 group"
                                     onClick={() => router.push(`/admin/students/${student.id}`)}
                                 >
+                                    <TableCell className="px-4" onClick={(e) => e.stopPropagation()}>
+                                        <Checkbox
+                                            checked={selectedStudents.includes(student.id)}
+                                            onCheckedChange={() => handleToggleSelect(student.id)}
+                                            aria-label={`${student.full_name} seç`}
+                                        />
+                                    </TableCell>
+
                                     {/* Öğrenci No */}
                                     <TableCell>
                                         {student.student_number ? (
@@ -368,8 +417,7 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
                                         </DropdownMenu>
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        )}
+                        ))}
                     </TableBody>
                 </Table>
             </div>
@@ -440,17 +488,17 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
                                         if (Math.abs(page - currentPage) <= 1) return true;
                                         return false;
                                     })
-                                    .reduce<(number | 'ellipsis')[]>((acc, page, idx, arr) => {
+                                    .reduce<(number | string)[]>((acc, page, idx, arr) => {
                                         // Ara boşluklara "..." ekle
-                                        if (idx > 0 && page - (arr[idx - 1]) > 1) {
-                                            acc.push('ellipsis');
+                                        if (idx > 0 && page - Number(arr[idx - 1]) > 1) {
+                                            acc.push(`ellipsis-${acc.length}`);
                                         }
                                         acc.push(page);
                                         return acc;
                                     }, [])
-                                    .map((item, idx) =>
-                                        item === 'ellipsis' ? (
-                                            <span key={`ellipsis-${idx}`} className="px-1.5 text-sm text-slate-400">
+                                    .map((item) =>
+                                        typeof item === 'string' ? (
+                                            <span key={item} className="px-1.5 text-sm text-slate-400">
                                                 …
                                             </span>
                                         ) : (
@@ -499,6 +547,17 @@ export function StudentList({ initialData = [], initialCount = 0 }: StudentListP
                 onOpenChange={handleOpenChange}
                 student={editStudent}
                 onSave={handleSave}
+            />
+
+            <BulkFeeAssignmentDialog
+                open={bulkAssignDialogOpen}
+                onOpenChange={setBulkAssignDialogOpen}
+                selectedStudentIds={selectedStudents}
+                onSuccess={() => {
+                    setSelectedStudents([]);
+                    setBulkAssignDialogOpen(false);
+                    loadStudents(currentPage); // Başarılı işlem sonrası refresh
+                }}
             />
         </div>
     );

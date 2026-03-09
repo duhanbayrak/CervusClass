@@ -64,7 +64,7 @@ interface Teacher {
     bio?: string | null;
 }
 
-export default function TeacherList({ initialTeachers, initialBranches }: { initialTeachers: Teacher[], initialBranches: string[] }) {
+export default function TeacherList({ initialTeachers, initialBranches }: Readonly<{ initialTeachers: Teacher[], initialBranches: string[] }>) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [searchTerm, setSearchTerm] = useState('');
@@ -106,7 +106,7 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
         setIsLoading(true);
 
         try {
-            const url = editingTeacher ? '/api/admin/users' : '/api/admin/users';
+            const url = '/api/admin/users';
             const method = editingTeacher ? 'PUT' : 'POST';
             const body = {
                 ...formData,
@@ -293,7 +293,7 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
                                     maxLength={10}
                                     value={formData.phone}
                                     onChange={(e) => {
-                                        let val = e.target.value.replace(/\D/g, '');
+                                        let val = e.target.value.replaceAll(/\D/g, '');
                                         if (val.startsWith('0')) val = val.substring(1);
                                         if (val.length > 10) val = val.substring(0, 10);
                                         setFormData({ ...formData, phone: val });
@@ -333,7 +333,11 @@ export default function TeacherList({ initialTeachers, initialBranches }: { init
                             )}
                             <DialogFooter>
                                 <Button type="submit" disabled={isLoading}>
-                                    {isLoading ? 'İşleniyor...' : (editingTeacher ? 'Güncelle' : 'Kaydet')}
+                                    {(() => {
+                                        if (isLoading) return 'İşleniyor...';
+                                        if (editingTeacher) return 'Güncelle';
+                                        return 'Kaydet';
+                                    })()}
                                 </Button>
                             </DialogFooter>
                         </form>

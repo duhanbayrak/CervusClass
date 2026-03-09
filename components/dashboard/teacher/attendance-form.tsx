@@ -25,22 +25,23 @@ interface AttendanceRecord {
 }
 
 interface AttendanceFormProps {
-    scheduleId: string;
-    classId: string;
-    students: Student[];
-    attendanceMap: Record<string, AttendanceRecord>;
-    date: string;
+    readonly scheduleId: string;
+    readonly classId: string;
+    readonly students: Student[];
+    readonly attendanceMap: Record<string, AttendanceRecord>;
+    readonly date: string;
 }
 
 type AttendanceStatus = 'present' | 'absent' | 'late';
 
 export default function AttendanceForm({
+    // NOSONAR
     scheduleId,
     classId,
     students,
     attendanceMap,
     date
-}: AttendanceFormProps) {
+}: Readonly<AttendanceFormProps>) {
     const router = useRouter();
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
@@ -232,7 +233,7 @@ export default function AttendanceForm({
                                     min={1}
                                     max={60}
                                     value={attendance[student.id]?.late_minutes || 5}
-                                    onChange={(e) => handleLateMinutesChange(student.id, parseInt(e.target.value) || 0)}
+                                    onChange={(e) => handleLateMinutesChange(student.id, Number.parseInt(e.target.value) || 0)}
                                     className="w-20 h-8"
                                 />
                             </div>

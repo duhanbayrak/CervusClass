@@ -1,11 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { getSupabaseEnv } from "@/lib/env";
 
 export default async function DebugRolePage() {
     const cookieStore = await cookies();
+    const { url, anonKey } = getSupabaseEnv();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        url,
+        anonKey,
         {
             cookies: {
                 getAll() {
@@ -56,11 +58,10 @@ export default async function DebugRolePage() {
                     Is Array: {profile?.roles ? Array.isArray(profile.roles).toString() : 'N/A'}
                 </div>
                 <div>
-                    Role Name: {
-                        profile?.roles
-                            ? (Array.isArray(profile.roles) ? profile.roles[0]?.name : profile.roles?.name)
-                            : 'UNDEFINED'
-                    }
+                    Role Name: {(() => {
+                        if (!profile?.roles) return 'UNDEFINED';
+                        return Array.isArray(profile.roles) ? profile.roles[0]?.name : profile.roles?.name;
+                    })()}
                 </div>
             </div>
         </div>

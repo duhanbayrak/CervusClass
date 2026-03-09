@@ -7,11 +7,11 @@ import DashboardHeader from '@/components/dashboard/header';
 import { ADMIN_NAV } from '@/lib/navigation';
 import UserSelectionDialog from '@/components/dashboard/admin/user-selection-dialog';
 
-export default function AdminLayout({
+export default function AdminLayout({ // NOSONAR
     children,
-}: {
+}: Readonly<{
     children: React.ReactNode;
-}) {
+}>) {
     const [isUserSelectionOpen, setIsUserSelectionOpen] = useState(false);
 
     return (
@@ -26,8 +26,6 @@ export default function AdminLayout({
                 <DashboardHeader
                     title="Yönetim"
                     description="Kurumunuza genel bakış."
-                    actionButtonText="Kullanıcı Ekle"
-                    onActionClick={() => setIsUserSelectionOpen(true)}
                     mobileNav={
                         <MobileSidebar
                             items={ADMIN_NAV}

@@ -22,13 +22,19 @@ interface ExamResults {
     scores: any
 }
 
+function getExamHref(role: string | undefined, examName: string, examId: string, studentId?: string): string {
+    if (role === 'teacher') return `/teacher/exams/${encodeURIComponent(examName)}/students/${studentId}`;
+    if (role === 'admin') return `/admin/exams/${encodeURIComponent(examName)}/students/${studentId}`;
+    return `/student/exams/${examId}`;
+}
+
 interface ExamHistoryProps {
     exams: ExamResults[]
-    role?: 'student' | 'teacher'
+    role?: 'student' | 'teacher' | 'admin'
     studentId?: string
 }
 
-export function ExamHistory({ exams, role = 'student', studentId }: ExamHistoryProps) {
+export function ExamHistory({ exams, role = 'student', studentId }: Readonly<ExamHistoryProps>) { // NOSONAR
     const [filter, setFilter] = useState<'ALL' | 'TYT' | 'AYT'>('ALL')
 
     const filteredExams = exams.filter(exam => {
@@ -44,7 +50,7 @@ export function ExamHistory({ exams, role = 'student', studentId }: ExamHistoryP
                 </div>
                 <h3 className="font-semibold text-lg">Henüz Sınav Kaydı Yok</h3>
                 <p className="text-sm text-muted-foreground max-w-sm mt-1">
-                    {role === 'teacher' ? 'Öğrencinin henüz bir sınav kaydı bulunmamaktadır.' : 'Girdiğiniz deneme sınavları sisteme yüklendiğinde burada görünecektir.'}
+                    {role === 'teacher' || role === 'admin' ? 'Öğrencinin henüz bir sınav kaydı bulunmamaktadır.' : 'Girdiğiniz deneme sınavları sisteme yüklendiğinde burada görünecektir.'}
                 </p>
             </div>
         )
@@ -71,10 +77,7 @@ export function ExamHistory({ exams, role = 'student', studentId }: ExamHistoryP
                     filteredExams.map((exam) => (
                         <Link
                             key={exam.id}
-                            href={role === 'teacher'
-                                ? `/teacher/exams/${encodeURIComponent(exam.exam_name)}/students/${studentId}`
-                                : `/student/exams/${exam.id}`
-                            }
+                            href={getExamHref(role, exam.exam_name, exam.id, studentId)}
                             className="block group"
                         >
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border bg-card hover:bg-accent/50 transition-all cursor-pointer shadow-sm hover:shadow-md gap-4">

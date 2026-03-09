@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { getSupabaseEnv } from '@/lib/env';
 import StudentList from '@/components/dashboard/teacher/student-list';
 
 // Next.js 15+ Page props type
@@ -28,9 +29,10 @@ interface StudentWithClass {
 
 async function getData(query?: string, className?: string) {
     const cookieStore = await cookies();
+    const { url, anonKey } = getSupabaseEnv();
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        url,
+        anonKey,
         {
             cookies: {
                 getAll() {
@@ -93,7 +95,7 @@ async function getData(query?: string, className?: string) {
     };
 }
 
-export default async function TeacherStudentsPage(props: PageProps) {
+export default async function TeacherStudentsPage(props: Readonly<PageProps>) {
     const searchParams = await props.searchParams;
     const query = searchParams.query;
     const className = searchParams.class;

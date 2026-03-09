@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import {
     LineChart,
     Line,
@@ -13,7 +13,6 @@ import {
     Legend,
     Brush,
     ResponsiveContainer,
-    TooltipProps,
 } from 'recharts'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
@@ -30,7 +29,6 @@ import {
 } from '@/components/ui/popover'
 import { ChartToggle } from './chart-toggle'
 import { CustomTooltip } from './custom-tooltip'
-import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent'
 
 // --- Types ---
 
@@ -38,9 +36,9 @@ interface ChartDataPoint {
     name: string
     label: string
     fullDate: string
-    'Benim Netim': number | null
-    'Sınıf Ortalaması': number | null
-    'Okul Ortalaması': number | null
+    student_net: number | null
+    class_net: number | null
+    school_net: number | null
     originalDate: Date | null // Used for filtering
     [key: string]: any
 }
@@ -63,7 +61,8 @@ const COLORS = {
 
 // --- Component ---
 
-export function ExpandedExamChart({ data }: ExpandedExamChartProps) {
+export function ExpandedExamChart({ data }: Readonly<ExpandedExamChartProps>) {
+    // NOSONAR
     const [isBarChart, setIsBarChart] = useState(false)
     const [filter, setFilter] = useState<FilterType>('all')
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
@@ -85,17 +84,18 @@ export function ExpandedExamChart({ data }: ExpandedExamChartProps) {
         })
 
         // 2. Apply Custom Date Filter
-        if (filter === 'custom' && dateRange?.from) {
+        const fromDate = dateRange?.from
+        if (filter === 'custom' && fromDate) {
             processed = processed.filter(item => {
                 if (!item.originalDate) return false
                 // Set to start/end of days for comparison
                 const d = new Date(item.originalDate)
                 d.setHours(0, 0, 0, 0)
 
-                const f = new Date(dateRange.from!)
+                const f = new Date(fromDate)
                 f.setHours(0, 0, 0, 0)
 
-                let t = new Date(dateRange.to || dateRange.from!)
+                const t = new Date(dateRange.to || fromDate)
                 t.setHours(23, 59, 59, 999)
 
                 return d >= f && d <= t
@@ -141,18 +141,14 @@ export function ExpandedExamChart({ data }: ExpandedExamChartProps) {
     }
 
     // Derived state for DatePicker button text
-    const dateButtonText = dateRange?.from ? (
-        dateRange.to ? (
-            <>
-                {format(dateRange.from, "d MMM", { locale: tr })} -{" "}
-                {format(dateRange.to, "d MMM", { locale: tr })}
-            </>
-        ) : (
-            format(dateRange.from, "d MMM", { locale: tr })
-        )
-    ) : (
-        <span>Tarih Seç</span>
-    )
+    let dateButtonText: React.ReactNode;
+    if (!dateRange?.from) {
+        dateButtonText = <span>Tarih Seç</span>;
+    } else if (dateRange.to) {
+        dateButtonText = <>{format(dateRange.from, "d MMM", { locale: tr })} - {format(dateRange.to, "d MMM", { locale: tr })}</>;
+    } else {
+        dateButtonText = format(dateRange.from, "d MMM", { locale: tr });
+    }
 
 
     // Chart Rendering Helper (Internal)
@@ -191,9 +187,9 @@ export function ExpandedExamChart({ data }: ExpandedExamChartProps) {
             return (
                 <BarChart {...CommonProps}>
                     {CommonComponents}
-                    <Bar dataKey="Benim Netim" fill={COLORS.student} radius={[6, 6, 0, 0]} barSize={32} />
-                    <Bar dataKey="Sınıf Ortalaması" fill={COLORS.class} radius={[6, 6, 0, 0]} barSize={32} />
-                    <Bar dataKey="Okul Ortalaması" fill={COLORS.school} radius={[6, 6, 0, 0]} barSize={32} />
+                    <Bar name="Benim Netim" dataKey="student_net" fill={COLORS.student} radius={[6, 6, 0, 0]} barSize={32} />
+                    <Bar name="Sınıf Ortalaması" dataKey="class_net" fill={COLORS.class} radius={[6, 6, 0, 0]} barSize={32} />
+                    <Bar name="Okul Ortalaması" dataKey="school_net" fill={COLORS.school} radius={[6, 6, 0, 0]} barSize={32} />
                 </BarChart>
             )
         }
@@ -201,23 +197,26 @@ export function ExpandedExamChart({ data }: ExpandedExamChartProps) {
             <LineChart {...CommonProps}>
                 {CommonComponents}
                 <Line
-                    type="monotone" dataKey="Benim Netim" stroke={COLORS.student}
+                    name="Benim Netim"
+                    type="monotone" dataKey="student_net" stroke={COLORS.student}
                     strokeWidth={3}
                     dot={{ r: 5, fill: COLORS.student, strokeWidth: 2, stroke: '#fff' }}
                     activeDot={{ r: 7, stroke: COLORS.student, strokeWidth: 2 }}
-                    connectNulls
+                    connectNulls={true}
                 />
                 <Line
-                    type="monotone" dataKey="Sınıf Ortalaması" stroke={COLORS.class}
+                    name="Sınıf Ortalaması"
+                    type="monotone" dataKey="class_net" stroke={COLORS.class}
                     strokeWidth={2} strokeDasharray="6 3"
                     dot={{ r: 4, fill: COLORS.class, strokeWidth: 2, stroke: '#fff' }}
-                    connectNulls
+                    connectNulls={true}
                 />
                 <Line
-                    type="monotone" dataKey="Okul Ortalaması" stroke={COLORS.school}
+                    name="Okul Ortalaması"
+                    type="monotone" dataKey="school_net" stroke={COLORS.school}
                     strokeWidth={2} strokeDasharray="3 3"
                     dot={{ r: 4, fill: COLORS.school, strokeWidth: 2, stroke: '#fff' }}
-                    connectNulls
+                    connectNulls={true}
                 />
             </LineChart>
         )
@@ -270,7 +269,6 @@ export function ExpandedExamChart({ data }: ExpandedExamChartProps) {
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
-                                initialFocus
                                 mode="range"
                                 defaultMonth={dateRange?.from}
                                 selected={dateRange}

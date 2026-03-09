@@ -33,6 +33,7 @@ export function ScheduleUploader() {
                 })
             }
         } catch (e) {
+            console.error('Error uploading schedule:', e);
             toast.error('Bir hata oluştu.')
         } finally {
             setIsPending(false)

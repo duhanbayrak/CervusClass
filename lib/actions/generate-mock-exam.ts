@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import * as XLSX from 'xlsx'
+import { logger } from '@/lib/logger'
 
 interface ExamStats {
     correct: number;
@@ -50,8 +51,8 @@ export async function generateMockExamExcel(type: 'TYT' | 'AYT' = 'TYT') {
         }
 
         let headerRow: string[] = [];
-        let dataRows: any[] = [];
-        let colWidths: any[] = [];
+        let dataRows: (string | number | null)[][] = [];
+        let colWidths: { wch: number }[] = [];
 
         if (type === 'TYT') {
             headerRow = [
@@ -83,7 +84,7 @@ export async function generateMockExamExcel(type: 'TYT' | 'AYT' = 'TYT') {
             // Widths: Name(25), Num(15), 4*4=16 cols (10), Total(12)
             colWidths = [
                 { wch: 25 }, { wch: 15 },
-                ...Array(16).fill({ wch: 8 }),
+                ...new Array(16).fill({ wch: 8 }),
                 { wch: 12 }
             ];
 
@@ -167,13 +168,13 @@ export async function generateMockExamExcel(type: 'TYT' | 'AYT' = 'TYT') {
             colWidths = [
                 { wch: 25 }, { wch: 15 },
                 // Mat (4)
-                ...Array(4).fill({ wch: 9 }),
+                ...new Array(4).fill({ wch: 9 }),
                 // Fen (3*4 + 1) = 13
-                ...Array(13).fill({ wch: 9 }),
+                ...new Array(13).fill({ wch: 9 }),
                 // TDE (3*4 + 1) = 13
-                ...Array(13).fill({ wch: 9 }),
+                ...new Array(13).fill({ wch: 9 }),
                 // Sos2 (4*4 + 1) = 17
-                ...Array(17).fill({ wch: 9 }),
+                ...new Array(17).fill({ wch: 9 }),
                 // Total
                 { wch: 12 }
             ];
@@ -192,8 +193,8 @@ export async function generateMockExamExcel(type: 'TYT' | 'AYT' = 'TYT') {
             filename: `mock_exam_${type}_${new Date().toISOString().split('T')[0]}.xlsx`
         };
 
-    } catch (error: any) {
-        console.error('Error generating mock exam:', error);
-        return { success: false, message: 'Hata: ' + error.message };
+    } catch (error: unknown) {
+        logger.error('Deneme sınavı oluşturma hatası', { action: 'generateMockExam' }, error);
+        return { success: false, message: 'Hata: ' + (error instanceof Error ? error.message : 'Beklenmedik hata') };
     }
 }

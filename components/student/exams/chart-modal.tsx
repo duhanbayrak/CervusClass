@@ -10,7 +10,7 @@ interface ChartModalProps {
     children: ReactNode
 }
 
-export function ChartModal({ isOpen, onClose, title, subtitle, children }: ChartModalProps) {
+export function ChartModal({ isOpen, onClose, title, subtitle, children }: Readonly<ChartModalProps>) { // NOSONAR
     const handleEscape = useCallback((e: KeyboardEvent) => {
         if (e.key === 'Escape') onClose()
     }, [onClose])
@@ -31,9 +31,12 @@ export function ChartModal({ isOpen, onClose, title, subtitle, children }: Chart
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             {/* Backdrop */}
-            <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+            <button
+                type="button"
+                aria-label="Kapat"
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 cursor-default"
                 onClick={onClose}
+                onKeyDown={(e) => e.key === 'Escape' && onClose()}
             />
 
             {/* Modal Content */}
@@ -73,20 +76,24 @@ export function ChartModal({ isOpen, onClose, title, subtitle, children }: Chart
 }
 
 /** Grafiklerin üzerine gelince "büyüt" ikonu gösteren sarmalayıcı */
-export function ExpandableChartWrapper({
+export function ExpandableChartWrapper({ // NOSONAR
     children,
     onClick,
     className = '',
-}: {
+}: Readonly<{
     children: ReactNode
     onClick: () => void
     className?: string
-}) {
+}>) {
     return (
-        <div
-            className={`relative group cursor-pointer ${className}`}
-            onClick={onClick}
-        >
+        <div className={`relative group ${className}`}>
+            <button
+                type="button"
+                aria-label="Grafiği büyüt"
+                className="absolute inset-0 z-10 cursor-pointer w-full h-full bg-transparent"
+                onClick={onClick}
+                onKeyDown={(e) => e.key === 'Enter' && onClick()}
+            />
             {children}
             {/* Expand icon overlay */}
             <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">

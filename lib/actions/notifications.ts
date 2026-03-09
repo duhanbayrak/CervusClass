@@ -1,105 +1,77 @@
 'use server';
 
+import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getAuthContext } from '@/lib/auth-context';
+import { logger } from '@/lib/logger';
+import { withAction } from '@/lib/actions/utils/with-action';
 
-interface CreateNotificationParams {
+export type CreateNotificationParams = {
     userId: string;
     title: string;
     message: string;
     type?: 'info' | 'warning' | 'success';
 }
 
+// Bildirim gönderme — diğer action'lardan çağrılır, kendi auth kontrolü yok
 export async function createNotification({ userId, title, message, type = 'info' }: CreateNotificationParams) {
-    try {
-        const { error } = await supabaseAdmin
-            .from('notifications')
-            .insert({
-                user_id: userId,
-                title,
-                message,
-                type,
-            });
+    const { error } = await supabaseAdmin
+        .from('notifications')
+        .insert({ user_id: userId, title, message, type });
 
-        if (error) {
-            console.error('Notification insert error:', error);
-        }
-    } catch (e) {
-        console.error('Failed to create notification:', e);
+    if (error) {
+        logger.error('Bildirim oluşturulamadı', { action: 'createNotification', userId }, error);
     }
 }
 
 export async function createBulkNotifications(notifications: CreateNotificationParams[]) {
-    try {
-        const { error } = await supabaseAdmin
-            .from('notifications')
-            .insert(notifications.map(n => ({
-                user_id: n.userId,
-                title: n.title,
-                message: n.message,
-                type: n.type || 'info',
-            })));
+    const { error } = await supabaseAdmin
+        .from('notifications')
+        .insert(notifications.map(n => ({
+            user_id: n.userId,
+            title: n.title,
+            message: n.message,
+            type: n.type || 'info',
+        })));
 
-        if (error) {
-            console.error('Bulk notification insert error:', error);
-        }
-    } catch (e) {
-        console.error('Failed to create bulk notifications:', e);
+    if (error) {
+        logger.error('Toplu bildirim oluşturulamadı', { action: 'createBulkNotifications', count: notifications.length }, error);
     }
 }
 
-export async function getNotifications() {
-    try {
-        const { user, error: authError } = await getAuthContext();
-        if (authError || !user) return { data: [], error: 'Oturum bulunamadı' };
+export const getNotifications = withAction(async (ctx) => {
+    const { data, error } = await supabaseAdmin
+        .from('notifications')
+        .select('*')
+        .eq('user_id', ctx.user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
 
-        const { data, error } = await supabaseAdmin
-            .from('notifications')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(20);
+    if (error) return { success: false, error: error.message };
+    return { success: true, data: data || [] };
+});
 
-        if (error) return { data: [], error: error.message };
-        return { data: data || [] };
-    } catch {
-        return { data: [], error: 'Beklenmedik hata' };
-    }
-}
-
-export async function markNotificationAsRead(notificationId: string) {
-    try {
-        const { user, error: authError } = await getAuthContext();
-        if (authError || !user) return { error: 'Oturum bulunamadı' };
-
+export const markNotificationAsRead = withAction(
+    z.object({ notificationId: z.string().uuid() }),
+    async ({ notificationId }, ctx) => {
         const { error } = await supabaseAdmin
             .from('notifications')
             .update({ is_read: true })
             .eq('id', notificationId)
-            .eq('user_id', user.id);
+            .eq('user_id', ctx.user.id);
 
-        if (error) return { error: error.message };
+        if (error) return { success: false, error: error.message };
         return { success: true };
-    } catch {
-        return { error: 'Beklenmedik hata' };
     }
-}
+);
 
-export async function markAllNotificationsAsRead() {
-    try {
-        const { user, error: authError } = await getAuthContext();
-        if (authError || !user) return { error: 'Oturum bulunamadı' };
+export const markAllNotificationsAsRead = withAction(async (ctx) => {
+    const { error } = await supabaseAdmin
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', ctx.user.id)
+        .eq('is_read', false);
 
-        const { error } = await supabaseAdmin
-            .from('notifications')
-            .update({ is_read: true })
-            .eq('user_id', user.id)
-            .eq('is_read', false);
-
-        if (error) return { error: error.message };
-        return { success: true };
-    } catch {
-        return { error: 'Beklenmedik hata' };
-    }
-}
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+});
 

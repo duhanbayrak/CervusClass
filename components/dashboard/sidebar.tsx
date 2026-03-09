@@ -1,14 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import NextImage from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { NavItem } from '@/lib/navigation';
-import { School, LogOut, ChevronUp, Loader2 } from 'lucide-react';
+import { LogOut, ChevronUp, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useUserRole } from '@/components/providers/auth-provider';
-import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
@@ -21,9 +19,9 @@ interface SidebarProps {
     onNavigate?: () => void;
 }
 
-export default function Sidebar({ items, basePath, title = "CervusClass", subtitle = "Portal", className, onNavigate }: SidebarProps) {
+export default function Sidebar({ items, basePath, title, subtitle, className, onNavigate }: Readonly<SidebarProps>) {
     const pathname = usePathname();
-    const { profile, role, signOut, loading } = useUserRole();
+    const { profile, role, organization, signOut, loading } = useUserRole();
 
     const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -33,16 +31,21 @@ export default function Sidebar({ items, basePath, title = "CervusClass", subtit
         await signOut();
     };
 
+    // Dinamik Kurum Bilgileri
+    const displayTitle = organization?.name || title || "CervusClass";
+    const displaySubtitle = organization?.name ? "Yönetim Paneli" : (subtitle || "Portal");
+    const logoSrc = organization?.logo_url || "/deer-logo.svg";
+
     return (
         <aside className={cn("hidden md:flex w-72 flex-shrink-0 bg-white dark:bg-[#151c2b] border-r border-slate-200 dark:border-slate-800 flex-col transition-all duration-300 h-screen sticky top-0", className)}>
             {/* Branding */}
             <div className="p-6 flex items-center gap-3">
-                <div className="bg-[#135bec]/10 p-2 rounded-lg text-[#135bec]">
-                    <NextImage src="/deer-logo.svg" alt="Cervus Class Logo" width={32} height={32} className="w-8 h-8 object-contain" />
+                <div className="bg-[#135bec]/10 p-2 rounded-lg text-[#135bec] flex-shrink-0">
+                    <img src={logoSrc} alt={`${displayTitle} Logo`} className="w-8 h-8 object-contain rounded-sm" />
                 </div>
-                <div>
-                    <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{title}</h1>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{subtitle}</p>
+                <div className="overflow-hidden flex-1">
+                    <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white truncate" title={displayTitle}>{displayTitle}</h1>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">{displaySubtitle}</p>
                 </div>
             </div>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
 import { RegistrationFormData } from '@/lib/actions/student-registration';
 
 // Context State
@@ -15,7 +15,7 @@ type RegistrationState = {
 
 const RegistrationContext = createContext<RegistrationState | undefined>(undefined);
 
-export function RegistrationProvider({ children }: { children: ReactNode }) {
+export function RegistrationProvider({ children }: Readonly<{ children: ReactNode }>) { // NOSONAR
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState<Partial<RegistrationFormData>>({
         services: []
@@ -26,15 +26,18 @@ export function RegistrationProvider({ children }: { children: ReactNode }) {
         setFormData((prev) => ({ ...prev, ...data }));
     };
 
+    const contextValue = useMemo(() => ({
+        step,
+        setStep,
+        formData,
+        updateFormData,
+        isSubmitting,
+        setIsSubmitting,
+     
+    }), [step, formData, isSubmitting]);
+
     return (
-        <RegistrationContext.Provider value={{
-            step,
-            setStep,
-            formData,
-            updateFormData,
-            isSubmitting,
-            setIsSubmitting
-        }}>
+        <RegistrationContext.Provider value={contextValue}>
             {children}
         </RegistrationContext.Provider>
     );

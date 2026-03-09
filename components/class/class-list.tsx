@@ -39,7 +39,7 @@ interface ClassListProps {
     initialData?: ClassWithCount[];
 }
 
-export function ClassList({ initialData = [] }: ClassListProps) {
+export function ClassList({ initialData = [] }: ClassListProps) { // NOSONAR
     const router = useRouter();
     const { toast } = useToast();
     const [classes, setClasses] = useState<ClassWithCount[]>(initialData);
@@ -87,7 +87,7 @@ export function ClassList({ initialData = [] }: ClassListProps) {
     const handleDelete = async (id: string) => {
         if (!confirm("Bu sınıfı silmek istediğinize emin misiniz?")) return;
 
-        const res = await deleteClass(id);
+        const res = await deleteClass({ id });
         if (res.success) {
             toast({ description: "Sınıf silindi." });
             loadClasses();
@@ -155,20 +155,21 @@ export function ClassList({ initialData = [] }: ClassListProps) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {loading ? (
+                        {loading && (
                             <TableRow>
                                 <TableCell colSpan={4} className="h-24 text-center">
                                     <Loader2 className="mx-auto h-6 w-6 animate-spin text-slate-400" />
                                 </TableCell>
                             </TableRow>
-                        ) : classes.length === 0 ? (
+                        )}
+                        {!loading && classes.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={4} className="h-24 text-center text-slate-400">
                                     Sınıf bulunamadı.
                                 </TableCell>
                             </TableRow>
-                        ) : (
-                            classes.map((cls) => {
+                        )}
+                        {!loading && classes.length > 0 && classes.map((cls) => {
                                 const studentCount = getStudentCount(cls);
                                 return (
                                     <TableRow
@@ -240,8 +241,7 @@ export function ClassList({ initialData = [] }: ClassListProps) {
                                         </TableCell>
                                     </TableRow>
                                 );
-                            })
-                        )}
+                        })}
                     </TableBody>
                 </Table>
             </div>

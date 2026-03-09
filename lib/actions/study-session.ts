@@ -1,6 +1,5 @@
 'use server'
 
-import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { revalidatePath } from 'next/cache'
 import { type SupabaseClient } from '@supabase/supabase-js'
@@ -17,7 +16,7 @@ async function getStatusId(supabase: SupabaseClient, name: string) {
 // Öğretmenleri getir
 export async function getTeachers() {
     try {
-        const { supabase, organizationId, error } = await getAuthContext();
+        const { organizationId, error } = await getAuthContext();
         if (error || !organizationId) return { error: error || 'Oturum bulunamadı' };
 
         if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -72,7 +71,7 @@ export async function getTeacherSchedule(teacherId: string) {
         }
 
         // Status adını güvenli al
-        const getStatus = (s: Record<string, unknown>) => (s.study_session_statuses as Record<string, string> | null)?.name;
+        const getStatus = (s: any) => s.study_session_statuses?.name;
 
         // Oturumları sanitize et — başkalarının detaylarını gizle
         const sessions = rawSessions?.filter(s => getStatus(s) !== 'cancelled').map(session => {
@@ -218,10 +217,11 @@ export async function requestSession(sessionId: string, topic: string) {
                 .single();
 
             const studentName = studentProfile?.full_name || 'Bir öğrenci';
+            const topicSuffix = topic ? `: ${topic}` : '';
             await createNotification({
                 userId: sessionData.teacher_id,
                 title: 'Yeni Etüt Talebi 📚',
-                message: `${studentName} etüt talebinde bulundu${topic ? `: ${topic}` : ''}.`,
+                message: `${studentName} etüt talebinde bulundu${topicSuffix}.`,
                 type: 'info',
             });
         }
@@ -432,8 +432,8 @@ async function checkAvailabilityConflicts(
         const classEnd = new Date(`${dateString}T${cls.end_time}+03:00`);
 
         if (startDateTime < classEnd && endDateTime > classStart) {
-            const courseName = (cls as Record<string, unknown>).courses as Record<string, string> | null;
-            return { error: `Bu saatte dersiniz var: ${courseName?.name || 'Ders'}` };
+            const courseData = (cls as any).courses;
+            return { error: `Bu saatte dersiniz var: ${courseData?.name || 'Ders'}` };
         }
     }
 

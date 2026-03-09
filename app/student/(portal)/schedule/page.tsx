@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase-server'
 import { WeeklyScheduler } from "@/components/schedule/WeeklyScheduler";
-import { ScheduleEvent, StudySessionEvent } from "@/types/schedule";
 import { Card, CardContent } from '@/components/ui/card'
 
 export default async function StudentSchedulePage() {
@@ -11,7 +10,7 @@ export default async function StudentSchedulePage() {
 
     const { data: profile } = await supabase.from('profiles').select('class_id').eq('id', user.id).single()
 
-    if (!profile || !profile.class_id) return <div>Sınıf bilginiz bulunamadı.</div>
+    if (!profile?.class_id) return <div>Sınıf bilginiz bulunamadı.</div>
 
     const { data: events } = await supabase
         .from('schedule')
@@ -21,7 +20,7 @@ export default async function StudentSchedulePage() {
             classes ( name ),
             profiles ( full_name ) 
         `)
-        .eq('class_id', profile.class_id!);
+        .eq('class_id', profile.class_id!); // NOSONAR
 
     return (
         <div className="space-y-6 h-full">

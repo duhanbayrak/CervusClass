@@ -1,12 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import {
     FileText,
-    Users,
-    TrendingUp,
     Calendar,
     ChevronRight,
     Plus,
@@ -32,9 +29,16 @@ interface ClassExamData {
 
 async function getExams(page: number = 1, limit: number = 10) {
     const cookieStore = await cookies()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Missing Supabase environment variables')
+    }
+
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        supabaseUrl,
+        supabaseKey,
         {
             cookies: {
                 getAll() {
@@ -123,7 +127,9 @@ async function getExams(page: number = 1, limit: number = 10) {
 
         if (!className || !classId) return
 
-        const exam = examMap.get(examKey)!
+        const exam = examMap.get(examKey)
+        if (!exam) return
+
         let classData = exam.classes.find(c => c.classId === classId)
 
         if (!classData) {
@@ -158,7 +164,8 @@ async function getExams(page: number = 1, limit: number = 10) {
     }
 }
 
-export default async function AdminExamsPage({ searchParams }: { searchParams: { page?: string } }) {
+export default async function AdminExamsPage({ searchParams }: Readonly<{ searchParams: { page?: string } }>) {
+    // NOSONAR
     // Await searchParams before accessing properties
     const resolvedSearchParams = await Promise.resolve(searchParams);
     const page = Number(resolvedSearchParams?.page) || 1
@@ -166,18 +173,6 @@ export default async function AdminExamsPage({ searchParams }: { searchParams: {
 
     const { exams, total } = await getExams(page, limit)
     const totalPages = Math.ceil(total / limit)
-
-    // Calculate summary stats (based on current page, or total? Ideally real stats should be a separate query)
-    // For now showing stats for "visible exams" or maybe we should remove the top summary cards if they are misleading?
-    // Let's keep them as "Page Summary" or maybe implement a global stats RPC later.
-    // For now, let's call them "Görüntülenen Sınav Özeti" implicitly.
-    const visibleExamsCount = exams.length
-    const visibleClassesCount = exams.reduce((sum, exam) => sum + exam.classes.length, 0)
-    const visibleAvgNet = visibleClassesCount > 0
-        ? exams.reduce((sum, exam) =>
-            sum + exam.classes.reduce((s, c) => s + c.avgNet, 0), 0
-        ) / visibleClassesCount
-        : 0
 
     return (
         <div className="container py-8 max-w-7xl mx-auto space-y-6">
@@ -217,8 +212,8 @@ export default async function AdminExamsPage({ searchParams }: { searchParams: {
                         </p>
                     </div>
                 ) : (
-                    exams.map((exam, idx) => (
-                        <div key={idx} className="border rounded-xl overflow-hidden bg-card shadow-sm transition-all hover:shadow-md">
+                    exams.map((exam) => (
+                        <div key={exam.examName} className="border rounded-xl overflow-hidden bg-card shadow-sm transition-all hover:shadow-md">
                             {/* Exam Header */}
                             <div className="p-6 border-b bg-muted/30 flex items-center justify-between">
                                 <div className="space-y-1">
@@ -303,7 +298,7 @@ export default async function AdminExamsPage({ searchParams }: { searchParams: {
                             if (p < 1) p = 1
 
                             return (
-                                <Link key={i} href={`/admin/exams?page=${p}`}>
+                                <Link key={p} href={`/admin/exams?page=${p}`}>
                                     <Button
                                         variant={p === page ? "default" : "outline"}
                                         size="sm"

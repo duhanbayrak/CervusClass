@@ -18,7 +18,7 @@ export async function getFinanceSettings(): Promise<FinanceSettings | null> {
         .eq('organization_id', organizationId)
         .single();
 
-    if (fetchError && fetchError.code === 'PGRST116') {
+    if (fetchError?.code === 'PGRST116') {
         // Kayıt yok — varsayılan oluştur
         const { data: newSettings, error: insertError } = await supabase
             .from('finance_settings')
@@ -52,13 +52,13 @@ export async function updateFinanceSettings(settings: {
     const { supabase, organizationId, error } = await getAuthContext();
     if (error || !organizationId) return { success: false, error: error || 'Yetkilendirme hatası' };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase Json ↔ AcademicPeriod[] uyumsuzluğu
+
     const { error: updateError } = await supabase
         .from('finance_settings')
         .update({
             ...settings,
             updated_at: new Date().toISOString(),
-        } as any)
+        } as Record<string, unknown>)
         .eq('organization_id', organizationId);
 
     if (updateError) return { success: false, error: updateError.message };
