@@ -509,6 +509,15 @@ export async function assignMultipleServicesToStudent(data: {
     if (error || !organizationId || !user) return { success: false, error: error || 'Yetkilendirme hatası' };
 
     try {
+        // downPaymentAccountId boş string olarak gelirse PostgreSQL UUID cast'i başarısız olur.
+        // Gönderilmeden önce boş string değerleri undefined'a normalize et.
+        const sanitizedServices = data.services.map(s => ({
+            ...s,
+            downPaymentAccountId: s.downPaymentAccountId || undefined,
+            discountReason: s.discountReason || undefined,
+            startMonth: s.startMonth || undefined,
+        }));
+
         const { data: rpcResult, error: rpcError } = await (
             supabase.rpc as unknown as (
                 fn: string,
@@ -520,7 +529,7 @@ export async function assignMultipleServicesToStudent(data: {
             p_class_id: data.classId || null,
             p_academic_period: data.academicPeriod,
             p_created_by: user.id,
-            p_services: data.services,
+            p_services: sanitizedServices,
         });
 
         if (rpcError) {
@@ -530,6 +539,13 @@ export async function assignMultipleServicesToStudent(data: {
 
         const result = rpcResult as { success: boolean; error?: string };
         if (!result.success) {
+            logger.error('assignMultipleServicesToStudent: RPC returned failure', {
+                action: 'assignMultipleServicesToStudent',
+                rpcError: result.error,
+                studentId: data.studentId,
+                academicPeriod: data.academicPeriod,
+                serviceCount: data.services.length,
+            });
             return { success: false, error: result.error || 'Atama işlemi tamamlanamadı (RPC level).' };
         }
 

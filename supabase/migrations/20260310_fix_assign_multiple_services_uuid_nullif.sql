@@ -1,9 +1,7 @@
 -- ============================================================
--- T2 Düzeltmesi: Atomik Çoklu Hizmet Atama RPC Fonksiyonu
--- ============================================================
--- Amaç: Öğrenciye atanan tüm paketlerin (student_fees, fee_installments, fee_payments)
---       tek bir transaction'da işlenmesi. Herhangi bir adımda bir hata çıkarsa
---       tüm işlemler otomatik olarak PostgreSQL tarafından Rollback edilir.
+-- Hotfix: downPaymentAccountId boş string → NULL cast sorunu
+-- Boş string ("") UUID cast'i başarısız oluyordu.
+-- NULLIF ile boş string NULL'a çevrilerek fix uygulandı.
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.assign_multiple_services_atomic(
@@ -60,18 +58,14 @@ BEGIN
     END IF;
 
     -- ---- 1. Gerekli Bilgileri Hazırla ----
-    -- Öğrenci ismini al (Description için)
     SELECT full_name INTO v_student_name FROM profiles WHERE id = p_student_id AND organization_id = p_organization_id;
     IF v_student_name IS NULL THEN v_student_name := 'Öğrenci'; END IF;
 
-    -- Muhasebe kategorisi ID'si (Eğer downpayment varsa kullanılacak, yoksa dinamik yaratamayız çünkü RPC içi. Mevcutu almalıyız.)
-    -- Bu fonksiyon dışarıda bir TypeScript yardımcı ile halledilebilir ama biz burada basitçe select yapıyoruz.
     SELECT id INTO v_category_id 
     FROM finance_categories 
     WHERE organization_id = p_organization_id AND name = 'Öğrenci Ücreti' AND type = 'income'
     LIMIT 1;
 
-    -- Eğer bulunamadıysa insert edelim (RPC içinde yapılabilir)
     IF v_category_id IS NULL THEN
         INSERT INTO finance_categories (organization_id, name, type, icon)
         VALUES (p_organization_id, 'Öğrenci Ücreti', 'income', '🎓')
@@ -87,6 +81,7 @@ BEGIN
         v_discount_reason  := v_service->>'discountReason';
         v_vat_rate         := COALESCE((v_service->>'vatRate')::NUMERIC, 0);
         v_down_payment     := COALESCE((v_service->>'downPayment')::NUMERIC, 0);
+        -- FIX: Boş string ("") NULL'a çevrilir, aksi hâlde UUID cast başarısız olur
         v_down_payment_acc := NULLIF(v_service->>'downPaymentAccountId', '')::UUID;
         v_installment_count:= COALESCE((v_service->>'installmentCount')::INT, 1);
         v_start_month      := v_service->>'startMonth';
@@ -135,7 +130,6 @@ BEGIN
             
             v_next_num := v_next_num + 1;
 
-            -- Peşinat fee_payments ve finance_transactions kayıtları
             INSERT INTO fee_payments (
                 organization_id, student_id, installment_id, account_id,
                 amount, payment_method, reference_no, created_by, payment_date
@@ -171,7 +165,6 @@ BEGIN
             v_sum_of_base := v_amount_per_inst * (v_installment_count - 1);
             v_last_amount := ROUND((v_remaining_amount - v_sum_of_base), 2);
 
-            -- Start Month Parse
             v_start_year := EXTRACT(YEAR FROM CURRENT_DATE);
             v_start_month_idx := EXTRACT(MONTH FROM CURRENT_DATE) - 1;
             
@@ -189,12 +182,9 @@ BEGIN
                     v_due_month := v_due_month % 12;
                 END IF;
                 
-                -- Geçerli tarih oluştur (Örn: ayın 31'i çeken, ama due_month şubatsa 28'e yuvarlaması için basitleştirme)
-                -- Ay gün kontrolünü atlatmak için basit bir tarih hesaplaması:
                 BEGIN
                     v_due_date := (v_due_year::TEXT || '-' || LPAD((v_due_month + 1)::TEXT, 2, '0') || '-' || LPAD(v_payment_due_day::TEXT, 2, '0'))::DATE;
                 EXCEPTION WHEN OTHERS THEN
-                    -- Eğer geçersiz bir gün girildiyse (örn Şubat 30), ayın ilk gününe ayarla
                     v_due_date := (v_due_year::TEXT || '-' || LPAD((v_due_month + 1)::TEXT, 2, '0') || '-01')::DATE;
                 END;
 
