@@ -35,7 +35,8 @@ function formatCurrency(amount: number, currency: string): string {
     }).format(amount);
 }
 
-export function ServiceFormDialog({ service, currency, onClose }: Readonly<ServiceFormDialogProps>) { // NOSONAR
+export function ServiceFormDialog({ service, currency, onClose }: Readonly<ServiceFormDialogProps>) {
+ // NOSONAR
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [message, setMessage] = useState('');
@@ -44,9 +45,21 @@ export function ServiceFormDialog({ service, currency, onClose }: Readonly<Servi
     const [name, setName] = useState(service?.name || '');
     const [type, setType] = useState<CategoryType>(service?.type || 'income');
     const [categoryId, setCategoryId] = useState(service?.category_id || '');
-    const [unitPrice, setUnitPrice] = useState(service?.unit_price?.toString() || '');
     const [vatRate, setVatRate] = useState(service?.vat_rate?.toString() || '0');
     const [description, setDescription] = useState(service?.description || '');
+    /** Girilen birim fiyatın KDV dahil olup olmadığını belirtir */
+    const [vatIncluded, setVatIncluded] = useState(service?.vat_included ?? false);
+
+    // Düzenleme modunda: vat_included=true ise fiyatı KDV dahil olarak göster
+    const [unitPrice, setUnitPrice] = useState(() => {
+        if (!service) return '';
+        if (service.vat_included && service.vat_rate > 0) {
+            // DB'deki net fiyatı KDV dahil fiyata çevir
+            const gross = service.unit_price * (1 + service.vat_rate / 100);
+            return gross.toFixed(2);
+        }
+        return service.unit_price?.toString() || '';
+    });
 
     // Kategori listesi
     const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -67,11 +80,12 @@ export function ServiceFormDialog({ service, currency, onClose }: Readonly<Servi
         loadCategories();
     }, []);
 
-    // KDV hesaplama
+    // KDV hesaplama — vatIncluded=true ise girilen fiyat KDV dahildir; net fiyat geri hesaplanır
     const price = Number.parseFloat(unitPrice) || 0;
     const vat = Number.parseFloat(vatRate) || 0;
-    const vatAmount = price * (vat / 100);
-    const totalWithVat = price + vatAmount;
+    const netPrice = vatIncluded && vat > 0 ? price / (1 + vat / 100) : price;
+    const vatAmount = vatIncluded && vat > 0 ? price - netPrice : netPrice * (vat / 100);
+    const totalWithVat = vatIncluded ? price : netPrice + vatAmount;
 
     // Kaydet
     const handleSubmit = () => {
@@ -85,14 +99,18 @@ export function ServiceFormDialog({ service, currency, onClose }: Readonly<Servi
         }
 
         startTransition(async () => {
+            // DB'ye her zaman KDV hariç net fiyat kaydedilir
+            const savedUnitPrice = vatIncluded && vat > 0 ? netPrice : price;
+
             if (service) {
                 // Güncelle
                 const result = await updateFinanceService(service.id, {
                     name: name.trim(),
                     type,
                     category_id: categoryId || null,
-                    unit_price: price,
+                    unit_price: savedUnitPrice,
                     vat_rate: vat,
+                    vat_included: vatIncluded,
                     description: description.trim() || null,
                 });
                 if (result.success) {
@@ -107,8 +125,9 @@ export function ServiceFormDialog({ service, currency, onClose }: Readonly<Servi
                     name: name.trim(),
                     type,
                     category_id: categoryId || undefined,
-                    unit_price: price,
+                    unit_price: savedUnitPrice,
                     vat_rate: vat,
+                    vat_included: vatIncluded,
                     description: description.trim() || undefined,
                 });
                 if (result.success) {
@@ -185,7 +204,21 @@ export function ServiceFormDialog({ service, currency, onClose }: Readonly<Servi
                     {/* Birim Fiyat + KDV */}
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label htmlFor="unitPrice" className={labelClass}>Birim Fiyat (KDV Hariç) *</label>
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label htmlFor="unitPrice" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {vatIncluded ? 'Birim Fiyat (KDV Dahil) *' : 'Birim Fiyat (KDV Hariç) *'}
+                                </label>
+                                <label htmlFor="vatIncluded" className="flex items-center gap-1.5 cursor-pointer select-none">
+                                    <input
+                                        id="vatIncluded"
+                                        type="checkbox"
+                                        checked={vatIncluded}
+                                        onChange={e => setVatIncluded(e.target.checked)}
+                                        className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 cursor-pointer"
+                                    />
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">KDV Dahil</span>
+                                </label>
+                            </div>
                             <div className="relative">
                                 <input
                                     id="unitPrice"
@@ -222,12 +255,14 @@ export function ServiceFormDialog({ service, currency, onClose }: Readonly<Servi
                         <div className="rounded-lg bg-gray-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/5 p-4 space-y-1">
                             <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300">
                                 <span>KDV Hariç</span>
-                                <span>{formatCurrency(price, currency)}</span>
+                                <span>{formatCurrency(netPrice, currency)}</span>
                             </div>
                             {vat > 0 && (
                                 <div className="flex justify-between text-sm text-blue-600 dark:text-blue-400">
-                                    <span>KDV (%{vat})</span>
-                                    <span>+{formatCurrency(vatAmount, currency)}</span>
+                                    <span>
+                                        KDV (%{vat}){vatIncluded && <span className="ml-1 text-xs font-normal opacity-70">(dahil)</span>}
+                                    </span>
+                                    <span>{vatIncluded ? '' : '+'}{formatCurrency(vatAmount, currency)}</span>
                                 </div>
                             )}
                             <div className="flex justify-between text-sm font-bold text-gray-900 dark:text-white border-t border-gray-200 dark:border-white/10 pt-1">

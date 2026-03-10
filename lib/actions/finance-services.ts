@@ -99,6 +99,7 @@ export async function createFinanceService(data: {
     category_id?: string;
     unit_price: number;
     vat_rate: number;
+    vat_included?: boolean;
     description?: string;
 }): Promise<{ success: boolean; data?: FinanceService; error?: string }> {
     const { supabase, organizationId, error } = await getAuthContext();
@@ -123,6 +124,7 @@ export async function createFinanceService(data: {
             category_id: data.category_id || null,
             unit_price: data.unit_price,
             vat_rate: data.vat_rate,
+            vat_included: data.vat_included ?? false,
             description: data.description?.trim() || null,
         })
         .select(`
@@ -149,6 +151,7 @@ export async function updateFinanceService(
         category_id?: string | null;
         unit_price?: number;
         vat_rate?: number;
+        vat_included?: boolean;
         is_active?: boolean;
         description?: string | null;
     }

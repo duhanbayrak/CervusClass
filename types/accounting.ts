@@ -89,6 +89,7 @@ export interface FinanceService {
     } | null;
     unit_price: number;
     vat_rate: number;
+    vat_included: boolean;
     is_active: boolean;
     description: string | null;
     created_at: string;
@@ -284,6 +285,8 @@ export interface FinancialServiceItem {
     serviceName?: string;
     unitPrice: number;
     vatRate: number;
+    /** Girilen birim fiyatın KDV dahil olup olmadığını belirtir. true ise fiyat KDV dahildir; sistem KDV'yi ters hesaplar. */
+    vatIncluded?: boolean;
     discountAmount?: number;
     discountType?: "percentage" | "fixed" | null;
     discountReason?: string | null;
