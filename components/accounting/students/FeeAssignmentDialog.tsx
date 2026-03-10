@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import * as Sentry from '@sentry/nextjs';
 import { X, Loader2, Users, User, Plus, Trash2, Calculator, ReceiptText, AlertTriangle } from 'lucide-react';
 import { assignMultipleServicesToStudent, checkDuplicateServices } from '@/lib/actions/student-fees';
 import { getFinanceSettings } from '@/lib/actions/finance-settings';
@@ -223,6 +224,17 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
 
     // İlk Tetikleme ve Mükerrer Kontrolü (Soft-Check)
     const onSubmit = (data: FormData) => {
+        Sentry.addBreadcrumb({
+            message: 'Ücret atanıyor',
+            category: 'user_action',
+            level: 'info',
+            data: {
+                mode,
+                studentId: data.studentId,
+                serviceCount: data.services?.length,
+                academicPeriod: data.academicPeriod,
+            },
+        });
         startTransition(async () => {
             setMessage('');
             setDuplicateWarnings([]);

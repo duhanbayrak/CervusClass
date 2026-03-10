@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
@@ -61,6 +62,13 @@ export async function POST(request: Request) {
     })
 
     if (createError) {
+        Sentry.withScope((scope) => {
+            scope.setTag('action', 'admin:create_user')
+            scope.setExtra('email', email)
+            scope.setExtra('role', role)
+            scope.setLevel('error')
+            Sentry.captureException(createError)
+        })
         console.error("Create User Error:", createError);
         return NextResponse.json({ error: 'Kullanıcı oluşturulurken bir hata oluştu.' }, { status: 500 })
     }
@@ -105,6 +113,12 @@ export async function POST(request: Request) {
         .upsert(profileData as any) // Type assertion needed because supabase-js types might differ slightly or require full object
 
     if (updateError) {
+        Sentry.withScope((scope) => {
+            scope.setTag('action', 'admin:create_user_profile')
+            scope.setExtra('userId', newUser.user?.id)
+            scope.setLevel('error')
+            Sentry.captureException(updateError)
+        })
         console.error("Profile Update Error:", updateError);
         return NextResponse.json({ error: 'Profil oluşturulamadı.' }, { status: 500 })
     }
@@ -131,6 +145,12 @@ export async function DELETE(request: Request) {
         .eq('id', userId)
 
     if (deleteError) {
+        Sentry.withScope((scope) => {
+            scope.setTag('action', 'admin:delete_user')
+            scope.setExtra('userId', userId)
+            scope.setLevel('error')
+            Sentry.captureException(deleteError)
+        })
         console.error("Delete User Error:", deleteError);
         return NextResponse.json({ error: 'Kullanıcı silinemedi.' }, { status: 500 })
     }
@@ -156,7 +176,16 @@ async function updateAuthUser(id: string, email?: string, password?: string, ful
     if (fullName) authUpdates.user_metadata = { full_name: fullName }
     if (Object.keys(authUpdates).length === 0) return null
     const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, authUpdates)
-    if (authError) { console.error("Auth Update Error:", authError); return 'Kullanıcı bilgileri güncellenemedi.' }
+    if (authError) {
+        Sentry.withScope((scope) => {
+            scope.setTag('action', 'admin:update_user_auth')
+            scope.setExtra('userId', id)
+            scope.setLevel('error')
+            Sentry.captureException(authError)
+        })
+        console.error("Auth Update Error:", authError)
+        return 'Kullanıcı bilgileri güncellenemedi.'
+    }
     return null
 }
 
@@ -172,7 +201,16 @@ async function updateUserProfile(id: string, body: UserUpdateBody): Promise<stri
         if (branchId) profileUpdates.branch_id = branchId
     }
     const { error: profileError } = await supabaseAdmin.from('profiles').update(profileUpdates as Record<string, unknown>).eq('id', id)
-    if (profileError) { console.error("Profile Update Error:", profileError); return 'Profil güncellenemedi.' }
+    if (profileError) {
+        Sentry.withScope((scope) => {
+            scope.setTag('action', 'admin:update_user_profile')
+            scope.setExtra('userId', id)
+            scope.setLevel('error')
+            Sentry.captureException(profileError)
+        })
+        console.error("Profile Update Error:", profileError)
+        return 'Profil güncellenemedi.'
+    }
     return null
 }
 

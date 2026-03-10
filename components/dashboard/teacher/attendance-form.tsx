@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import * as Sentry from '@sentry/nextjs';
 
 import { saveAttendance } from '@/lib/actions/attendance';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -111,6 +112,12 @@ export default function AttendanceForm({
     };
 
     const handleSubmit = async () => {
+        Sentry.addBreadcrumb({
+            message: 'Yoklama kaydediliyor',
+            category: 'user_action',
+            level: 'info',
+            data: { scheduleId, date, studentCount: students.length },
+        });
         setLoading(true);
 
         try {

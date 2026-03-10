@@ -33,7 +33,7 @@ const revalidateSchedulePaths = () => {
 };
 
 // Ders programına yeni öğe ekle
-export const addScheduleItem = withAction(scheduleFormSchema, async (formData, ctx) => {
+export const addScheduleItem = withAction('schedule:add', scheduleFormSchema, async (formData, ctx) => {
     const role = ctx.user.app_metadata?.role;
     if (role !== ROLES.ADMIN && role !== ROLES.SUPER_ADMIN) {
         return { success: false, error: 'Bu işlem için yetkiniz bulunmamaktadır.' };
@@ -64,6 +64,7 @@ export const addScheduleItem = withAction(scheduleFormSchema, async (formData, c
 
 // Ders programı öğesi sil
 export const deleteScheduleItem = withAction(
+    'schedule:delete',
     z.object({ id: z.uuid() }),
     async ({ id }, ctx) => {
         const role = ctx.user.app_metadata?.role;
@@ -85,6 +86,7 @@ export const deleteScheduleItem = withAction(
 
 // Ders programı öğesi güncelle
 export const updateScheduleItem = withAction(
+    'schedule:update',
     z.object({ id: z.uuid(), formData: scheduleFormSchema }),
     async ({ id, formData }, ctx) => {
         const role = ctx.user.app_metadata?.role;
@@ -105,7 +107,7 @@ export const updateScheduleItem = withAction(
 );
 
 // Tüm ders programını sil
-export const deleteAllSchedule = withAction(async (ctx) => {
+export const deleteAllSchedule = withAction('schedule:delete_all', async (ctx) => {
     const role = ctx.user.app_metadata?.role;
     if (role !== ROLES.ADMIN && role !== ROLES.SUPER_ADMIN) {
         return { success: false, error: 'Bu işlem için yetkiniz bulunmamaktadır.' };

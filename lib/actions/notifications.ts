@@ -38,7 +38,7 @@ export async function createBulkNotifications(notifications: CreateNotificationP
     }
 }
 
-export const getNotifications = withAction(async (ctx) => {
+export const getNotifications = withAction('notification:get_all', async (ctx) => {
     const { data, error } = await supabaseAdmin
         .from('notifications')
         .select('*')
@@ -51,6 +51,7 @@ export const getNotifications = withAction(async (ctx) => {
 });
 
 export const markNotificationAsRead = withAction(
+    'notification:mark_read',
     z.object({ notificationId: z.string().uuid() }),
     async ({ notificationId }, ctx) => {
         const { error } = await supabaseAdmin
@@ -64,7 +65,7 @@ export const markNotificationAsRead = withAction(
     }
 );
 
-export const markAllNotificationsAsRead = withAction(async (ctx) => {
+export const markAllNotificationsAsRead = withAction('notification:mark_all_read', async (ctx) => {
     const { error } = await supabaseAdmin
         .from('notifications')
         .update({ is_read: true })

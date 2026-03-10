@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from "react";
+import * as Sentry from '@sentry/nextjs';
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -101,6 +102,16 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        Sentry.addBreadcrumb({
+            message: student ? 'Öğrenci güncelleniyor' : 'Öğrenci ekleniyor',
+            category: 'user_action',
+            level: 'info',
+            data: {
+                action: student ? 'update' : 'add',
+                studentId: student?.id,
+                classId: formData.class_id,
+            },
+        });
         setIsLoading(true);
 
         try {

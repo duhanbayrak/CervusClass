@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { NextResponse } from 'next/server';
 import { getAuthContext } from '@/lib/auth-context';
 import { unstable_cache } from 'next/cache';
@@ -87,7 +88,15 @@ export async function GET() {
     try {
         const data = await getCachedLookupData(organizationId);
         return NextResponse.json(data);
-    } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 });
+    } catch (e: unknown) {
+        const err = e instanceof Error ? e : new Error(String(e))
+        Sentry.withScope((scope) => {
+            scope.setTag('route', 'admin:accounting_lookup')
+            scope.setTag('organization_id', organizationId)
+            scope.setLevel('error')
+            Sentry.captureException(err)
+        })
+        console.error('[API Error] accounting/lookup:', err)
+        return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Loader2, AlertTriangle, Undo2 } from 'lucide-react';
+import * as Sentry from '@sentry/nextjs';
 import type { StudentFee, FeeInstallment } from '@/types/accounting';
 import { cancelStudentFee } from '@/lib/actions/student-fees';
 
@@ -28,7 +29,8 @@ function formatCurrency(amount: number, currency: string): string {
     }).format(amount);
 }
 
-export function CancelFeeDialog({ fee, installments, currency, onClose }: Readonly<CancelFeeDialogProps>) { // NOSONAR
+export function CancelFeeDialog({ fee, installments, currency, onClose }: Readonly<CancelFeeDialogProps>) {
+ // NOSONAR
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [message, setMessage] = useState('');
@@ -63,6 +65,17 @@ export function CancelFeeDialog({ fee, installments, currency, onClose }: Readon
 
     // İptal işlemi
     const handleConfirm = () => {
+        Sentry.addBreadcrumb({
+            message: 'Ücret iptal ediliyor',
+            category: 'user_action',
+            level: 'info',
+            data: {
+                feeId: fee.id,
+                studentId: fee.student_id,
+                refund,
+                amount: fee.total_amount,
+            },
+        });
         startTransition(async () => {
             const result = await cancelStudentFee(fee.id, {
                 refund,

@@ -38,7 +38,7 @@ function extractError(error: unknown): Error | undefined {
 
 // ─── Logger ──────────────────────────────────────────────────────────────────
 
-const isDev = process.env.NODE_ENV !== 'production'
+const isDev = process.env.NODE_ENV === 'development'
 
 export const logger = {
     debug(message: string, context?: LogContext): void {
@@ -49,7 +49,6 @@ export const logger = {
     info(message: string, context?: LogContext): void {
         if (isDev) {
             console.info(formatMessage('info', message, context), context ?? '')
-            return
         }
         Sentry.addBreadcrumb({
             message,
@@ -59,10 +58,7 @@ export const logger = {
     },
 
     warn(message: string, context?: LogContext): void {
-        if (isDev) {
-            console.warn(formatMessage('warn', message, context), context ?? '')
-            return
-        }
+        console.warn(formatMessage('warn', message, context), context ?? '')
         Sentry.addBreadcrumb({
             message,
             level: 'warning',
@@ -82,10 +78,7 @@ export const logger = {
     error(message: string, context?: LogContext, error?: unknown): void {
         const err = extractError(error)
 
-        if (isDev) {
-            console.error(formatMessage('error', message, context), context ?? '', err ?? '')
-            return
-        }
+        console.error(formatMessage('error', message, context), err ?? error ?? '')
 
         Sentry.withScope((scope) => {
             if (context?.userId) scope.setUser({ id: context.userId })
@@ -101,9 +94,6 @@ export const logger = {
                 Sentry.captureMessage(message)
             }
         })
-
-        // Production'da da console'a yaz — server log'larında görünsün
-        console.error(formatMessage('error', message, context), err ?? error ?? '')
     },
 }
 

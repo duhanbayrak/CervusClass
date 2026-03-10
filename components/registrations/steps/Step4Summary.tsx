@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Loader2, ArrowLeft, CheckCircle, ReceiptText } from 'lucide-react';
 import { motion } from 'framer-motion';
+import * as Sentry from '@sentry/nextjs';
 
 export function Step4Summary() {
     const { formData, setStep, isSubmitting, setIsSubmitting } = useRegistration();
@@ -38,6 +39,15 @@ export function Step4Summary() {
     }, [formData.classId, formData.className]);
 
     const handleSubmit = async () => {
+        Sentry.addBreadcrumb({
+            message: 'Öğrenci kaydı gönderiliyor',
+            category: 'user_action',
+            level: 'info',
+            data: {
+                classId: formData.classId,
+                hasFinancialData: !!(formData as any).serviceIds?.length,
+            },
+        });
         setIsSubmitting(true);
         try {
             const result = await registerStudent(formData as RegistrationFormData);

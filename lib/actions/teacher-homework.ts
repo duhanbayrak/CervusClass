@@ -6,6 +6,7 @@ import { withAction } from '@/lib/actions/utils/with-action';
 
 // Ödev değerlendir
 export const assessHomework = withAction(
+    'homework:assess',
     z.object({
         submissionId: z.string().uuid(),
         status: z.enum(['approved', 'rejected', 'pending']),

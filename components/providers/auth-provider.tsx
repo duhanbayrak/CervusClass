@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { User } from '@supabase/supabase-js';
+import * as Sentry from '@sentry/nextjs';
 import { createClient } from "@/lib/supabase";
 import { getSupabaseEnv } from "@/lib/env";
 import { Profile, ProfileRole } from '@/types/database';
@@ -96,6 +97,7 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
             if (!mounted) return;
 
             if (event === 'SIGNED_OUT') {
+                Sentry.setUser(null);
                 setUser(null);
                 setProfile(null);
                 setLoading(false);
@@ -107,13 +109,30 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
                 setUser(authUser);
 
                 // 1. ANINDA: JWT metadata'dan profil göster
-                setProfile(profileFromJwt(authUser));
+                const jwtProfile = profileFromJwt(authUser);
+                setProfile(jwtProfile);
                 setLoading(false);
+
+                // Sentry kullanıcı bağlamını JWT'den hemen set et
+                const jwtRole = (authUser.app_metadata?.role as string) || undefined;
+                Sentry.setUser({
+                    id: authUser.id,
+                    email: authUser.email,
+                    username: jwtRole,
+                });
 
                 // 2. ARKA PLAN: DB'den tam profil çekmeye çalış (direct fetch)
                 const dbProfile = await fetchDbProfile(authUser.id, session.access_token);
                 if (mounted && dbProfile) {
                     setProfile(dbProfile);
+                    // Sentry kullanıcı bağlamını DB profilinden güncelle
+                    const dbRolesData = (dbProfile as any)?.roles as { name: string } | { name: string }[] | null;
+                    const dbRole = Array.isArray(dbRolesData) ? dbRolesData[0]?.name : dbRolesData?.name;
+                    Sentry.setUser({
+                        id: authUser.id,
+                        email: authUser.email,
+                        username: dbRole || jwtRole,
+                    });
                 }
             } else {
                 setLoading(false);
@@ -129,6 +148,7 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
     }, []);
 
     const signOut = async () => {
+        Sentry.setUser(null);
         try {
             await Promise.race([
                 supabase.auth.signOut(),

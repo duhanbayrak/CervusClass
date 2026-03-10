@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import * as Sentry from '@sentry/nextjs';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -123,6 +124,18 @@ export default function CreateAssignmentForm({ classes, userId, organizationId }
             });
             return;
         }
+
+        Sentry.addBreadcrumb({
+            message: 'Ödev oluşturuluyor',
+            category: 'user_action',
+            level: 'info',
+            data: {
+                classId: values.class_id,
+                assignmentMode: values.assignment_mode,
+                studentCount: selectedStudents.length,
+                dueDate: values.due_date?.toISOString(),
+            },
+        });
 
         startTransition(async () => {
             const formData = new FormData();

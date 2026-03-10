@@ -26,7 +26,7 @@ const attendanceItemSchema = z.object({
 const saveAttendanceSchema = z.array(attendanceItemSchema).min(1, 'En az bir yoklama kaydı gereklidir.');
 
 // Yoklama kaydet (upsert)
-export const saveAttendance = withAction(saveAttendanceSchema, async (items, ctx) => {
+export const saveAttendance = withAction('attendance:save', saveAttendanceSchema, async (items, ctx) => {
     const upsertData = items.map(item => ({
         ...item,
         organization_id: ctx.organizationId,

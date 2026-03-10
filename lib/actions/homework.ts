@@ -6,6 +6,7 @@ import { withAction } from "@/lib/actions/utils/with-action";
 
 // Ödev sil
 export const deleteHomework = withAction(
+    'homework:delete',
     z.object({ id: z.uuid() }),
     async ({ id }, ctx) => {
         const { error: dbError } = await ctx.supabase

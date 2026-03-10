@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { withAction } from '@/lib/actions/utils/with-action';
 
 export const addStudentNote = withAction(
+    'student_note:add',
     z.object({
         studentId: z.string().uuid(),
         content: z.string().min(1, 'Not içeriği boş olamaz.'),
@@ -27,6 +28,7 @@ export const addStudentNote = withAction(
 );
 
 export const deleteStudentNote = withAction(
+    'student_note:delete',
     z.object({
         noteId: z.string().uuid(),
         studentId: z.string().uuid(),

@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from '@sentry/nextjs';
 import { CheckCircle2, Loader2, Calendar as CalendarIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -128,6 +129,19 @@ export default function UpdateAssignmentForm({ assignment, classes, userId, init
             alert("Lütfen en az bir öğrenci seçiniz.");
             return;
         }
+
+        Sentry.addBreadcrumb({
+            message: 'Ödev güncelleniyor',
+            category: 'user_action',
+            level: 'info',
+            data: {
+                homeworkId: assignment.id,
+                classId,
+                assignmentMode,
+                studentCount: selectedStudents.length,
+                dueDate: date?.toISOString(),
+            },
+        });
 
         setIsLoading(true);
 

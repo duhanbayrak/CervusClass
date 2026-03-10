@@ -7,6 +7,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 
 // Ödev teslim et — RLS bypass gerekli (öğrenciler INSERT yapamaz)
 export const submitHomework = withAction(
+    'homework:submit',
     z.object({ homeworkId: z.string().uuid() }),
     async ({ homeworkId }, ctx) => {
         const { data: existingSubmission } = await supabaseAdmin

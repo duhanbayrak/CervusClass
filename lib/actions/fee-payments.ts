@@ -1,8 +1,15 @@
 'use server';
 
+import * as Sentry from '@sentry/nextjs';
 import { getAuthContext } from '@/lib/auth-context';
 import type { FeePayment, PaymentMethod } from '@/types/accounting';
+import { format } from 'date-fns';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { getOrCreateStudentFeeCategory } from '@/lib/actions/utils/finance-helpers';
+
+// ============================================================
+// OKUMA FONKSİYONLARI
+// ============================================================
 
 /**
  * Ödeme kayıtlarını filtreli getirir.
@@ -44,8 +51,17 @@ export async function getFeePayments(filters?: {
     return { data: (data || []) as FeePayment[], count: count || 0 };
 }
 
+// ============================================================
+// YAZMA FONKSİYONLARI
+// ============================================================
+
 /**
- * Yeni ödeme kaydı oluşturur. Taksit ve hesap bakiyesini otomatik günceller.
+ * Yeni ödeme kaydı oluşturur.
+ *
+ * Tüm adımlar (fee_payments INSERT, finance_transactions INSERT,
+ * fee_installments UPDATE, student_fees tamamlanma kontrolü)
+ * tek bir PostgreSQL transaction içinde atomik olarak çalışır.
+ * Herhangi bir adımda hata oluşursa tüm işlem otomatik geri alınır.
  */
 export async function createFeePayment(payment: {
     student_id: string;
@@ -58,127 +74,175 @@ export async function createFeePayment(payment: {
     payment_date?: string;
 }): Promise<{ success: boolean; paymentId?: string; error?: string }> {
     const { supabase, organizationId, user, error } = await getAuthContext();
-    if (error || !organizationId || !user) return { success: false, error: error || 'Yetkilendirme hatası' };
-
-    // 1. Taksit tutarı kontrolü (Eğer bir taksite istinaden ödeme yapılıyorsa)
-    if (payment.installment_id) {
-        const { data: checkInst } = await supabase
-            .from('fee_installments')
-            .select('amount, paid_amount')
-            .eq('id', payment.installment_id)
-            .single();
-
-        if (checkInst) {
-            const remaining = Number(checkInst.amount) - Number(checkInst.paid_amount);
-            if (payment.amount > remaining) {
-                return {
-                    success: false,
-                    error: `Tahsilat tutarı aşımı! Bu taksit için en fazla ${remaining.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ödeme alınabilir.`
-                };
-            }
-        }
+    if (error || !organizationId || !user) {
+        return { success: false, error: error || 'Yetkilendirme hatası' };
     }
 
-    // 2. Ödeme kaydını oluştur
-    const paymentDate = payment.payment_date || new Date().toISOString();
+    // Muhasebe kategorisini hazırla (RPC içine taşınamaz — auth context gerektirir)
+    const categoryId = await getOrCreateStudentFeeCategory(supabase, organizationId);
+    if (!categoryId) {
+        return { success: false, error: 'Muhasebe kategorisi oluşturulamadı.' };
+    }
 
-    const { data: insertedPayment, error: insertError } = await supabase
-        .from('fee_payments')
-        .insert({
-            organization_id: organizationId,
-            student_id: payment.student_id,
-            installment_id: payment.installment_id || null,
-            account_id: payment.account_id,
-            amount: payment.amount,
-            payment_method: payment.payment_method,
-            reference_no: payment.reference_no || null,
-            notes: payment.notes || null,
-            created_by: user.id,
-            payment_date: paymentDate,
-        })
-        .select('id')
+    // Öğrenci adını al (RPC description için)
+    const { data: studentProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', payment.student_id)
         .single();
+    const studentName = studentProfile?.full_name || 'Öğrenci';
 
-    if (insertError) return { success: false, error: insertError.message };
-
-    await recordPaymentTransaction(supabase, organizationId, user.id, payment, paymentDate, insertedPayment?.id)
-    await updateInstallmentStatus(supabase, payment.installment_id, payment.amount)
-
-    return { success: true, paymentId: insertedPayment?.id };
-}
-
-async function getOrCreateStudentFeeCategory(supabase: SupabaseClient, organizationId: string): Promise<string | null> {
-    const { data: existing } = await supabase.from('finance_categories').select('id')
-        .eq('organization_id', organizationId).eq('name', 'Öğrenci Ücreti').eq('type', 'income').maybeSingle()
-    if (existing?.id) return existing.id
-    const { data: newCat } = await supabase.from('finance_categories')
-        .insert({ organization_id: organizationId, name: 'Öğrenci Ücreti', type: 'income', icon: '🎓' })
-        .select('id').single()
-    return newCat?.id || null
-}
-
-async function getVatForInstallment(supabase: SupabaseClient, installmentId: string, amount: number) {
-    const { data: instData } = await supabase.from('fee_installments')
-        .select('fee_id, student_fees ( vat_rate )').eq('id', installmentId).single() as { data: { student_fees: { vat_rate?: number } } | null }
-    const vatRate = Number(instData?.student_fees?.vat_rate || 0)
-    if (vatRate <= 0) return { vat_rate: 0, subtotal: amount, vat_amount: 0 }
-    const subtotal = Number((amount / (1 + vatRate / 100)).toFixed(2))
-    return { vat_rate: vatRate, subtotal, vat_amount: Number((amount - subtotal).toFixed(2)) }
-}
-
-async function recordPaymentTransaction(
-    supabase: SupabaseClient,
-    organizationId: string,
-    userId: string,
-    payment: { student_id: string; installment_id?: string; account_id: string; amount: number; notes?: string; reference_no?: string },
-    paymentDate: string,
-    paymentId?: string
-): Promise<void> {
-    const categoryId = await getOrCreateStudentFeeCategory(supabase, organizationId)
-    if (!categoryId) return
-
-    const { data: studentProfile } = await supabase.from('profiles').select('full_name').eq('id', payment.student_id).single()
-    const studentName = studentProfile?.full_name || 'Öğrenci'
-    const description = payment.notes || `${studentName} - Taksit ödemesi`
-
+    // KDV bilgilerini hesapla (taksit varsa)
     const vatData = payment.installment_id
         ? await getVatForInstallment(supabase, payment.installment_id, payment.amount)
-        : { vat_rate: 0, subtotal: payment.amount, vat_amount: 0 }
+        : { vat_rate: 0, subtotal: payment.amount, vat_amount: 0 };
 
-    await supabase.from('finance_transactions').insert({
-        organization_id: organizationId,
-        account_id: payment.account_id,
-        category_id: categoryId,
-        type: 'income',
-        amount: payment.amount,
-        subtotal: vatData.subtotal,
-        vat_rate: vatData.vat_rate,
-        vat_amount: vatData.vat_amount,
-        description,
-        transaction_date: paymentDate,
-        reference_no: payment.reference_no || null,
-        related_payment_id: paymentId || null,
-        created_by: userId,
-    })
+    // Ödeme tarihini normalize et
+    const paymentDate = payment.payment_date
+        ? format(new Date(payment.payment_date), 'yyyy-MM-dd')
+        : format(new Date(), 'yyyy-MM-dd');
+
+    // Atomik RPC çağrısı — tüm DB işlemleri tek transaction'da.
+    // NOT: create_fee_payment_atomic yeni eklenmiş bir fonksiyon olduğundan
+    // Supabase'in otomatik tip dosyasına henüz yansımamıştır.
+    // Tip güncellemesi için: supabase gen types typescript --project-id <id>
+    const { data: rpcResult, error: rpcError } = await (
+        supabase.rpc as unknown as (
+            fn: string,
+            args: Record<string, unknown>
+        ) => Promise<{ data: unknown; error: { message: string } | null }>
+    )('create_fee_payment_atomic', {
+        p_organization_id: organizationId,
+        p_student_id: payment.student_id,
+        p_installment_id: payment.installment_id || null,
+        p_account_id: payment.account_id,
+        p_amount: payment.amount,
+        p_payment_method: payment.payment_method,
+        p_reference_no: payment.reference_no || null,
+        p_notes: payment.notes || null,
+        p_payment_date: paymentDate,
+        p_created_by: user.id,
+        p_category_id: categoryId,
+        p_student_name: studentName,
+        p_vat_rate: vatData.vat_rate,
+        p_subtotal: vatData.subtotal,
+        p_vat_amount: vatData.vat_amount,
+    });
+
+    if (rpcError) {
+        Sentry.withScope((scope) => {
+            scope.setTag('action', 'fee_payment:create')
+            scope.setTag('organization_id', organizationId)
+            scope.setUser({ id: user.id })
+            scope.setExtra('student_id', payment.student_id)
+            scope.setExtra('amount', payment.amount)
+            scope.setLevel('error')
+            Sentry.captureException(new Error(rpcError.message))
+        })
+        return { success: false, error: rpcError.message };
+    }
+
+    if (!rpcResult) {
+        return { success: false, error: 'RPC boş sonuç döndürdü.' };
+    }
+
+    // RPC JSONB sonucunu parse et
+    const result = rpcResult as { success: boolean; payment_id?: string; error?: string };
+
+    if (!result.success) {
+        return { success: false, error: result.error || 'Ödeme kaydedilemedi.' };
+    }
+
+    return { success: true, paymentId: result.payment_id };
 }
 
-async function updateInstallmentStatus(supabase: SupabaseClient, installmentId: string | undefined, amount: number): Promise<void> {
-    if (!installmentId) return
-    const { data: installment } = await supabase.from('fee_installments').select('amount, paid_amount').eq('id', installmentId).single()
-    if (!installment) return
-
-    const newPaidAmount = Number(installment.paid_amount) + amount
-    const newStatus: 'pending' | 'paid' | 'partial' = newPaidAmount >= Number(installment.amount) ? 'paid' : 'partial'
-
-    await supabase.from('fee_installments').update({
-        paid_amount: newPaidAmount, status: newStatus,
-        paid_at: newStatus === 'paid' ? new Date().toISOString() : null,
-    }).eq('id', installmentId)
-
-    const { data: related } = await supabase.from('fee_installments').select('fee_id').eq('id', installmentId).single()
-    if (!related) return
-    const { data: allInstallments } = await supabase.from('fee_installments').select('status').eq('fee_id', related.fee_id)
-    if (allInstallments?.every(i => i.status === 'paid')) {
-        await supabase.from('student_fees').update({ status: 'completed', updated_at: new Date().toISOString() }).eq('id', related.fee_id)
+/**
+ * Mevcut bir ödeme kaydını iptal eder / geri alır.
+ *
+ * Atomik RPC fonksiyonu çağrılarak, tahsilat, muhasebe kaydı ve taksit durumu
+ * güvenli bir şekilde tek işlemde geri alınır.
+ */
+export async function cancelFeePayment(
+    paymentId: string,
+    reason?: string
+): Promise<{ success: boolean; error?: string }> {
+    const { supabase, organizationId, user, error } = await getAuthContext();
+    if (error || !organizationId || !user) {
+        return { success: false, error: error || 'Yetkilendirme hatası' };
     }
+
+    // Atomik RPC çağrısı
+    const { data: rpcResult, error: rpcError } = await (
+        supabase.rpc as unknown as (
+            fn: string,
+            args: Record<string, unknown>
+        ) => Promise<{ data: unknown; error: { message: string } | null }>
+    )('cancel_fee_payment_atomic', {
+        p_payment_id: paymentId,
+        p_organization_id: organizationId,
+        p_cancelled_by: user.id,
+        p_reason: reason || null,
+    });
+
+    if (rpcError) {
+        Sentry.withScope((scope) => {
+            scope.setTag('action', 'fee_payment:cancel')
+            scope.setTag('organization_id', organizationId)
+            scope.setUser({ id: user.id })
+            scope.setExtra('payment_id', paymentId)
+            scope.setLevel('error')
+            Sentry.captureException(new Error(rpcError.message))
+        })
+        return { success: false, error: rpcError.message };
+    }
+
+    if (!rpcResult) {
+        return { success: false, error: 'RPC boş sonuç döndürdü.' };
+    }
+
+    const result = rpcResult as { success: boolean; error?: string };
+
+    if (!result.success) {
+        return { success: false, error: result.error || 'Ödeme iptal edilemedi.' };
+    }
+
+    return { success: true };
+}
+
+// ============================================================
+// ÖZEL YARDIMCI FONKSİYONLAR
+// ============================================================
+
+
+
+/**
+ * Taksit kaydından KDV oranını çekip verilen tutar için
+ * KDV dağılımını hesaplar.
+ */
+async function getVatForInstallment(
+    supabase: SupabaseClient,
+    installmentId: string,
+    amount: number
+): Promise<{ vat_rate: number; subtotal: number; vat_amount: number }> {
+    const { data } = await supabase
+        .from('fee_installments')
+        .select('fee_id, student_fees ( vat_rate )')
+        .eq('id', installmentId)
+        .single();
+
+    // Supabase foreign tablolardan array ya da tek obje dönebilir.
+    const instData = data as unknown as { student_fees?: { vat_rate?: number } | { vat_rate?: number }[] | null } | null;
+    const sFee = Array.isArray(instData?.student_fees) ? instData?.student_fees[0] : instData?.student_fees;
+    const vatRate = Number(sFee?.vat_rate || 0);
+
+    if (vatRate <= 0) {
+        return { vat_rate: 0, subtotal: amount, vat_amount: 0 };
+    }
+
+    const subtotal = Number((amount / (1 + vatRate / 100)).toFixed(2));
+    return {
+        vat_rate: vatRate,
+        subtotal,
+        vat_amount: Number((amount - subtotal).toFixed(2)),
+    };
 }

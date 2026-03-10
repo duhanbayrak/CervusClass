@@ -1,14 +1,17 @@
 import * as Sentry from '@sentry/nextjs'
 
+const isSentryEnabled =
+    process.env.NODE_ENV === 'production' ||
+    process.env.SENTRY_ENABLED === 'true'
+
 Sentry.init({
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
-    enabled: process.env.NODE_ENV === 'production',
+    enabled: isSentryEnabled,
 
-    // Server-side trace sampling — performans izleme
-    tracesSampleRate: 0.1,
+    // Tüm hataları yakala
+    tracesSampleRate: 1.0,
 
-    // Server action ve API route hatalarını yakala
     beforeSend(event) {
         return event
     },

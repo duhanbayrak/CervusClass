@@ -36,6 +36,7 @@ const studentFormSchema = z.object({
 
 // Öğrencileri getir — arama, sınıf filtresi ve sayfalama destekli
 export const getStudents = withAction(
+    'student:get_all',
     z.object({
         search: z.string().optional(),
         classId: z.string().optional(),
@@ -68,7 +69,7 @@ export const getStudents = withAction(
 );
 
 // Yeni öğrenci ekle
-export const addStudent = withAction(studentFormSchema, async (formData, ctx) => {
+export const addStudent = withAction('student:add', studentFormSchema, async (formData, ctx) => {
     const role = ctx.user.app_metadata?.role;
     if (role !== 'admin' && role !== 'super_admin') {
         return { success: false, error: 'Bu işlem için yetkiniz bulunmamaktadır.' };
@@ -121,6 +122,7 @@ function buildStudentUpdatePayload(formData: Partial<{ full_name: string; email:
 
 // Öğrenci güncelle
 export const updateStudent = withAction(
+    'student:update',
     z.object({ id: z.uuid(), formData: studentFormSchema.partial() }),
     async ({ id, formData }, ctx) => {
         const role = ctx.user.app_metadata?.role;
@@ -152,6 +154,7 @@ export const updateStudent = withAction(
 
 // Öğrenci sil (soft delete)
 export const deleteStudent = withAction(
+    'student:delete',
     z.object({ id: z.uuid() }),
     async ({ id }, ctx) => {
         const role = ctx.user.app_metadata?.role;

@@ -37,13 +37,13 @@ const getCachedClasses = unstable_cache(
 );
 
 // Tüm sınıfları getir
-export const getClasses = withAction(async (ctx) => {
+export const getClasses = withAction('class:get_all', async (ctx) => {
     const data = await getCachedClasses(ctx.organizationId);
     return { success: true, data };
 });
 
 // Yeni sınıf ekle
-export const addClass = withAction(classFormSchema, async (formData, ctx) => {
+export const addClass = withAction('class:add', classFormSchema, async (formData, ctx) => {
     const role = ctx.user.app_metadata?.role;
     if (role !== 'admin' && role !== 'super_admin') {
         return { success: false, error: 'Bu işlem için yetkiniz bulunmamaktadır.' };
@@ -61,6 +61,7 @@ export const addClass = withAction(classFormSchema, async (formData, ctx) => {
 
 // Sınıf güncelle
 export const updateClass = withAction(
+    'class:update',
     z.object({ id: z.uuid(), formData: classFormSchema }),
     async ({ id, formData }, ctx) => {
         const role = ctx.user.app_metadata?.role;
@@ -82,6 +83,7 @@ export const updateClass = withAction(
 
 // Sınıf sil (soft delete)
 export const deleteClass = withAction(
+    'class:delete',
     z.object({ id: z.uuid() }),
     async ({ id }, ctx) => {
         const role = ctx.user.app_metadata?.role;
@@ -103,6 +105,7 @@ export const deleteClass = withAction(
 
 // Tek sınıf bilgisi getir
 export const getClassById = withAction(
+    'class:get_by_id',
     z.object({ id: z.uuid() }),
     async ({ id }, ctx) => {
         const { data, error: dbError } = await ctx.supabase

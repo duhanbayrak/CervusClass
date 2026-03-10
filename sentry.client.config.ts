@@ -1,16 +1,19 @@
 import * as Sentry from '@sentry/nextjs'
 
+const isSentryEnabled =
+    process.env.NODE_ENV === 'production' ||
+    process.env.NEXT_PUBLIC_SENTRY_ENABLED === 'true'
+
 Sentry.init({
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
-    // Prod'da hataları yakala, dev'de sadece console
-    enabled: process.env.NODE_ENV === 'production',
+    enabled: isSentryEnabled,
 
-    // %100 hata yakalama
-    tracesSampleRate: 0.1,
+    // Tüm hataları yakala
+    tracesSampleRate: 1.0,
 
     // Session replay — hata anındaki kullanıcı etkileşimini kaydeder
-    replaysOnErrorSampleRate: 1,
+    replaysOnErrorSampleRate: 1.0,
     replaysSessionSampleRate: 0.05,
 
     integrations: [
@@ -20,9 +23,8 @@ Sentry.init({
         }),
     ],
 
-    // Kullanıcı bilgisi — organizasyon bazlı izleme için
     beforeSend(event) {
-        // AbortError'ları Sentry'ye gönderme
+        // AbortError navigasyon sırasında normaldir — yok say
         if (event.exception?.values?.[0]?.type === 'AbortError') {
             return null
         }

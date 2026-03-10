@@ -1,6 +1,7 @@
 'use server';
 
 import { getAuthContext } from '@/lib/auth-context';
+import { logger } from '@/lib/logger';
 import type {
     FinancialSummary,
     MonthlyTrend,
@@ -12,9 +13,10 @@ import { format } from 'date-fns';
 
 /**
  * Finansal dashboard özet verilerini getirir.
+ * Optimizasyon: Büyük veri çekmek yerine veritabanı üzerindeki get_financial_summary RPC'sini çağırır.
  */
 export async function getFinancialSummary(period: string = 'yearly'): Promise<FinancialSummary> {
-    const { supabase, error } = await getAuthContext();
+    const { supabase, organizationId, error } = await getAuthContext();
     const defaultSummary: FinancialSummary = {
         total_income: 0,
         total_income_vat: 0,
@@ -29,187 +31,77 @@ export async function getFinancialSummary(period: string = 'yearly'): Promise<Fi
         collection_rate: 0,
     };
 
-    if (error) return defaultSummary;
+    if (error || !organizationId) return defaultSummary;
 
     const { startDate, endDate } = getDateRange(period);
-    const today = format(new Date(), 'yyyy-MM-dd');
 
-    // Paralel sorgular
-    const [incomeResult, expenseResult, installmentsResult, paymentsResult] = await Promise.all([
-        // Toplam gelir
-        supabase
-            .from('finance_transactions')
-            .select('amount, vat_amount')
-            .eq('type', 'income')
-            .is('deleted_at', null)
-            .gte('transaction_date', startDate)
-            .lte('transaction_date', endDate),
+    // Yeni RPC: Atomik ve %100 Database-Tier çalışan hesaplama
+    const { data, error: rpcError } = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ data: FinancialSummary, error: unknown }>)(
+        'get_financial_summary',
+        { p_org_id: organizationId, p_start_date: startDate, p_end_date: endDate }
+    );
 
-        // Toplam gider
-        supabase
-            .from('finance_transactions')
-            .select('amount, vat_amount')
-            .eq('type', 'expense')
-            .is('deleted_at', null)
-            .gte('transaction_date', startDate)
-            .lte('transaction_date', endDate),
-
-        // Bu döneme düşen tüm taksit planları (Bekleyen ve geciken)
-        supabase
-            .from('fee_installments')
-            .select('amount, paid_amount, status, due_date')
-            .gte('due_date', startDate)
-            .lte('due_date', endDate),
-
-        // Bu dönemde yapılan tahsilatlar
-        supabase
-            .from('fee_payments')
-            .select('amount')
-            .gte('payment_date', startDate)
-            .lte('payment_date', endDate)
-    ]);
-
-    // Toplamları hesapla
-    const totalIncome = (incomeResult.data || []).reduce((sum, t) => sum + Number(t.amount), 0);
-    const totalExpense = (expenseResult.data || []).reduce((sum, t) => sum + Number(t.amount), 0);
-    const collectedAmount = (paymentsResult.data || []).reduce((sum, p) => sum + Number(p.amount), 0);
-
-    // Taksit analizleri
-    let pendingRaw = 0;
-    let overdueRaw = 0;
-
-    const installments = installmentsResult.data || [];
-    for (const inst of installments) {
-        const remaining = Number(inst.amount) - Number(inst.paid_amount || 0);
-        if (remaining > 0) {
-            if (inst.status === 'overdue' || (inst.status === 'pending' && inst.due_date < today)) {
-                overdueRaw += remaining;
-            } else if (inst.status === 'pending') {
-                pendingRaw += remaining;
-            }
-        }
+    if (rpcError || !data) {
+        logger.error('getFinancialSummary RPC Hatası', { action: 'finance_report:financial_summary', organizationId }, rpcError)
+        return defaultSummary;
     }
 
-    const totalExpected = collectedAmount + pendingRaw + overdueRaw;
-    const collectionRate = totalExpected > 0 ? Math.round((collectedAmount / totalExpected) * 100) : 0;
-
-    const totalIncomeVat = (incomeResult.data || []).reduce((sum, t) => sum + Number(t.vat_amount || 0), 0);
-    const totalExpenseVat = (expenseResult.data || []).reduce((sum, t) => sum + Number(t.vat_amount || 0), 0);
-    const netVat = totalIncomeVat - totalExpenseVat;
-
-    return {
-        total_income: totalIncome,
-        total_income_vat: totalIncomeVat,
-        total_expense: totalExpense,
-        total_expense_vat: totalExpenseVat,
-        net_profit: totalIncome - totalExpense,
-        net_vat: netVat,
-        total_vat: totalIncomeVat + totalExpenseVat,
-        collected_amount: collectedAmount,
-        pending_amount: pendingRaw,
-        overdue_amount: overdueRaw,
-        collection_rate: collectionRate,
-    };
+    return data;
 }
 
 /**
- * Aylık gelir-gider trend verilerini getirir (Her zaman seçili periyodun YILINI baz alarak 12 ay çeker).
+ * Aylık gelir-gider trend verilerini getirir.
+ * Optimizasyon: get_monthly_trends RPC'si ile hızlı aggregate dönüşü sağlar.
  */
 export async function getMonthlyTrends(period: string = 'yearly'): Promise<MonthlyTrend[]> {
-    const { supabase, error } = await getAuthContext();
-    if (error) return [];
+    const { supabase, organizationId, error } = await getAuthContext();
+    if (error || !organizationId) return [];
 
     const { startDate: periodStart } = getDateRange(period);
     const currentYear = Number.parseInt(periodStart.substring(0, 4), 10);
 
-    const startDate = `${currentYear}-01-01`;
-    const endDate = `${currentYear}-12-31`;
+    const { data, error: rpcError } = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ data: MonthlyTrend[], error: unknown }>)(
+        'get_monthly_trends',
+        { p_org_id: organizationId, p_year: currentYear }
+    );
 
-    const { data: transactions } = await supabase
-        .from('finance_transactions')
-        .select('type, amount, transaction_date')
-        .is('deleted_at', null)
-        .gte('transaction_date', startDate)
-        .lte('transaction_date', endDate)
-        .in('type', ['income', 'expense']);
-
-    if (!transactions) return [];
-
-    // 12 aylık boş veri oluştur
-    const months: Record<string, MonthlyTrend> = {};
-    for (let m = 1; m <= 12; m++) {
-        const key = `${currentYear}-${String(m).padStart(2, '0')}`;
-        months[key] = { month: key, income: 0, expense: 0 };
+    if (rpcError || !data) {
+        logger.error('getMonthlyTrends RPC Hatası', { action: 'finance_report:monthly_trends', organizationId }, rpcError)
+        return [];
     }
 
-    // İşlemleri aylara dağıt
-    if (transactions) {
-        for (const tx of transactions) {
-            const monthKey = tx.transaction_date.substring(0, 7); // "2026-01"
-            if (months[monthKey]) {
-                if (tx.type === 'income') {
-                    months[monthKey].income += Number(tx.amount);
-                } else {
-                    months[monthKey].expense += Number(tx.amount);
-                }
-            }
-        }
-    }
-
-    return Object.values(months);
+    return data;
 }
 
 /**
  * Kategori bazlı gelir/gider dağılımını getirir.
+ * Optimizasyon: get_category_distribution RPC'si kullanıldı.
  */
 export async function getCategoryDistribution(type: 'income' | 'expense', period: string = 'yearly'): Promise<CategoryDistribution[]> {
-    const { supabase, error } = await getAuthContext();
-    if (error) return [];
+    const { supabase, organizationId, error } = await getAuthContext();
+    if (error || !organizationId) return [];
 
     const { startDate, endDate } = getDateRange(period);
 
-    const { data: transactions } = await supabase
-        .from('finance_transactions')
-        .select(`
-            amount,
-            category:finance_categories!category_id(name, icon)
-        `)
-        .eq('type', type)
-        .is('deleted_at', null)
-        .gte('transaction_date', startDate)
-        .lte('transaction_date', endDate);
+    const { data, error: rpcError } = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ data: CategoryDistribution[], error: unknown }>)(
+        'get_category_distribution',
+        { p_org_id: organizationId, p_type: type, p_start_date: startDate, p_end_date: endDate }
+    );
 
-    if (!transactions || transactions.length === 0) return [];
-
-    // Kategorilere göre grupla
-    const categoryMap: Record<string, { name: string; icon: string | null; total: number }> = {};
-    let grandTotal = 0;
-
-    const safeTransactions = transactions || [];
-    for (const tx of safeTransactions) {
-        const catName = (tx.category as { name: string; icon: string | null })?.name || 'Bilinmeyen';
-        const catIcon = (tx.category as { name: string; icon: string | null })?.icon || null;
-        if (!categoryMap[catName]) {
-            categoryMap[catName] = { name: catName, icon: catIcon, total: 0 };
-        }
-        categoryMap[catName].total += Number(tx.amount);
-        grandTotal += Number(tx.amount);
+    if (rpcError || !data) {
+        logger.error('getCategoryDistribution RPC Hatası', { action: 'finance_report:category_distribution', organizationId }, rpcError)
+        return [];
     }
 
-    return Object.values(categoryMap).map(cat => ({
-        category_name: cat.name,
-        category_icon: cat.icon,
-        amount: cat.total,
-        percentage: grandTotal > 0 ? Math.round((cat.total / grandTotal) * 100) : 0,
-    }));
+    return data;
 }
 
 /**
  * Vadesi geçmiş taksitleri getirir.
  */
 export async function getOverdueInstallments(): Promise<OverdueInstallment[]> {
-    const { supabase, error } = await getAuthContext();
-    if (error) return [];
+    const { supabase, organizationId, error } = await getAuthContext();
+    if (error || !organizationId) return [];
 
     const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -225,7 +117,8 @@ export async function getOverdueInstallments(): Promise<OverdueInstallment[]> {
                 student:profiles!student_id(id, full_name)
             )
         `)
-        .in('status', ['pending', 'overdue'])
+        .eq('organization_id', organizationId) // Explicit tenant filtresi
+        .in('status', ['pending', 'overdue', 'partial'])
         .lt('due_date', today)
         .order('due_date', { ascending: true });
 

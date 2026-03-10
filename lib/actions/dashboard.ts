@@ -14,7 +14,7 @@ export interface DashboardStats {
 }
 
 // Dashboard istatistikleri — tüm sorgular paralel çalışıyor
-export const getAdminDashboardStats = withAction(async (ctx) => {
+export const getAdminDashboardStats = withAction('dashboard:admin_stats', async (ctx) => {
     const now = new Date();
     const todayStr = format(now, 'yyyy-MM-dd');
     const monthStartStr = format(startOfMonth(now), 'yyyy-MM-dd');

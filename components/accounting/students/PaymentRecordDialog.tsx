@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Loader2, CheckCircle2 } from 'lucide-react';
+import * as Sentry from '@sentry/nextjs';
 import { createFeePayment } from '@/lib/actions/fee-payments';
 import type { PaymentMethod } from '@/types/accounting';
 import { format } from 'date-fns';
@@ -22,7 +23,8 @@ interface AccountOption {
     account_type: string;
 }
 
-export function PaymentRecordDialog({ // NOSONAR
+export function PaymentRecordDialog({
+ // NOSONAR
     studentId,
     installmentId,
     currency,
@@ -77,6 +79,19 @@ export function PaymentRecordDialog({ // NOSONAR
             setMessage(`Hata: Tahsilat tutarı aşımı! Bu taksit için en fazla ${defaultAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ${currency} ödeme alınabilir.`);
             return;
         }
+
+        Sentry.addBreadcrumb({
+            message: 'Ödeme kaydediliyor',
+            category: 'user_action',
+            level: 'info',
+            data: {
+                studentId,
+                installmentId,
+                amount: numAmount,
+                paymentMethod,
+                accountId,
+            },
+        });
 
         startTransition(async () => {
             const result = await createFeePayment({

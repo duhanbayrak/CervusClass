@@ -51,37 +51,70 @@ export type ActionResult<T = void> =
  * ```
  */
 
-// Overload 1: Schema + handler
+// Overload 1: Action adı + Schema + handler
+export function withAction<TSchema extends z.ZodTypeAny, TReturn>(
+    actionName: string,
+    schema: TSchema,
+    handler: (input: z.infer<TSchema>, ctx: ActionContext) => Promise<ActionResult<TReturn>>
+): (input: unknown) => Promise<ActionResult<TReturn>>
+
+// Overload 2: Action adı + Handler only (no input)
+export function withAction<TReturn>(
+    actionName: string,
+    handler: (ctx: ActionContext) => Promise<ActionResult<TReturn>>
+): () => Promise<ActionResult<TReturn>>
+
+// Overload 3: Schema + handler (geriye dönük uyumluluk)
 export function withAction<TSchema extends z.ZodTypeAny, TReturn>(
     schema: TSchema,
     handler: (input: z.infer<TSchema>, ctx: ActionContext) => Promise<ActionResult<TReturn>>
 ): (input: unknown) => Promise<ActionResult<TReturn>>
 
-// Overload 2: Handler only (no input)
+// Overload 4: Handler only (geriye dönük uyumluluk)
 export function withAction<TReturn>(
     handler: (ctx: ActionContext) => Promise<ActionResult<TReturn>>
 ): () => Promise<ActionResult<TReturn>>
 
 // Implementation
 export function withAction<TSchema extends z.ZodTypeAny, TReturn>(
-    schemaOrHandler:
-        | TSchema
-        | ((ctx: ActionContext) => Promise<ActionResult<TReturn>>),
-    handler?: (input: z.infer<TSchema>, ctx: ActionContext) => Promise<ActionResult<TReturn>>
+    arg1: string | TSchema | ((ctx: ActionContext) => Promise<ActionResult<TReturn>>),
+    arg2?: TSchema | ((input: z.infer<TSchema>, ctx: ActionContext) => Promise<ActionResult<TReturn>>) | ((ctx: ActionContext) => Promise<ActionResult<TReturn>>),
+    arg3?: (input: z.infer<TSchema>, ctx: ActionContext) => Promise<ActionResult<TReturn>>
 ): ((input: unknown) => Promise<ActionResult<TReturn>>) | (() => Promise<ActionResult<TReturn>>) {
 
-    // Overload 2: sadece handler verilmiş
-    if (typeof schemaOrHandler === 'function') {
-        const fn: (ctx: ActionContext) => Promise<ActionResult<TReturn>> = schemaOrHandler
+    // Overload 4: sadece handler (no-input, legacy)
+    if (typeof arg1 === 'function') {
+        const fn = arg1 as (ctx: ActionContext) => Promise<ActionResult<TReturn>>
         return async (): Promise<ActionResult<TReturn>> => {
-            return executeAction(undefined, undefined, fn, undefined)
+            return executeAction(undefined, undefined, fn, undefined, undefined)
         }
     }
 
-    // Overload 1: schema + handler
-    const schema = schemaOrHandler
+    // arg1 is string (action name) or schema
+    if (typeof arg1 === 'string') {
+        const actionName = arg1
+
+        // Overload 2: name + handler (no-input)
+        if (typeof arg2 === 'function') {
+            const fn = arg2 as (ctx: ActionContext) => Promise<ActionResult<TReturn>>
+            return async (): Promise<ActionResult<TReturn>> => {
+                return executeAction(undefined, undefined, fn, undefined, actionName)
+            }
+        }
+
+        // Overload 1: name + schema + handler
+        const schema = arg2 as TSchema
+        const handler = arg3!
+        return async (input: unknown): Promise<ActionResult<TReturn>> => {
+            return executeAction(input, schema, undefined, handler, actionName)
+        }
+    }
+
+    // Overload 3: schema + handler (legacy, no name)
+    const schema = arg1 as TSchema
+    const handler = arg2 as (input: z.infer<TSchema>, ctx: ActionContext) => Promise<ActionResult<TReturn>>
     return async (input: unknown): Promise<ActionResult<TReturn>> => {
-        return executeAction(input, schema, undefined, handler)
+        return executeAction(input, schema, undefined, handler, undefined)
         // NOSONAR
     }
 }
@@ -93,6 +126,7 @@ async function executeAction<TSchema extends z.ZodTypeAny, TReturn>(
     schema: TSchema | undefined,
     noInputHandler: ((ctx: ActionContext) => Promise<ActionResult<TReturn>>) | undefined,
     withInputHandler: ((input: z.infer<TSchema>, ctx: ActionContext) => Promise<ActionResult<TReturn>>) | undefined,
+    actionName: string | undefined,
 ): Promise<ActionResult<TReturn>> {
     // 1. Auth context
     const { supabase, user, organizationId, error: authError } = await getAuthContext()
@@ -119,7 +153,7 @@ async function executeAction<TSchema extends z.ZodTypeAny, TReturn>(
         try {
             return await withInputHandler!(parsed.data, ctx)
         } catch (e: unknown) {
-            return handleUnexpectedError(e, ctx)
+            return handleUnexpectedError(e, ctx, actionName)
         }
     }
 
@@ -127,7 +161,7 @@ async function executeAction<TSchema extends z.ZodTypeAny, TReturn>(
     try {
         return await noInputHandler!(ctx)
     } catch (e: unknown) {
-        return handleUnexpectedError(e, ctx)
+        return handleUnexpectedError(e, ctx, actionName)
     }
 }
 
@@ -135,13 +169,15 @@ async function executeAction<TSchema extends z.ZodTypeAny, TReturn>(
 
 function handleUnexpectedError<TReturn>(
     e: unknown,
-    ctx: ActionContext
+    ctx: ActionContext,
+    actionName?: string
 ): ActionResult<TReturn> {
     const message = extractMessage(e)
 
     logger.error('Beklenmedik server action hatası', {
         userId: ctx.user.id,
         organizationId: ctx.organizationId,
+        action: actionName,
     }, e)
 
     return { success: false, error: `Beklenmedik bir hata oluştu: ${message}` }

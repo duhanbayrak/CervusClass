@@ -7,7 +7,7 @@ import { withAction } from '@/lib/actions/utils/with-action';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 // Süresi dolmuş ödevleri kontrol edip öğretmene bildirim gönder
-export const checkExpiredHomework = withAction(async (ctx) => {
+export const checkExpiredHomework = withAction('homework:check_expired', async (ctx) => {
     const { data: expiredHomework } = await supabaseAdmin
         .from('homework')
         .select('id, description, due_date')
@@ -37,6 +37,7 @@ export const checkExpiredHomework = withAction(async (ctx) => {
 
 // Sınıfa göre öğrencileri getir
 export const getStudentsByClass = withAction(
+    'homework:get_students_by_class',
     z.object({ classId: z.string().uuid() }),
     async ({ classId }, ctx) => {
         const { data, error: dbError } = await ctx.supabase
