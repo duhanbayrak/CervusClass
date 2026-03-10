@@ -258,6 +258,7 @@ export async function approveSession(sessionId: string) {
         const authResult = await fetchSessionAndCheckAccess(supabase, sessionId, user.id, userRole);
         if (authResult.error) return { error: authResult.error };
         const { session } = authResult;
+        if (!session) return { error: 'Oturum bulunamadı.' };
 
         const approvedId = await getStatusId(supabaseAdmin, 'approved');
         const { error: dbError } = await supabase
@@ -294,6 +295,7 @@ export async function rejectSession(sessionId: string, reason?: string) {
         const authResult = await fetchSessionAndCheckAccess(supabase, sessionId, user.id, userRole);
         if (authResult.error) return { error: authResult.error };
         const { session } = authResult;
+        if (!session) return { error: 'Oturum bulunamadı.' };
 
         const rejectedId = await getStatusId(supabaseAdmin, 'rejected');
 
