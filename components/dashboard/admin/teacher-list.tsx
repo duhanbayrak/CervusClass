@@ -31,8 +31,9 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Label } from '@/components/ui/label';
 import { Plus, Trash2, Search, MoreHorizontal, Mail, BookOpen, Users } from 'lucide-react';
+import { TeacherFormFields } from './TeacherFormFields';
+import type { TeacherFormData } from './TeacherFormFields';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -44,13 +45,6 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 
 interface Teacher {
     id: string;
@@ -85,7 +79,7 @@ export default function TeacherList({ initialTeachers, initialBranches }: Readon
     }, [searchParams]);
 
     // Form States
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<TeacherFormData>({
         fullName: '',
         branch: '',
         email: '',
@@ -243,94 +237,12 @@ export default function TeacherList({ initialTeachers, initialBranches }: Readon
                             </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleAddTeacher} className="space-y-4 pt-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="name">Ad Soyad</Label>
-                                <Input
-                                    id="name"
-                                    placeholder="Örn: Ahmet Yılmaz"
-                                    value={formData.fullName}
-                                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                                    required
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="branch">Branş</Label>
-                                <Select
-                                    value={formData.branch}
-                                    onValueChange={(val) => setFormData({ ...formData, branch: val })}
-                                    required
-                                >
-                                    <SelectTrigger id="branch">
-                                        <SelectValue placeholder="Branş Seçin" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {initialBranches.length > 0 ? (
-                                            initialBranches.map((branch) => (
-                                                <SelectItem key={branch} value={branch}>{branch}</SelectItem>
-                                            ))
-                                        ) : (
-                                            <div className="p-2 text-sm text-slate-500 text-center">Branş bulunamadı.</div>
-                                        )}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="email">E-posta</Label>
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    placeholder="ornek@cervus.com"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    required
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="phone">Telefon</Label>
-                                <Input
-                                    id="phone"
-                                    placeholder="555 555 55 55"
-                                    maxLength={10}
-                                    value={formData.phone}
-                                    onChange={(e) => {
-                                        let val = e.target.value.replaceAll(/\D/g, '');
-                                        if (val.startsWith('0')) val = val.substring(1);
-                                        if (val.length > 10) val = val.substring(0, 10);
-                                        setFormData({ ...formData, phone: val });
-                                    }}
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="title">Unvan</Label>
-                                <Input
-                                    id="title"
-                                    placeholder="Örn: Uzman Matematik Öğretmeni"
-                                    value={formData.title}
-                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="bio">Biyografi</Label>
-                                <Input
-                                    id="bio"
-                                    placeholder="Kısa özgeçmiş..."
-                                    value={formData.bio}
-                                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                                />
-                            </div>
-                            {!editingTeacher && (
-                                <div className="grid gap-2">
-                                    <Label htmlFor="password">Geçici Şifre</Label>
-                                    <Input
-                                        id="password"
-                                        type="text"
-                                        placeholder="Şifre belirleyin"
-                                        value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                            )}
+                            <TeacherFormFields
+                                formData={formData}
+                                onChange={setFormData}
+                                branches={initialBranches}
+                                isEditing={!!editingTeacher}
+                            />
                             <DialogFooter>
                                 <Button type="submit" disabled={isLoading}>
                                     {(() => {

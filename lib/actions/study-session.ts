@@ -13,6 +13,33 @@ async function getStatusId(supabase: SupabaseClient, name: string) {
     return data?.id;
 }
 
+// Oturum yetki kontrolü: session'ı getirir ve öğretmen/admin doğrulaması yapar.
+// Hata durumunda { error } döner; başarıda { session } döner.
+async function fetchSessionAndCheckAccess(
+    supabase: SupabaseClient,
+    sessionId: string,
+    userId: string,
+    userRole: string,
+): Promise<
+    | { session: { teacher_id: string | null; student_id: string | null }; error?: never }
+    | { error: string; session?: never }
+> {
+    const { data: session, error: sessionError } = await supabase
+        .from('study_sessions')
+        .select('teacher_id, student_id')
+        .eq('id', sessionId)
+        .single();
+
+    if (sessionError || !session) return { error: 'Oturum bulunamadı.' };
+
+    const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+    if (!isAdmin && session.teacher_id !== userId) {
+        return { error: 'Bu işlemi sadece ilgili öğretmen veya yönetici yapabilir.' };
+    }
+
+    return { session };
+}
+
 // Öğretmenleri getir
 export async function getTeachers() {
     try {
@@ -227,21 +254,11 @@ export async function approveSession(sessionId: string) {
     if (error || !user) return { error: error || "Unauthorized" };
 
     try {
-        // Oturumu ve öğretmenini kontrol et
-        const { data: session, error: sessionError } = await supabase
-            .from('study_sessions')
-            .select('teacher_id, student_id')
-            .eq('id', sessionId)
-            .single();
-
-        if (sessionError || !session) return { error: "Oturum bulunamadı." };
-
         const userRole = user.app_metadata?.role || user.user_metadata?.role;
-        const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+        const authResult = await fetchSessionAndCheckAccess(supabase, sessionId, user.id, userRole);
+        if (authResult.error) return { error: authResult.error };
+        const { session } = authResult;
 
-        if (!isAdmin && session.teacher_id !== user.id) {
-            return { error: "Bu işlemi sadece ilgili öğretmen veya yönetici yapabilir." };
-        }
         const approvedId = await getStatusId(supabaseAdmin, 'approved');
         const { error: dbError } = await supabase
             .from('study_sessions')
@@ -273,21 +290,11 @@ export async function rejectSession(sessionId: string, reason?: string) {
     if (error || !user) return { error: error || "Unauthorized" };
 
     try {
-        // Oturumu ve öğretmenini kontrol et
-        const { data: session, error: sessionError } = await supabase
-            .from('study_sessions')
-            .select('teacher_id, student_id')
-            .eq('id', sessionId)
-            .single();
-
-        if (sessionError || !session) return { error: "Oturum bulunamadı." };
-
         const userRole = user.app_metadata?.role || user.user_metadata?.role;
-        const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+        const authResult = await fetchSessionAndCheckAccess(supabase, sessionId, user.id, userRole);
+        if (authResult.error) return { error: authResult.error };
+        const { session } = authResult;
 
-        if (!isAdmin && session.teacher_id !== user.id) {
-            return { error: "Bu işlemi sadece ilgili öğretmen veya yönetici yapabilir." };
-        }
         const rejectedId = await getStatusId(supabaseAdmin, 'rejected');
 
         const { error: dbError } = await supabase
@@ -325,21 +332,9 @@ export async function cancelSession(sessionId: string) {
     if (error || !user) return { error: error || "Unauthorized" };
 
     try {
-        // Oturumu ve öğretmenini kontrol et
-        const { data: session, error: sessionError } = await supabase
-            .from('study_sessions')
-            .select('teacher_id')
-            .eq('id', sessionId)
-            .single();
-
-        if (sessionError || !session) return { error: "Oturum bulunamadı." };
-
         const userRole = user.app_metadata?.role || user.user_metadata?.role;
-        const isAdmin = userRole === 'admin' || userRole === 'super_admin';
-
-        if (!isAdmin && session.teacher_id !== user.id) {
-            return { error: "Bu işlemi sadece ilgili öğretmen veya yönetici yapabilir." };
-        }
+        const authResult = await fetchSessionAndCheckAccess(supabase, sessionId, user.id, userRole);
+        if (authResult.error) return { error: authResult.error };
 
         const { error: dbError } = await supabase
             .from('study_sessions')

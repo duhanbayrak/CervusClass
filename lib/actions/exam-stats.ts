@@ -7,6 +7,32 @@ import { flattenExamScores } from '@/lib/utils'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logger } from '@/lib/logger'
 
+/**
+ * Sınav listesi üzerinden ders bazlı ortalama hesaplar.
+ * classExams ve schoolExams blokları için paylaşılan yardımcı.
+ */
+function calcSubjectAverages(
+    exams: Array<{ scores: unknown }>,
+    examType?: string | null,
+): Record<string, number> {
+    const totals: Record<string, { total: number; count: number }> = {}
+    exams.forEach(e => {
+        const flatScores = flattenExamScores(e.scores, examType ?? undefined)
+        Object.entries(flatScores).forEach(([subject, net]) => {
+            if (net !== null) {
+                if (!totals[subject]) totals[subject] = { total: 0, count: 0 }
+                totals[subject].total += net
+                totals[subject].count += 1
+            }
+        })
+    })
+    const result: Record<string, number> = {}
+    Object.entries(totals).forEach(([subject, v]) => {
+        result[subject] = Math.round((v.total / v.count) * 100) / 100
+    })
+    return result
+}
+
 // Öğrencinin tüm sınavları + sınıf ortalaması + okul ortalaması
 export async function getExamOverviewData(studentId?: string) {
     const supabase = await createClient()
@@ -224,20 +250,7 @@ export async function getExamDetailData(examId: string, studentId?: string) {
                 classTotalAvg = Math.round((totalSum / classExams.length) * 100) / 100
 
                 // Ders bazlı ortalamalar
-                const subjectTotals: Record<string, { total: number; count: number }> = {}
-                classExams.forEach(e => {
-                    const flatScores = flattenExamScores(e.scores, exam.exam_type)
-                    Object.entries(flatScores).forEach(([subject, net]) => {
-                        if (net !== null) {
-                            if (!subjectTotals[subject]) subjectTotals[subject] = { total: 0, count: 0 }
-                            subjectTotals[subject].total += net
-                            subjectTotals[subject].count += 1
-                        }
-                    })
-                })
-                Object.entries(subjectTotals).forEach(([subject, v]) => {
-                    classSubjectAverages[subject] = Math.round((v.total / v.count) * 100) / 100
-                })
+                Object.assign(classSubjectAverages, calcSubjectAverages(classExams, exam.exam_type))
             }
         }
     }
@@ -257,20 +270,7 @@ export async function getExamDetailData(examId: string, studentId?: string) {
             (schoolExams.reduce((sum, e) => sum + (e.total_net || 0), 0) / schoolExams.length) * 100
         ) / 100
 
-        const subjectTotals: Record<string, { total: number; count: number }> = {}
-        schoolExams.forEach(e => {
-            const flatScores = flattenExamScores(e.scores, exam.exam_type)
-            Object.entries(flatScores).forEach(([subject, net]) => {
-                if (net !== null) {
-                    if (!subjectTotals[subject]) subjectTotals[subject] = { total: 0, count: 0 }
-                    subjectTotals[subject].total += net
-                    subjectTotals[subject].count += 1
-                }
-            })
-        })
-        Object.entries(subjectTotals).forEach(([subject, v]) => {
-            schoolSubjectAverages[subject] = Math.round((v.total / v.count) * 100) / 100
-        })
+        Object.assign(schoolSubjectAverages, calcSubjectAverages(schoolExams, exam.exam_type))
     }
 
     return {
@@ -319,20 +319,7 @@ export async function getTeacherExamDetailData(examName: string, classId: string
             (classExams.reduce((sum, e) => sum + (e.total_net || 0), 0) / classExams.length) * 100
         ) / 100
 
-        const subjectTotals: Record<string, { total: number; count: number }> = {}
-        classExams.forEach(e => {
-            const flatScores = flattenExamScores(e.scores)
-            Object.entries(flatScores).forEach(([subject, net]) => {
-                if (net !== null) {
-                    if (!subjectTotals[subject]) subjectTotals[subject] = { total: 0, count: 0 }
-                    subjectTotals[subject].total += net
-                    subjectTotals[subject].count += 1
-                }
-            })
-        })
-        Object.entries(subjectTotals).forEach(([subject, v]) => {
-            classSubjectAverages[subject] = Math.round((v.total / v.count) * 100) / 100
-        })
+        Object.assign(classSubjectAverages, calcSubjectAverages(classExams))
     }
 
     // 3. Okulun ortalamaları
@@ -350,20 +337,7 @@ export async function getTeacherExamDetailData(examName: string, classId: string
             (schoolExams.reduce((sum, e) => sum + (e.total_net || 0), 0) / schoolExams.length) * 100
         ) / 100
 
-        const subjectTotals: Record<string, { total: number; count: number }> = {}
-        schoolExams.forEach(e => {
-            const flatScores = flattenExamScores(e.scores)
-            Object.entries(flatScores).forEach(([subject, net]) => {
-                if (net !== null) {
-                    if (!subjectTotals[subject]) subjectTotals[subject] = { total: 0, count: 0 }
-                    subjectTotals[subject].total += net
-                    subjectTotals[subject].count += 1
-                }
-            })
-        })
-        Object.entries(subjectTotals).forEach(([subject, v]) => {
-            schoolSubjectAverages[subject] = Math.round((v.total / v.count) * 100) / 100
-        })
+        Object.assign(schoolSubjectAverages, calcSubjectAverages(schoolExams))
     }
 
     return {

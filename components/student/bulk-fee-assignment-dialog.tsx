@@ -4,6 +4,11 @@ import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import {
+    serviceItemSchema,
+    emptyServiceItem,
+    computeServiceItemPrices,
+} from '@/lib/schemas/fee-service-schema';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,34 +23,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { assignBulkServicesToStudents } from '@/lib/actions/student-fees';
 
-export const serviceItemSchema = z.object({
-    serviceId: z.string().min(1, 'Hizmet seçilmelidir'),
-    serviceName: z.string().optional(),
-    unitPrice: z.coerce.number().min(0),
-    vatRate: z.coerce.number().min(0).default(0),
-    discountAmount: z.coerce.number().min(0).default(0),
-    discountType: z.enum(['percentage', 'fixed']).optional().default('fixed'),
-    discountReason: z.string().optional(),
-    downPayment: z.coerce.number().min(0).default(0),
-    downPaymentAccountId: z.string().optional(),
-    installmentCount: z.coerce.number().min(1, 'Taksit sayısı en az 1 olmalıdır').default(1),
-    startMonth: z.string().optional(),
-    paymentDueDay: z.coerce.number().min(1).max(31).default(5),
-}).superRefine((data, ctx) => {
-    const netAmount = data.discountType === 'percentage'
-        ? data.unitPrice - (data.unitPrice * (data.discountAmount / 100))
-        : data.unitPrice - data.discountAmount;
-
-    const vatAmount = netAmount * (data.vatRate / 100);
-    const totalWithVat = netAmount + vatAmount;
-
-    if (data.downPayment > 0 && !data.downPaymentAccountId) {
-        ctx.addIssue({ code: "custom", message: "Kasa/Hesap seçilmelidir", path: ["downPaymentAccountId"] });
-    }
-    if (data.downPayment > totalWithVat) {
-        ctx.addIssue({ code: "custom", message: `Peşinat KDV dahil net tutardan (₺${totalWithVat.toFixed(2)}) büyük olamaz`, path: ["downPayment"] });
-    }
-});
+export { serviceItemSchema } from '@/lib/schemas/fee-service-schema';
 
 const bulkFinancialSchema = z.object({
     services: z.array(serviceItemSchema).min(1, "En az bir hizmet / ürün eklemelisiniz.")
@@ -112,22 +90,7 @@ export function BulkFeeAssignmentDialog({ open, onOpenChange, selectedStudentIds
         }
     }, [open, reset]);
 
-    const handleAddService = () => {
-        append({
-            serviceId: '',
-            serviceName: '',
-            unitPrice: 0,
-            vatRate: 0,
-            discountAmount: 0,
-            discountType: 'fixed',
-            discountReason: '',
-            downPayment: 0,
-            downPaymentAccountId: '',
-            installmentCount: 1,
-            startMonth: '',
-            paymentDueDay: 5
-        });
-    };
+    const handleAddService = () => { append(emptyServiceItem); };
 
     const handleServiceSelect = (index: number, serviceId: string) => {
         const selected = servicesData.find(s => s.id === serviceId);
@@ -238,16 +201,12 @@ export function BulkFeeAssignmentDialog({ open, onOpenChange, selectedStudentIds
                             <AnimatePresence>
                                 {fields.map((field, index) => {
                                     const watchDownPayment = watch(`services.${index}.downPayment`);
-                                    const watchVatRate = watch(`services.${index}.vatRate`);
-                                    const watchUnitPrice = watch(`services.${index}.unitPrice`);
-                                    const watchDiscountType = watch(`services.${index}.discountType`);
-                                    const watchDiscountAmount = watch(`services.${index}.discountAmount`);
-
-                                    const p = Number(watchUnitPrice) || 0;
-                                    const d = Number(watchDiscountAmount) || 0;
-                                    const net = watchDiscountType === 'percentage' ? p - (p * (d / 100)) : p - d;
-                                    const vat = net * ((Number(watchVatRate) || 0) / 100);
-                                    const finalPrice = net + vat;
+                                    const { finalPrice } = computeServiceItemPrices({
+                                        unitPrice:      watch(`services.${index}.unitPrice`),
+                                        discountAmount: watch(`services.${index}.discountAmount`),
+                                        discountType:   watch(`services.${index}.discountType`),
+                                        vatRate:        watch(`services.${index}.vatRate`),
+                                    });
 
                                     return (
                                         <motion.div
