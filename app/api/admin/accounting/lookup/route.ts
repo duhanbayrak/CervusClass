@@ -70,7 +70,7 @@ const getCachedLookupData = unstable_cache(
     },
     ['accounting-lookup-data'],
     {
-        tags: ['accounting', 'classes', 'profiles'],
+        tags: ['accounting', 'classes', 'profiles', 'finance-services'],
         revalidate: 3600 // 1 saat cache
     }
 );
