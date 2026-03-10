@@ -128,9 +128,9 @@ BEGIN
 
     SELECT jsonb_agg(
         jsonb_build_object(
-            'month',   m.month_key,
-            'income',  COALESCE(t.income, 0),
-            'expense', COALESCE(t.expense, 0)
+            'month',    m.month_key,
+            C_INCOME,   COALESCE(t.income, 0),
+            C_EXPENSE,  COALESCE(t.expense, 0)
         ) ORDER BY m.month_key
     ) INTO v_result
     FROM (
