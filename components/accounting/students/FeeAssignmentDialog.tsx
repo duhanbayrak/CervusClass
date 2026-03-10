@@ -38,8 +38,6 @@ const serviceItemSchema = z.object({
     serviceName: z.string().optional(),
     unitPrice: z.coerce.number().min(0),
     vatRate: z.coerce.number().min(0).default(0),
-    /** Girilen birim fiyatın KDV dahil olup olmadığını belirtir */
-    vatIncluded: z.boolean().default(false),
     discountAmount: z.coerce.number().min(0).default(0),
     discountType: z.enum(['percentage', 'fixed']).optional().default('fixed'),
     discountReason: z.string().optional(),
@@ -49,14 +47,9 @@ const serviceItemSchema = z.object({
     startMonth: z.string().optional(),
     paymentDueDay: z.coerce.number().min(1).max(31).default(5),
 }).superRefine((data, ctx) => {
-    // vatIncluded=true ise girilen fiyat KDV dahildir; net fiyat geri hesaplanır
-    const basePrice = data.vatIncluded && data.vatRate > 0
-        ? data.unitPrice / (1 + data.vatRate / 100)
-        : data.unitPrice;
-
     const netAmount = data.discountType === 'percentage'
-        ? basePrice - (basePrice * (data.discountAmount / 100))
-        : basePrice - data.discountAmount;
+        ? data.unitPrice - (data.unitPrice * (data.discountAmount / 100))
+        : data.unitPrice - data.discountAmount;
 
     const vatAmount = netAmount * (data.vatRate / 100);
     const totalWithVat = netAmount + vatAmount;
@@ -154,7 +147,6 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
             serviceName: '',
             unitPrice: 0,
             vatRate: 0,
-            vatIncluded: false,
             discountAmount: 0,
             discountType: 'fixed',
             discountReason: '',
@@ -171,8 +163,20 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
         if (selected) {
             setValue(`services.${index}.serviceId`, selected.id, { shouldValidate: true });
             setValue(`services.${index}.serviceName`, selected.name);
-            setValue(`services.${index}.unitPrice`, selected.unit_price);
             setValue(`services.${index}.vatRate`, selected.vat_rate);
+
+            if (selected.vat_included && selected.vat_rate > 0) {
+                // Hizmet KDV dahil fiyatla kaydedilmiş; gross fiyatı geri hesapla.
+                // Math.round ile floating point birikimini önle (4545.45 * 1.1 = 4999.995 sorunu).
+                const grossPrice = Math.round(selected.unit_price * (1 + selected.vat_rate / 100) * 100) / 100;
+                setValue(`services.${index}.unitPrice`, grossPrice);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                setValue(`services.${index}.vatIncluded` as any, true);
+            } else {
+                setValue(`services.${index}.unitPrice`, selected.unit_price);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                setValue(`services.${index}.vatIncluded` as any, false);
+            }
         }
     };
 
@@ -188,14 +192,6 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
     const executeSubmit = async (data: FormData) => {
         setMessage('');
 
-        // Sunucu her zaman KDV hariç unitPrice bekler; vatIncluded=true ise geri normalize et
-        const normalizedServices = data.services.map(s => {
-            if (s.vatIncluded && s.vatRate > 0) {
-                return { ...s, unitPrice: s.unitPrice / (1 + s.vatRate / 100) };
-            }
-            return s;
-        });
-
         if (mode === 'single') {
             if (!data.studentId) return setMessage("Hata: Öğrenci seçimi zorunludur.");
 
@@ -203,7 +199,7 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
                 studentId: data.studentId,
                 classId: data.classId || undefined,
                 academicPeriod: data.academicPeriod,
-                services: normalizedServices
+                services: data.services
             });
 
             if (res.success) {
@@ -224,7 +220,7 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
                     studentId: s.id,
                     classId: data.classId,
                     academicPeriod: data.academicPeriod,
-                    services: normalizedServices
+                    services: data.services
                 });
                 count++;
             }
@@ -248,7 +244,7 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
                 studentId: data.studentId,
                 serviceCount: data.services?.length,
                 academicPeriod: data.academicPeriod,
-                hasVatIncludedItems: data.services?.some(s => s.vatIncluded),
+
             },
         });
         startTransition(async () => {
@@ -300,22 +296,33 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
             const vatRate = item.vatRate || 0;
             const discount = Number(item.discountAmount) || 0;
             const isPercent = item.discountType === 'percentage';
+            const vatIncluded = (item as unknown as { vatIncluded?: boolean }).vatIncluded ?? false;
 
             // vatIncluded=true ise girilen fiyat KDV dahildir; net fiyatı geri hesapla
-            const basePrice = item.vatIncluded && vatRate > 0
-                ? enteredPrice / (1 + vatRate / 100)
+            const basePrice = vatIncluded && vatRate > 0
+                ? Math.round((enteredPrice / (1 + vatRate / 100)) * 100) / 100
                 : enteredPrice;
 
-            const netPrice = isPercent ? basePrice - (basePrice * (discount / 100)) : basePrice - discount;
-            const vat = netPrice * (vatRate / 100);
+            const netPrice = isPercent
+                ? Math.round((basePrice - basePrice * (discount / 100)) * 100) / 100
+                : Math.round((basePrice - discount) * 100) / 100;
+
+            const vat = Math.round(netPrice * (vatRate / 100) * 100) / 100;
 
             totalNet += netPrice;
             totalVat += vat;
-            totalFinal += (netPrice + vat);
+            totalFinal += netPrice + vat;
             totalDownPayment += Number(item.downPayment) || 0;
         });
 
-        return { totalNet, totalVat, totalFinal, totalDownPayment, remaining: totalFinal - totalDownPayment };
+        const round2 = (n: number) => Math.round(n * 100) / 100;
+        return {
+            totalNet: round2(totalNet),
+            totalVat: round2(totalVat),
+            totalFinal: round2(totalFinal),
+            totalDownPayment: round2(totalDownPayment),
+            remaining: round2(totalFinal - totalDownPayment),
+        };
     };
 
     const totals = calculateTotals();
@@ -498,28 +505,25 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <div>
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <label htmlFor={`unitPrice-${index}`} className={labelClass}>
-                                                                {watchServices[index]?.vatIncluded ? 'Birim Fiyat (KDV Dahil)' : 'Birim Fiyat'}
-                                                            </label>
-                                                            <label htmlFor={`vatIncluded-${index}`} className="flex items-center gap-1 cursor-pointer select-none">
-                                                                <input
-                                                                    id={`vatIncluded-${index}`}
-                                                                    type="checkbox"
-                                                                    {...register(`services.${index}.vatIncluded`)}
-                                                                    className="w-3 h-3 rounded border-gray-300 text-blue-600 cursor-pointer"
-                                                                />
-                                                                <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">KDV Dahil</span>
-                                                            </label>
-                                                        </div>
+                                                        <label htmlFor={`unitPrice-${index}`} className={labelClass}>Birim Fiyat</label>
                                                         <div className="relative">
                                                             <input id={`unitPrice-${index}`} type="number" step="0.01" {...register(`services.${index}.unitPrice`)} className={`${inputClass} pr-8`} />
                                                             <span className="absolute right-3 top-2 text-xs text-muted-foreground">{currency}</span>
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <label htmlFor={`vatRate-${index}`} className={labelClass}>KDV Oranı (%)</label>
-                                                        <input id={`vatRate-${index}`} type="number" step="1" {...register(`services.${index}.vatRate`)} className={inputClass} />
+                                                        <label htmlFor={`vatRate-${index}`} className={labelClass}>
+                                                            KDV Oranı (%)
+                                                        </label>
+                                                        <input
+                                                            id={`vatRate-${index}`}
+                                                            type="number"
+                                                            step="1"
+                                                            {...register(`services.${index}.vatRate`)}
+                                                            disabled
+                                                            className={`${inputClass} opacity-60 cursor-not-allowed bg-gray-100 dark:bg-white/[0.03]`}
+                                                        />
+                                                        <p className="text-[10px] text-muted-foreground mt-1">Katalogdan gelir, değiştirilemez.</p>
                                                     </div>
                                                 </div>
                                             </div>
