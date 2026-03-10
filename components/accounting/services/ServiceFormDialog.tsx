@@ -17,13 +17,8 @@ interface ServiceFormDialogProps {
     onClose: () => void;
 }
 
-/** Türkiye'de geçerli KDV oranları */
-const VAT_RATES = [
-    { value: 0, label: '%0 (KDV Yok)' },
-    { value: 1, label: '%1' },
-    { value: 10, label: '%10' },
-    { value: 20, label: '%20 (Genel)' },
-];
+/** Hızlı seçim için yaygın KDV oranları (datalist önerileri) */
+const COMMON_VAT_RATES = [0, 1, 10, 20];
 
 /** Para formatı */
 function formatCurrency(amount: number, currency: string): string {
@@ -241,17 +236,28 @@ export function ServiceFormDialog({ service, currency, onClose }: Readonly<Servi
                             </div>
                         </div>
                         <div>
-                            <label htmlFor="vatRate" className={labelClass}>KDV Oranı *</label>
-                            <select
-                                id="vatRate"
-                                value={vatRate}
-                                onChange={e => setVatRate(e.target.value)}
-                                className={inputClass}
-                            >
-                                {VAT_RATES.map(r => (
-                                    <option key={r.value} value={r.value}>{r.label}</option>
+                            <label htmlFor="vatRate" className={labelClass}>KDV Oranı (%) *</label>
+                            <div className="relative">
+                                <input
+                                    id="vatRate"
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="1"
+                                    placeholder="0"
+                                    list="vatRateSuggestions"
+                                    value={vatRate}
+                                    onChange={e => setVatRate(e.target.value)}
+                                    className={`${inputClass} pr-8`}
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">%</span>
+                            </div>
+                            <datalist id="vatRateSuggestions">
+                                {COMMON_VAT_RATES.map(r => (
+                                    <option key={r} value={r} />
                                 ))}
-                            </select>
+                            </datalist>
+                            <p className="text-xs text-gray-400 mt-1">Yaygın oranlar: %0 · %1 · %10 · %20</p>
                         </div>
                     </div>
 
