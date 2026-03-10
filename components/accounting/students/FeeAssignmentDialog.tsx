@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, type FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import * as Sentry from '@sentry/nextjs';
@@ -62,10 +62,10 @@ const serviceItemSchema = z.object({
     const totalWithVat = netAmount + vatAmount;
 
     if (data.downPayment > 0 && !data.downPaymentAccountId) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Hesap seçilmelidir", path: ["downPaymentAccountId"] });
+        ctx.addIssue({ code: "custom", message: "Hesap seçilmelidir", path: ["downPaymentAccountId"] });
     }
     if (data.downPayment > totalWithVat) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Peşinat KDV dahil net tutardan (" + totalWithVat.toFixed(2) + "₺) büyük olamaz", path: ["downPayment"] });
+        ctx.addIssue({ code: "custom", message: "Peşinat KDV dahil net tutardan (" + totalWithVat.toFixed(2) + "₺) büyük olamaz", path: ["downPayment"] });
     }
 });
 
@@ -74,12 +74,10 @@ const formSchema = z.object({
     classId: z.string().optional(),
     academicPeriod: z.string().min(1, 'Dönem gereklidir'),
     services: z.array(serviceItemSchema).min(1, "En az bir hizmet / ürün eklemelisiniz.")
-}).superRefine((data, ctx) => {
-    // Single modunda student, bulk modunda class id check yapılır.
-    // Bunu component içinde handle edeceğiz, o yüzden basic doğrulama bırakıldı
 });
 
 type FormData = z.infer<typeof formSchema>;
+type ServiceItem = z.infer<typeof serviceItemSchema>;
 
 export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Readonly<FeeAssignmentDialogProps>) {
     const router = useRouter();
@@ -98,8 +96,8 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
     const [accountsData, setAccountsData] = useState<FinanceAccount[]>([]);
     const [defaultDueDay, setDefaultDueDay] = useState(5);
 
-    const { register, handleSubmit, control, watch, setValue, formState: { errors } } = useForm<FormData>({
-        resolver: zodResolver(formSchema as any),
+    const { register, handleSubmit, control, getValues, setValue, formState: { errors } } = useForm<FormData>({
+        resolver: zodResolver(formSchema as z.ZodType<FormData, FormData>),
         defaultValues: {
             studentId: defaultStudentId || '',
             classId: '',
@@ -113,9 +111,10 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
         name: "services"
     });
 
-    const watchServices = watch('services') || [];
-    const watchClassId = watch('classId');
-    const watchStudentId = watch('studentId');
+    const watchServices = useWatch({ control, name: 'services' }) ?? [];
+    const watchClassId = useWatch({ control, name: 'classId' });
+    const watchStudentId = useWatch({ control, name: 'studentId' });
+    const watchAcademicPeriod = useWatch({ control, name: 'academicPeriod' });
 
     // Verileri Yükle
     useEffect(() => {
@@ -470,7 +469,7 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
 
                         <div className="space-y-4">
                             {fields.map((field, index) => {
-                                const svcErrors = errors.services?.[index] as any;
+                                const svcErrors = errors.services?.[index] as FieldErrors<ServiceItem>;
                                 return (
                                     <div key={field.id} className="p-4 border border-gray-200 dark:border-white/10 rounded-xl bg-gray-50/50 dark:bg-white/[0.02] shadow-sm relative">
                                         <button
@@ -610,7 +609,7 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
                             <div>
                                 <h4 className="text-orange-800 font-semibold mb-1">DİKKAT: Mükerrer Hizmet Tespit Edildi!</h4>
                                 <p className="text-orange-700 text-sm mb-2">
-                                    Seçtiğiniz dönemde ({watch('academicPeriod')}) aşağıdaki hizmetler bu öğrenciye {' '}
+                                    Seçtiğiniz dönemde ({watchAcademicPeriod ?? getValues('academicPeriod')}) aşağıdaki hizmetler bu öğrenciye {' '}
                                     <strong>zaten atanmış:</strong>
                                 </p>
                                 <ul className="list-disc list-inside text-sm text-orange-700/80 mb-4 font-medium">
