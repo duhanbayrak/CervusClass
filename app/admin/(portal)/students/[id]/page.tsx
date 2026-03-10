@@ -32,7 +32,7 @@ export default async function StudentDetailPage(props: Readonly<{ params: Promis
     }
 
     // Finansal Verilerin Çekilmesi (Çoklu Hizmet Desteği)
-    const fees = await getStudentFees({ student_id: id });
+    const { data: fees } = await getStudentFees({ student_id: id });
     const installments: any[] = [];
 
     // Tüm ücret kalemleri için taksitleri topla

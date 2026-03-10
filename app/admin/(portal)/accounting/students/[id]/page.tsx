@@ -12,11 +12,12 @@ interface Props {
  * Öğrenci Ücret Detay Sayfası
  * Ücret bilgileri, taksit planı ve ödeme geçmişi
  */
-export default async function StudentFeeDetailPage({ params }: Readonly<Props>) { // NOSONAR
+export default async function StudentFeeDetailPage({ params }: Readonly<Props>) {
+    // NOSONAR
     const { id: studentId } = await params;
 
     // Öğrenciye ait tüm ücret sepetlerini getir
-    const studentFees = await getStudentFees({ student_id: studentId });
+    const { data: studentFees } = await getStudentFees({ student_id: studentId });
 
     if (!studentFees || studentFees.length === 0) {
         notFound();

@@ -4,11 +4,12 @@ import { StudentFeeList } from '@/components/accounting/students/StudentFeeList'
 
 /**
  * Öğrenci Ücret Yönetimi — Liste sayfası
- * Tüm öğrencilerin ücret kayıtlarını gösterir, filtre ve arama destekli
+ * Tüm öğrencilerin ücret kayıtlarını gösterir, filtre ve arama destekli.
+ * Sayfa başına 100 kayıt getirilir; ilerleyen kayıtlar offset ile çekilebilir.
  */
 export default async function AccountingStudentsPage() {
-    const [fees, settings] = await Promise.all([
-        getStudentFees(),
+    const [feesResult, settings] = await Promise.all([
+        getStudentFees({ limit: 100, offset: 0 }),
         getFinanceSettings(),
     ]);
 
@@ -21,7 +22,8 @@ export default async function AccountingStudentsPage() {
                 </p>
             </div>
             <StudentFeeList
-                fees={fees}
+                fees={feesResult.data}
+                totalCount={feesResult.count}
                 currency={settings?.currency || 'TRY'}
             />
         </div>

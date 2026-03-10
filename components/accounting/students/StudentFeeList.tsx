@@ -8,6 +8,7 @@ import { FeeAssignmentDialog } from './FeeAssignmentDialog';
 
 interface StudentFeeListProps {
     fees: StudentFee[];
+    totalCount: number; // Veritabanındaki toplam kayıt sayısı (sayfalama desteği)
     currency: string;
 }
 
@@ -35,7 +36,7 @@ function getStatusStyle(status: string) {
     }
 }
 
-export function StudentFeeList({ fees, currency }: Readonly<StudentFeeListProps>) {
+export function StudentFeeList({ fees, totalCount, currency }: Readonly<StudentFeeListProps>) {
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -106,7 +107,7 @@ export function StudentFeeList({ fees, currency }: Readonly<StudentFeeListProps>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className={`${cardClass} p-4`}>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Toplam Kayıt</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{fees.length}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{totalCount}</p>
                 </div>
                 <div className={`${cardClass} p-4`}>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Aktif Ücretler</p>

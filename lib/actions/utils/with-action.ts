@@ -111,7 +111,7 @@ export function withAction<TSchema extends z.ZodTypeAny, TReturn>(
     }
 
     // Overload 3: schema + handler (legacy, no name)
-    const schema = arg1 as TSchema
+    const schema = arg1
     const handler = arg2 as (input: z.infer<TSchema>, ctx: ActionContext) => Promise<ActionResult<TReturn>>
     return async (input: unknown): Promise<ActionResult<TReturn>> => {
         return executeAction(input, schema, undefined, handler, undefined)

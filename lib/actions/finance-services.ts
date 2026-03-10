@@ -37,7 +37,11 @@ const getCachedFinanceServices = unstable_cache(
         if (error) throw error;
         return (data || []) as FinanceService[];
     },
-    ['finance-services-list'],
+    // keyParts: Next.js bu array'i + fn argümanlarını (organizationId, type, is_active)
+    // birleştirerek cache key üretir. Fonksiyon argümanları otomatik serialize edildiğinden
+    // farklı organizasyonların yanıtları her zaman ayrı cache bucket'larına düşer.
+    // Örnek key: "finance-services::uuid-org-id::income::true"
+    ['finance-services'],
     {
         tags: ['finance-services'],
         revalidate: 300, // 5 dakika — hizmetler nadiren değişir
@@ -149,8 +153,8 @@ export async function updateFinanceService(
         description?: string | null;
     }
 ): Promise<{ success: boolean; error?: string }> {
-    const { supabase, error } = await getAuthContext();
-    if (error) return { success: false, error };
+    const { supabase, organizationId, error } = await getAuthContext();
+    if (error || !organizationId) return { success: false, error: error || 'Yetkilendirme hatası' };
 
     // KDV oranı doğrulama
     if (updates.vat_rate !== undefined && (updates.vat_rate < 0 || updates.vat_rate > 100)) {
@@ -170,12 +174,17 @@ export async function updateFinanceService(
         updated_at: new Date().toISOString(),
     };
 
-    const { error: updateError } = await supabase
+    const { data: updated, error: updateError } = await supabase
         .from('finance_services')
         .update(cleanUpdates)
-        .eq('id', id);
+        .eq('id', id)
+        .eq('organization_id', organizationId) // Çapraz kurum koruması
+        .select('id');
 
     if (updateError) return { success: false, error: updateError.message };
+    if (!updated || updated.length === 0) {
+        return { success: false, error: 'Hizmet bulunamadı veya güncelleme yetkiniz yok.' };
+    }
     // Güncelleme oldu — listeyi geçersiz kıl
     // @ts-expect-error -- revalidateTag type mismatch
     revalidateTag('finance-services');
@@ -187,19 +196,21 @@ export async function updateFinanceService(
  * Bağlı işlemler varsa silme reddedilir — bunun yerine pasif yapılması önerilir.
  */
 export async function deleteFinanceService(id: string): Promise<{ success: boolean; error?: string }> {
-    const { supabase, error } = await getAuthContext();
-    if (error) return { success: false, error };
+    const { supabase, organizationId, error } = await getAuthContext();
+    if (error || !organizationId) return { success: false, error: error || 'Yetkilendirme hatası' };
 
     // Bağlı işlem kontrolü — varsa silme reddet
     const { count: txCount } = await supabase
         .from('finance_transactions')
         .select('id', { count: 'exact', head: true })
-        .eq('service_id', id);
+        .eq('service_id', id)
+        .eq('organization_id', organizationId);
 
     const { count: feeCount } = await supabase
         .from('student_fees')
         .select('id', { count: 'exact', head: true })
-        .eq('service_id', id);
+        .eq('service_id', id)
+        .eq('organization_id', organizationId);
 
     if ((txCount || 0) > 0 || (feeCount || 0) > 0) {
         return {
@@ -208,12 +219,17 @@ export async function deleteFinanceService(id: string): Promise<{ success: boole
         };
     }
 
-    const { error: deleteError } = await supabase
+    const { data: deleted, error: deleteError } = await supabase
         .from('finance_services')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('organization_id', organizationId) // Çapraz kurum koruması
+        .select('id');
 
     if (deleteError) return { success: false, error: deleteError.message };
+    if (!deleted || deleted.length === 0) {
+        return { success: false, error: 'Hizmet bulunamadı veya silme yetkiniz yok.' };
+    }
     // Silindi — listeyi geçersiz kıl
     // @ts-expect-error -- revalidateTag type mismatch
     revalidateTag('finance-services');

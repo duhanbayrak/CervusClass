@@ -5,6 +5,7 @@ import type { StudentFee, FeeInstallment } from '@/types/accounting';
 import { format } from 'date-fns';
 import { logger } from '@/lib/logger';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { getOrCreateStudentFeeCategory, calcInstallmentAmounts } from '@/lib/actions/utils/finance-helpers';
 
 // --- Shared helpers ---
 
@@ -47,7 +48,7 @@ function buildInstallmentRows(
     const remainingAmount = totalAmountWithVat - (service.downPayment || 0)
     if (remainingAmount <= 0 || service.installmentCount <= 0) return rows
 
-    const amountPerInstallment = Number.parseFloat((remainingAmount / service.installmentCount).toFixed(2))
+    const amounts = calcInstallmentAmounts(remainingAmount, service.installmentCount);
     const { startYear, startMonthIndex } = parseStartMonth(service.startMonth)
     let num = startInstallmentNumber
 
@@ -58,10 +59,7 @@ function buildInstallmentRows(
             dueYear += Math.floor((startMonthIndex + i) / 12)
             dueMonth = dueMonth % 12
         }
-        let instAmount = amountPerInstallment
-        if (i === service.installmentCount - 1) {
-            instAmount = Number.parseFloat((remainingAmount - amountPerInstallment * (service.installmentCount - 1)).toFixed(2))
-        }
+        const instAmount = amounts[i];
         const instDate = new Date(dueYear, dueMonth, service.paymentDueDay)
         rows.push({
             fee_id: feeId,
@@ -76,23 +74,7 @@ function buildInstallmentRows(
     return rows
 }
 
-async function getOrCreateIncomeCategory(supabase: SupabaseClient, organizationId: string): Promise<string | null> {
-    const { data: existing } = await supabase
-        .from('finance_categories')
-        .select('id')
-        .eq('organization_id', organizationId)
-        .eq('name', 'Öğrenci Ücreti')
-        .eq('type', 'income')
-        .maybeSingle()
-    if (existing?.id) return existing.id
 
-    const { data: newCat } = await supabase
-        .from('finance_categories')
-        .insert({ organization_id: organizationId, name: 'Öğrenci Ücreti', type: 'income', icon: '🎓' })
-        .select('id')
-        .single()
-    return newCat?.id ?? null
-}
 
 async function recordDownPaymentTransaction(
     supabase: SupabaseClient,
@@ -103,7 +85,8 @@ async function recordDownPaymentTransaction(
     studentId: string,
     feeId: string
 ): Promise<void> {
-    await supabase.from('fee_payments').insert({
+    // Peşinat ödeme kaydı — hata kritik, throw et (üst caller rollback yapar)
+    const { error: paymentError } = await supabase.from('fee_payments').insert({
         organization_id: organizationId,
         installment_id: installmentId,
         amount: service.downPayment,
@@ -113,19 +96,25 @@ async function recordDownPaymentTransaction(
         reference_no: 'PESINAT-' + feeId.substring(0, 6).toUpperCase(),
         student_id: studentId,
         created_by: userId,
-    })
-
-    const catId = await getOrCreateIncomeCategory(supabase, organizationId)
-    if (!catId) return
-
-    let sub = service.downPayment
-    let vat = 0
-    if (service.vatRate > 0) {
-        sub = Number((service.downPayment / (1 + service.vatRate / 100)).toFixed(2))
-        vat = Number((service.downPayment - sub).toFixed(2))
+    });
+    if (paymentError) {
+        throw new Error(`Peşinat ödeme kaydı oluşturulamadı: ${paymentError.message}`);
     }
 
-    await supabase.from('finance_transactions').insert({
+    const catId = await getOrCreateStudentFeeCategory(supabase, organizationId);
+    if (!catId) {
+        throw new Error('Peşinat muhasebe kategorisi oluşturulamadı.');
+    }
+
+    let sub = service.downPayment;
+    let vat = 0;
+    if (service.vatRate > 0) {
+        sub = Number((service.downPayment / (1 + service.vatRate / 100)).toFixed(2));
+        vat = Number((service.downPayment - sub).toFixed(2));
+    }
+
+    // Muhasebe gelir kaydı — hata kritik, throw et
+    const { error: txError } = await supabase.from('finance_transactions').insert({
         organization_id: organizationId,
         account_id: service.downPaymentAccountId,
         category_id: catId,
@@ -138,20 +127,28 @@ async function recordDownPaymentTransaction(
         description: `Öğrenci Taksit Peşinatı (${service.serviceName || 'Hizmet'})`,
         transaction_date: format(new Date(), 'yyyy-MM-dd'),
         created_by: userId,
-    })
+    });
+    if (txError) {
+        throw new Error(`Peşinat muhasebe kaydı oluşturulamadı: ${txError.message}`);
+    }
 }
 
 /**
- * Öğrenci ücretlerini getirir (filtreli).
+ * Öğrenci ücretlerini sayfalama destekli getirir.
  */
 export async function getStudentFees(filters?: {
     student_id?: string;
     class_id?: string;
     academic_period?: string;
     status?: 'active' | 'completed' | 'cancelled';
-}): Promise<StudentFee[]> {
+    limit?: number;
+    offset?: number;
+}): Promise<{ data: StudentFee[]; count: number }> {
     const { supabase, error } = await getAuthContext();
-    if (error) return [];
+    if (error) return { data: [], count: 0 };
+
+    const limit = filters?.limit ?? 100;
+    const offset = filters?.offset ?? 0;
 
     let query = supabase
         .from('student_fees')
@@ -160,17 +157,18 @@ export async function getStudentFees(filters?: {
             student:profiles!student_id(full_name, email, classes:classes(name)),
             classes:classes!class_id(name),
             service:finance_services!service_id(name)
-        `)
-        .order('created_at', { ascending: false });
+        `, { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1); // Sayfalama
 
     if (filters?.student_id) query = query.eq('student_id', filters.student_id);
     if (filters?.class_id) query = query.eq('class_id', filters.class_id);
     if (filters?.academic_period) query = query.eq('academic_period', filters.academic_period);
     if (filters?.status) query = query.eq('status', filters.status);
 
-    const { data, error: fetchError } = await query;
-    if (fetchError) return [];
-    return (data || []) as StudentFee[];
+    const { data, count, error: fetchError } = await query;
+    if (fetchError) return { data: [], count: 0 };
+    return { data: (data || []) as StudentFee[], count: count || 0 };
 }
 
 /**
@@ -255,6 +253,7 @@ export async function createStudentFee(feeData: {
     discount_amount?: number;
     discount_type?: 'percentage' | 'fixed';
     discount_reason?: string;
+    vat_rate?: number; // YENİ: KDV Oranı
     installment_count: number;
     academic_period: string;
     notes?: string;
@@ -263,15 +262,20 @@ export async function createStudentFee(feeData: {
     const { supabase, organizationId, error } = await getAuthContext();
     if (error || !organizationId) return { success: false, error: error || 'Yetkilendirme hatası' };
 
-    // Net tutarı hesapla
-    let netAmount = feeData.total_amount;
+    // Net tutarı hesapla (Önce indirim düşülür)
+    let discountedAmount = feeData.total_amount;
     if (feeData.discount_amount && feeData.discount_amount > 0) {
         if (feeData.discount_type === 'percentage') {
-            netAmount = feeData.total_amount * (1 - feeData.discount_amount / 100);
+            discountedAmount = feeData.total_amount * (1 - feeData.discount_amount / 100);
         } else {
-            netAmount = feeData.total_amount - feeData.discount_amount;
+            discountedAmount = feeData.total_amount - feeData.discount_amount;
         }
     }
+
+    // KDV hesaplaması
+    const vatRate = feeData.vat_rate || 0;
+    const vatAmount = discountedAmount * (vatRate / 100);
+    const totalAmountWithVat = discountedAmount + vatAmount;
 
     // 1. Ücret kaydı oluştur
     const { data: fee, error: insertError } = await supabase
@@ -284,7 +288,9 @@ export async function createStudentFee(feeData: {
             discount_amount: feeData.discount_amount || 0,
             discount_type: feeData.discount_type || null,
             discount_reason: feeData.discount_reason || null,
-            net_amount: netAmount,
+            vat_rate: vatRate,
+            vat_amount: vatAmount,
+            net_amount: discountedAmount, // KDV Hariç İndirimli Tutar
             installment_count: feeData.installment_count,
             academic_period: feeData.academic_period,
             notes: feeData.notes || null,
@@ -295,17 +301,14 @@ export async function createStudentFee(feeData: {
     if (insertError) return { success: false, error: insertError.message };
 
     // 2. Taksitleri oluştur
-    const installmentAmount = Math.round((netAmount / feeData.installment_count) * 100) / 100;
+    const amounts = calcInstallmentAmounts(totalAmountWithVat, feeData.installment_count);
     const dueDay = feeData.payment_due_day || 1;
     const today = new Date();
 
     const installments = Array.from({ length: feeData.installment_count }, (_, i) => {
         // Her taksit bir sonraki ayın vade gününde
         const dueDate = new Date(today.getFullYear(), today.getMonth() + i, dueDay);
-        // Son taksite yuvarlama farkını ekle
-        const amount = i === feeData.installment_count - 1
-            ? netAmount - (installmentAmount * (feeData.installment_count - 1))
-            : installmentAmount;
+        const amount = amounts[i];
 
         return {
             fee_id: fee.id,
@@ -329,6 +332,9 @@ export async function createStudentFee(feeData: {
 
 /**
  * Toplu ücret atama — sınıftaki tüm öğrencilere aynı ücreti atar.
+ *
+ * Başarısız olan öğrenciler `failed_students` listesinde döndürülür.
+ * Tüm öğrenciler başarılıysa `success: true`, en az biri başarısızsa `success: false`.
  */
 export async function bulkAssignFees(data: {
     class_id: string;
@@ -336,9 +342,16 @@ export async function bulkAssignFees(data: {
     installment_count: number;
     academic_period: string;
     payment_due_day?: number;
-}): Promise<{ success: boolean; assigned_count: number; error?: string }> {
+}): Promise<{
+    success: boolean;
+    assigned_count: number;
+    failed_students: Array<{ student_id: string; error: string }>;
+    error?: string;
+}> {
     const { supabase, organizationId, error } = await getAuthContext();
-    if (error || !organizationId) return { success: false, assigned_count: 0, error: error || 'Yetkilendirme hatası' };
+    if (error || !organizationId) {
+        return { success: false, assigned_count: 0, failed_students: [], error: error || 'Yetkilendirme hatası' };
+    }
 
     // Sınıftaki öğrenci role_id'sini bul
     const { data: studentRole } = await supabase
@@ -347,7 +360,9 @@ export async function bulkAssignFees(data: {
         .eq('name', 'student')
         .single();
 
-    if (!studentRole) return { success: false, assigned_count: 0, error: 'Öğrenci rolü bulunamadı' };
+    if (!studentRole) {
+        return { success: false, assigned_count: 0, failed_students: [], error: 'Öğrenci rolü bulunamadı' };
+    }
 
     // Sınıftaki öğrencileri getir
     const { data: students } = await supabase
@@ -358,11 +373,13 @@ export async function bulkAssignFees(data: {
         .is('deleted_at', null);
 
     if (!students || students.length === 0) {
-        return { success: false, assigned_count: 0, error: 'Sınıfta öğrenci bulunamadı' };
+        return { success: false, assigned_count: 0, failed_students: [], error: 'Sınıfta öğrenci bulunamadı' };
     }
 
-    // Her öğrenci için ücret oluştur
+    // Her öğrenci için ücret oluştur; başarısız olanları kayıt altına al
     let assignedCount = 0;
+    const failedStudents: Array<{ student_id: string; error: string }> = [];
+
     for (const student of students) {
         const result = await createStudentFee({
             student_id: student.id,
@@ -372,15 +389,34 @@ export async function bulkAssignFees(data: {
             academic_period: data.academic_period,
             payment_due_day: data.payment_due_day,
         });
-        if (result.success) assignedCount++;
+
+        if (result.success) {
+            assignedCount++;
+        } else {
+            failedStudents.push({
+                student_id: student.id,
+                error: result.error || 'Bilinmeyen hata',
+            });
+        }
     }
 
-    return { success: true, assigned_count: assignedCount };
+    // Kısmi başarı: bazıları başarılı, bazıları değil
+    const allSucceeded = failedStudents.length === 0;
+    return {
+        success: allSucceeded,
+        assigned_count: assignedCount,
+        failed_students: failedStudents,
+        ...(failedStudents.length > 0 && {
+            error: `${failedStudents.length} öğrenciye ücret atanamadı. Lütfen detayları kontrol edin.`,
+        }),
+    };
 }
 /**
  * Öğrenci ücretini iptal eder.
- * - Bekleyen taksitleri iptal eder
- * - Opsiyonel: Ödenen tutarı kasa/banka hesabından düşer ve muhasebe iade kaydı oluşturur
+ *
+ * Tüm adımlar (bekleyen taksitleri iptal + opsiyonel iade muhasebesi +
+ * student_fees.status güncellemesi) tek bir PostgreSQL transaction içinde
+ * atomik olarak çalışır. Herhangi bir adımda hata oluşursa tüm işlem geri alınır.
  */
 export async function cancelStudentFee(
     feeId: string,
@@ -393,110 +429,62 @@ export async function cancelStudentFee(
     const { supabase, organizationId, user, error } = await getAuthContext();
     if (error || !organizationId || !user) return { success: false, error: error || 'Yetkilendirme hatası' };
 
-    // 1. Fee kaydını kontrol et
-    const { data: fee } = await supabase
-        .from('student_fees')
-        .select('id, status, student_id')
-        .eq('id', feeId)
-        .single();
-
-    if (!fee) return { success: false, error: 'Ücret kaydı bulunamadı.' };
-    if (fee.status === 'cancelled') return { success: false, error: 'Bu ücret zaten iptal edilmiş.' };
-
-    // 2. Tüm taksitleri çek
-    const { data: installments } = await supabase
-        .from('fee_installments')
-        .select('id, status')
-        .eq('fee_id', feeId);
-
-    // 3. Bekleyen taksitleri "cancelled" yap
-    if (installments && installments.length > 0) {
-        const pendingIds = installments
-            .filter(i => i.status !== 'paid')
-            .map(i => i.id);
-
-        if (pendingIds.length > 0) {
-            const { error: cancelError } = await supabase
-                .from('fee_installments')
-                .update({ status: 'cancelled' })
-                .in('id', pendingIds);
-
-            if (cancelError) {
-                return { success: false, error: 'Taksitler iptal edilemedi: ' + cancelError.message };
-            }
+    // İade yapılacaksa muhasebe kategorisini hazırla
+    let categoryId: string | null = null;
+    if (options?.refund && options?.refundAccountId) {
+        categoryId = await getOrCreateStudentFeeCategory(supabase, organizationId);
+        if (!categoryId) {
+            return { success: false, error: 'İade için muhasebe kategorisi oluşturulamadı.' };
         }
     }
 
-    // 4. İade işlemi (opsiyonel)
-    const refundedAmount = options?.refund
-        ? await processRefund(supabase, organizationId, user.id, fee.student_id, installments || [], options)
-        : 0;
-
-    // 5. Fee durumunu "cancelled" yap
-    const { error: updateError } = await supabase
-        .from('student_fees')
-        .update({
-            status: 'cancelled',
-            updated_at: new Date().toISOString(),
-            notes: options?.reason || undefined,
-        })
-        .eq('id', feeId);
-
-    if (updateError) return { success: false, error: updateError.message };
-    return { success: true, refundedAmount };
-}
-
-async function processRefund(
-    supabase: SupabaseClient,
-    organizationId: string,
-    userId: string,
-    studentId: string,
-    installments: Array<{ id: string; status: string }>,
-    options: { refundAccountId?: string; reason?: string }
-): Promise<number> {
-    const installmentIds = installments.map(i => i.id);
-    if (installmentIds.length === 0) return 0;
-
-    const { data: payments } = await supabase
-        .from('fee_payments')
-        .select('id, amount, account_id')
-        .in('installment_id', installmentIds);
-
-    if (!payments || payments.length === 0) return 0;
-
-    const refundedAmount = payments.reduce((sum, p) => sum + Number(p.amount), 0);
-    if (refundedAmount <= 0) return 0;
-
-    const refundAccountId = options.refundAccountId || payments[0].account_id;
-    const { data: student } = await supabase.from('profiles').select('full_name').eq('id', studentId).single();
-    const studentName = student?.full_name || 'Öğrenci';
-    const reasonText = options.reason ? ` (${options.reason})` : '';
-
-    const { data: category } = await supabase
-        .from('finance_categories')
-        .select('id')
-        .eq('organization_id', organizationId)
-        .eq('name', 'Öğrenci Ücreti')
-        .eq('type', 'income')
-        .maybeSingle();
-
-    if (category) {
-        await supabase.from('finance_transactions').insert({
-            organization_id: organizationId,
-            account_id: refundAccountId,
-            category_id: category.id,
-            type: 'expense',
-            amount: refundedAmount,
-            description: `${studentName} - Ücret iptali iadesi${reasonText}`,
-            transaction_date: new Date().toISOString(),
-            created_by: userId,
-        });
+    // İade için öğrenci adını al (RPC description için)
+    let studentName = 'Öğrenci';
+    if (options?.refund) {
+        const { data: feeData } = await supabase
+            .from('student_fees')
+            .select('student:profiles!student_id(full_name)')
+            .eq('id', feeId)
+            .single() as { data: { student?: { full_name?: string } } | null };
+        studentName = feeData?.student?.full_name || 'Öğrenci';
     }
-    return refundedAmount;
+
+    // Atomik RPC çağrısı — tüm iptal adımları tek transaction'da.
+    // NOT: cancel_student_fee_atomic yeni eklenmiş bir fonksiyon olduğundan
+    // Supabase'in otomatik tip dosyasına henüz yansımamıştır.
+    const { data: rpcResult, error: rpcError } = await (
+        supabase.rpc as unknown as (
+            fn: string,
+            args: Record<string, unknown>
+        ) => Promise<{ data: unknown; error: { message: string } | null }>
+    )('cancel_student_fee_atomic', {
+        p_fee_id: feeId,
+        p_organization_id: organizationId,
+        p_cancelled_by: user.id,
+        p_reason: options?.reason || null,
+        p_refund: options?.refund || false,
+        p_refund_account_id: options?.refundAccountId || null,
+        p_category_id: categoryId,
+        p_student_name: studentName,
+    });
+
+    if (rpcError) return { success: false, error: rpcError.message };
+    if (!rpcResult) return { success: false, error: 'RPC boş sonuç döndürdü.' };
+
+    const result = rpcResult as { success: boolean; refunded_amount?: number; error?: string };
+    if (!result.success) return { success: false, error: result.error || 'Ücret iptal edilemedi.' };
+
+    return { success: true, refundedAmount: result.refunded_amount ?? 0 };
 }
+
+// processRefund kaldırıldı — mantığı cancel_student_fee_atomic RPC'sine taşındı (T1).
 
 /**
- * Öğrenciye birden fazla hizmeti (sepeti) aynı anda atar. Kayıt modülünden esinlenilmiştir.
+ * Öğrenciye birden fazla hizmeti (sepeti) aynı anda atar.
+ *
+ * T2: Application Level Rollback (Node.js catch içinde silme işlemi) mantığı
+ * PostgreSQL RPC seviyesine (assign_multiple_services_atomic) taşınmıştır.
+ * Tüm işlemler tek bir veritabanı transactionu içerisinde gerçekleşir.
  */
 export async function assignMultipleServicesToStudent(data: {
     studentId: string;
@@ -521,15 +509,42 @@ export async function assignMultipleServicesToStudent(data: {
     if (error || !organizationId || !user) return { success: false, error: error || 'Yetkilendirme hatası' };
 
     try {
-        for (const service of data.services) {
-            await assignServiceToStudent(supabase, organizationId, user.id, data.studentId, data.classId || null, service as Record<string, unknown>, data.academicPeriod)
+        const { data: rpcResult, error: rpcError } = await (
+            supabase.rpc as unknown as (
+                fn: string,
+                args: Record<string, unknown>
+            ) => Promise<{ data: unknown; error: { message: string } | null }>
+        )('assign_multiple_services_atomic', {
+            p_organization_id: organizationId,
+            p_student_id: data.studentId,
+            p_class_id: data.classId || null,
+            p_academic_period: data.academicPeriod,
+            p_created_by: user.id,
+            p_services: data.services,
+        });
+
+        if (rpcError) {
+            logger.error('Multiple services assignment rpc error', { error: rpcError });
+            return { success: false, error: rpcError.message };
         }
-        return { success: true }
+
+        const result = rpcResult as { success: boolean; error?: string };
+        if (!result.success) {
+            return { success: false, error: result.error || 'Atama işlemi tamamlanamadı (RPC level).' };
+        }
+
+        return { success: true };
     } catch (err: unknown) {
-        return { success: false, error: err instanceof Error ? err.message : 'Beklenmedik hata' }
+        logger.error('assignMultipleServicesToStudent: Exception', { action: 'assignMultipleServicesToStudent' }, err);
+        return { success: false, error: err instanceof Error ? err.message : 'Beklenmedik hata' };
     }
 }
 
+/**
+ * Tek bir hizmeti öğrenciye atar: fee + taksit planı + (opsiyonel) peşinat kaydı.
+ *
+ * @returns Oluşturulan `student_fees.id` (rollback için üst fonksiyona iletilir)
+ */
 async function assignServiceToStudent(
     supabase: SupabaseClient,
     organizationId: string,
@@ -538,7 +553,7 @@ async function assignServiceToStudent(
     classId: string | null,
     service: Record<string, unknown>,
     academicPeriod = '2024-2025'
-): Promise<void> {
+): Promise<string> {
     const netAmount = calcNetAmount(service.unitPrice as number, (service.discountAmount as number) || 0, ((service.discountType as string) || 'fixed') as 'fixed' | 'percentage')
     const vatAmount = netAmount * ((service.vatRate as number) / 100)
     const totalAmountWithVat = netAmount + vatAmount
@@ -558,8 +573,11 @@ async function assignServiceToStudent(
             discount_reason: service.discountReason || null,
             vat_rate: service.vatRate,
             vat_amount: vatAmount,
-            net_amount: totalAmountWithVat,
-            installment_count: hasDownPayment ? mainInstallmentCount + 1 : mainInstallmentCount,
+            // net_amount = indirim sonrası KDV HARİÇ tutar
+            // (KDV dahil brüt = net_amount + vat_amount)
+            net_amount: netAmount,
+            // installment_count = sözleşmedeki taksit adedi (peşinat satırı dahil değil)
+            installment_count: mainInstallmentCount,
             academic_period: academicPeriod,
             status: 'active',
         })
@@ -596,12 +614,15 @@ async function assignServiceToStudent(
             }
         }
     }
+
+    // Oluşturulan fee ID'sini üst fonksiyona döndür (rollback desteği için)
+    return feeId;
 }
 
 /**
  * Toplu öğrencilere (ID dizisi) çoklu hizmet veya paket atamak için kullanılır.
- * Öğrencinin 'class_id'sini profiles üzerinden çeker ve Kayıt esnasındaki
- * KDV/Peşinat/Taksit bölme işlemlerinin birebir aynısını entegre eder.
+ *
+ * T9 Optimizasyonu: Döngü içindeki N adet profil sorgusu tek bir SELECT'e çökertildi.
  */
 export async function assignBulkServicesToStudents(
     studentIds: string[],
@@ -610,17 +631,47 @@ export async function assignBulkServicesToStudents(
     const { supabase, organizationId, user, error } = await getAuthContext();
     if (error || !organizationId || !user) return { success: false, error: error || 'Yetkilendirme hatası' };
 
+    // T9: Tüm profilleri tek sorguda çek (N+1 yerine 1 sorgu)
+    const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, class_id')
+        .in('id', studentIds);
+
+    // class_id eşleştirme tablosu oluştur
+    const classIdByStudentId = new Map(
+        (profiles || []).map(p => [p.id, p.class_id ?? null])
+    );
+
+    // Rollback için oluşturulan fee ID'lerini izle
+    const createdFeeIds: string[] = [];
+
     try {
         for (const studentId of studentIds) {
-            const { data: profile } = await supabase.from('profiles').select('class_id').eq('id', studentId).single()
-            const classId = profile?.class_id || null
+            const classId = classIdByStudentId.get(studentId) ?? null;
             for (const service of services) {
-                await assignServiceToStudent(supabase, organizationId, user.id, studentId, classId, service)
+                const feeId = await assignServiceToStudent(supabase, organizationId, user.id, studentId, classId, service);
+                createdFeeIds.push(feeId);
             }
         }
-        return { success: true }
+        return { success: true };
     } catch (err: unknown) {
-        logger.error('Toplu hizmet ataması başarısız', { action: 'assignBulkServicesToStudents' }, err)
-        return { success: false, error: err instanceof Error ? err.message : 'Beklenmedik hata' }
+        // Rollback: başarıyla oluşturulan tüm fee kayıtlarını sil.
+        // fee_installments ON DELETE CASCADE ile otomatik silinir.
+        if (createdFeeIds.length > 0) {
+            const { error: rollbackError } = await supabase
+                .from('student_fees')
+                .delete()
+                .in('id', createdFeeIds);
+
+            if (rollbackError) {
+                logger.error(
+                    'assignBulkServicesToStudents: rollback başarısız',
+                    { action: 'assignBulkServicesToStudents', createdFeeIds },
+                    rollbackError
+                );
+            }
+        }
+        logger.error('Toplu hizmet ataması başarısız', { action: 'assignBulkServicesToStudents' }, err);
+        return { success: false, error: err instanceof Error ? err.message : 'Beklenmedik hata' };
     }
 }

@@ -26,7 +26,7 @@ export async function getFinanceCategories(type?: 'income' | 'expense'): Promise
 
     const { data, error: fetchError } = await query;
     if (fetchError) return [];
-    return (data || []) as any; // Type defined in Promise return
+    return (data || []) as FinanceCategory[]; // Type defined in Promise return
 }
 
 /**
@@ -54,7 +54,7 @@ export async function createFinanceCategory(category: {
         .single();
 
     if (insertError) return { success: false, error: insertError.message };
-    return { success: true, data: data as any };
+    return { success: true, data: data as FinanceCategory };
 }
 
 /**
@@ -64,40 +64,63 @@ export async function updateFinanceCategory(
     categoryId: string,
     updates: { name?: string; icon?: string; sort_order?: number }
 ): Promise<{ success: boolean; error?: string }> {
-    const { supabase, error } = await getAuthContext();
-    if (error) return { success: false, error };
+    const { supabase, organizationId, error } = await getAuthContext();
+    if (error || !organizationId) return { success: false, error: error || 'Yetkilendirme hatası' };
 
     const { error: updateError } = await supabase
         .from('finance_categories')
         .update(updates)
-        .eq('id', categoryId);
+        .eq('id', categoryId)
+        .eq('organization_id', organizationId); // Çapraz kurum güvenlik filtresi
 
     if (updateError) return { success: false, error: updateError.message };
     return { success: true };
 }
 
 /**
- * Kategoriyi siler (sistem kategorileri silinemez).
+ * Kategoriyi siler (sistem kategorileri ve bağlı kayıtları olanlar silinemez).
  */
 export async function deleteFinanceCategory(categoryId: string): Promise<{ success: boolean; error?: string }> {
-    const { supabase, error } = await getAuthContext();
-    if (error) return { success: false, error };
+    const { supabase, organizationId, error } = await getAuthContext();
+    if (error || !organizationId) return { success: false, error: error || 'Yetkilendirme hatası' };
 
-    // Önce sistem kategorisi mi kontrol et
+    // Sistem kategorisi mi kontrol et
     const { data: category } = await supabase
         .from('finance_categories')
         .select('is_system')
         .eq('id', categoryId)
+        .eq('organization_id', organizationId) // Çapraz kurum güvenlik filtresi
         .single();
 
+    if (!category) return { success: false, error: 'Kategori bulunamadı.' };
     if (category?.is_system) {
         return { success: false, error: 'Sistem kategorileri silinemez.' };
+    }
+
+    // Bağlı kayıt kontrolü — cascade hatası önlenir
+    const [{ count: txCount }, { count: svcCount }] = await Promise.all([
+        supabase
+            .from('finance_transactions')
+            .select('id', { count: 'exact', head: true })
+            .eq('category_id', categoryId),
+        supabase
+            .from('finance_services')
+            .select('id', { count: 'exact', head: true })
+            .eq('category_id', categoryId),
+    ]);
+
+    if ((txCount || 0) > 0 || (svcCount || 0) > 0) {
+        return {
+            success: false,
+            error: 'Bu kategoriye bağlı işlem veya hizmet kaydı bulunduğundan silinemez.',
+        };
     }
 
     const { error: deleteError } = await supabase
         .from('finance_categories')
         .delete()
-        .eq('id', categoryId);
+        .eq('id', categoryId)
+        .eq('organization_id', organizationId); // Çapraz kurum güvenlik filtresi
 
     if (deleteError) return { success: false, error: deleteError.message };
     return { success: true };
@@ -147,7 +170,7 @@ export async function getFinanceTransactions(filters?: {
 
     const { data, count, error: fetchError } = await query;
     if (fetchError) return { data: [], count: 0 };
-    return { data: (data || []) as any, count: count || 0 };
+    return { data: (data || []) as FinanceTransaction[], count: count || 0 };
 }
 
 /**
@@ -203,17 +226,26 @@ export async function createFinanceTransaction(transaction: {
 
 /**
  * İşlemi soft delete yapar.
+ * Etkilenen satır 0 ise (işlem bulunamadı veya farklı kuruma ait) hata döner.
  */
 export async function deleteFinanceTransaction(transactionId: string): Promise<{ success: boolean; error?: string }> {
-    const { supabase, error } = await getAuthContext();
-    if (error) return { success: false, error };
+    const { supabase, organizationId, error } = await getAuthContext();
+    if (error || !organizationId) return { success: false, error: error || 'Yetkilendirme hatası' };
 
-    const { error: updateError } = await supabase
+    const { data: updated, error: updateError } = await supabase
         .from('finance_transactions')
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', transactionId);
+        .eq('id', transactionId)
+        .eq('organization_id', organizationId) // Çapraz kurum güvenlik filtresi
+        .select('id');
 
     if (updateError) return { success: false, error: updateError.message };
+
+    // Hiçbir satır güncellenmedi: işlem bulunamadı ya da farklı kuruma ait
+    if (!updated || updated.length === 0) {
+        return { success: false, error: 'İşlem bulunamadı veya silme yetkiniz yok.' };
+    }
+
     return { success: true };
 }
 

@@ -52,7 +52,8 @@ export function withApiHandler<T = unknown>(
         try {
             return await handler(request, ctx) as NextResponse
         } catch (e: unknown) {
-            const err = e instanceof Error ? e : new Error(typeof e === 'object' ? JSON.stringify(e) : String(e))
+            const message = e instanceof Error ? e.message : JSON.stringify(e)
+            const err = e instanceof Error ? e : new Error(message)
 
             Sentry.withScope((scope) => {
                 scope.setUser({ id: user.id, email: user.email })
@@ -86,7 +87,8 @@ export function withPublicApiHandler<T = unknown>(
         try {
             return await handler(request) as NextResponse
         } catch (e: unknown) {
-            const err = e instanceof Error ? e : new Error(typeof e === 'object' ? JSON.stringify(e) : String(e))
+            const message = e instanceof Error ? e.message : JSON.stringify(e)
+            const err = e instanceof Error ? e : new Error(message)
 
             Sentry.withScope((scope) => {
                 scope.setTag('route', routeName)

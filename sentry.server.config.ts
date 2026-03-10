@@ -10,7 +10,7 @@ Sentry.init({
     enabled: isSentryEnabled,
 
     // Tüm hataları yakala
-    tracesSampleRate: 1.0,
+    tracesSampleRate: 1,
 
     beforeSend(event) {
         return event

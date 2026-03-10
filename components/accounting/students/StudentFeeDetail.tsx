@@ -4,13 +4,15 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     ArrowLeft, Calendar, CreditCard, CheckCircle2, Clock,
-    AlertTriangle, XCircle, Receipt, Box, Plus
+    AlertTriangle, XCircle, Receipt, Box, Plus, Trash2
 } from 'lucide-react';
 import type { StudentFee, FeeInstallment, FeePayment } from '@/types/accounting';
+import { cancelFeePayment } from '@/lib/actions/fee-payments';
 import { CancelFeeDialog } from './CancelFeeDialog';
 import { PaymentRecordDialog } from './PaymentRecordDialog';
 import { FeeAssignmentDialog } from './FeeAssignmentDialog';
 import { ReceiptDownloadButton } from '@/components/accounting/receipt/ReceiptDownloadButton';
+import { toast } from 'sonner';
 
 interface StudentFeeDetailProps {
     fees: (StudentFee | null)[];
@@ -55,7 +57,8 @@ function getInstallmentStatusStyle(status: string) {
     }
 }
 
-export function StudentFeeDetail({ fees, installments, payments, currency, studentId }: Readonly<StudentFeeDetailProps>) { // NOSONAR
+export function StudentFeeDetail({ fees, installments, payments, currency, studentId }: Readonly<StudentFeeDetailProps>) {
+    // NOSONAR
     const router = useRouter();
     const isPending = false;
     const [showPaymentDialog, setShowPaymentDialog] = useState(false);
@@ -110,6 +113,24 @@ export function StudentFeeDetail({ fees, installments, payments, currency, stude
         setSelectedInstallmentId(installmentId);
         setSelectedInstallmentAmount(amount);
         setShowPaymentDialog(true);
+    };
+
+    const handleCancelPayment = async (paymentId: string) => {
+        if (!window.confirm('Bu tahsilatı iptal etmek istediğinize emin misiniz? Bu işlem geri alınamaz ve ilgili taksit durumu tekrar "bekliyor" olacaktır.')) {
+            return;
+        }
+
+        try {
+            const result = await cancelFeePayment(paymentId, 'Kullanıcı tarafından iptal edildi.');
+            if (result.success) {
+                toast.success('Tahsilat başarıyla iptal edildi.');
+                router.refresh();
+            } else {
+                toast.error(`İptal işlemi başarısız: ${result.error}`);
+            }
+        } catch (error: any) {
+            toast.error('Beklenmeyen bir hata oluştu.');
+        }
     };
 
     const cardClass = 'rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 p-6';
@@ -402,6 +423,13 @@ export function StudentFeeDetail({ fees, installments, payments, currency, stude
                                     </div>
                                     <div className="text-right flex flex-col items-end gap-1.5">
                                         <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => handleCancelPayment(payment.id)}
+                                                className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                                                title="Tahsilatı İptal Et / Geri Al"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                             {/* Makbuz indirme ikonu */}
                                             <ReceiptDownloadButton paymentId={payment.id} variant="icon" />
                                             <span className="text-[11px] uppercase tracking-wider font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2.5 py-1 rounded-md">
