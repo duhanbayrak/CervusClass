@@ -54,9 +54,11 @@ export function ServiceFormDialog({ service, currency, onClose }: Readonly<Servi
     const [unitPrice, setUnitPrice] = useState(() => {
         if (!service) return '';
         if (service.vat_included && service.vat_rate > 0) {
-            // DB'deki net fiyatı KDV dahil fiyata çevir
-            const gross = service.unit_price * (1 + service.vat_rate / 100);
-            return gross.toFixed(2);
+            // DB'deki net fiyatı KDV dahil fiyata çevir.
+            // Math.round kullanılır; .toFixed(2) floating point hatasıyla yanlış yuvarlama yapabilir.
+            // Örn: 4545.45 * 1.1 = 4999.995 → toFixed(2) = "4999.99" ❌ → Math.round = 5000 ✓
+            const gross = Math.round(service.unit_price * (1 + service.vat_rate / 100) * 100) / 100;
+            return gross.toString();
         }
         return service.unit_price?.toString() || '';
     });
@@ -99,8 +101,11 @@ export function ServiceFormDialog({ service, currency, onClose }: Readonly<Servi
         }
 
         startTransition(async () => {
-            // DB'ye her zaman KDV hariç net fiyat kaydedilir
-            const savedUnitPrice = vatIncluded && vat > 0 ? netPrice : price;
+            // DB'ye her zaman KDV hariç net fiyat kaydedilir.
+            // Math.round ile 2 ondalık basama yuvarla; floating point birikimini önler.
+            const savedUnitPrice = vatIncluded && vat > 0
+                ? Math.round(netPrice * 100) / 100
+                : price;
 
             if (service) {
                 // Güncelle
