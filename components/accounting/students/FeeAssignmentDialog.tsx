@@ -38,6 +38,8 @@ const serviceItemSchema = z.object({
     serviceName: z.string().optional(),
     unitPrice: z.coerce.number().min(0),
     vatRate: z.coerce.number().min(0).default(0),
+    /** Girilen birim fiyatın KDV dahil olup olmadığını belirtir */
+    vatIncluded: z.boolean().default(false),
     discountAmount: z.coerce.number().min(0).default(0),
     discountType: z.enum(['percentage', 'fixed']).optional().default('fixed'),
     discountReason: z.string().optional(),
@@ -47,9 +49,14 @@ const serviceItemSchema = z.object({
     startMonth: z.string().optional(),
     paymentDueDay: z.coerce.number().min(1).max(31).default(5),
 }).superRefine((data, ctx) => {
+    // vatIncluded=true ise girilen fiyat KDV dahildir; net fiyat geri hesaplanır
+    const basePrice = data.vatIncluded && data.vatRate > 0
+        ? data.unitPrice / (1 + data.vatRate / 100)
+        : data.unitPrice;
+
     const netAmount = data.discountType === 'percentage'
-        ? data.unitPrice - (data.unitPrice * (data.discountAmount / 100))
-        : data.unitPrice - data.discountAmount;
+        ? basePrice - (basePrice * (data.discountAmount / 100))
+        : basePrice - data.discountAmount;
 
     const vatAmount = netAmount * (data.vatRate / 100);
     const totalWithVat = netAmount + vatAmount;
@@ -148,6 +155,7 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
             serviceName: '',
             unitPrice: 0,
             vatRate: 0,
+            vatIncluded: false,
             discountAmount: 0,
             discountType: 'fixed',
             discountReason: '',
@@ -181,6 +189,14 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
     const executeSubmit = async (data: FormData) => {
         setMessage('');
 
+        // Sunucu her zaman KDV hariç unitPrice bekler; vatIncluded=true ise geri normalize et
+        const normalizedServices = data.services.map(s => {
+            if (s.vatIncluded && s.vatRate > 0) {
+                return { ...s, unitPrice: s.unitPrice / (1 + s.vatRate / 100) };
+            }
+            return s;
+        });
+
         if (mode === 'single') {
             if (!data.studentId) return setMessage("Hata: Öğrenci seçimi zorunludur.");
 
@@ -188,7 +204,7 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
                 studentId: data.studentId,
                 classId: data.classId || undefined,
                 academicPeriod: data.academicPeriod,
-                services: data.services
+                services: normalizedServices
             });
 
             if (res.success) {
@@ -209,7 +225,7 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
                     studentId: s.id,
                     classId: data.classId,
                     academicPeriod: data.academicPeriod,
-                    services: data.services
+                    services: normalizedServices
                 });
                 count++;
             }
@@ -233,6 +249,7 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
                 studentId: data.studentId,
                 serviceCount: data.services?.length,
                 academicPeriod: data.academicPeriod,
+                hasVatIncludedItems: data.services?.some(s => s.vatIncluded),
             },
         });
         startTransition(async () => {
@@ -280,12 +297,18 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
         let totalDownPayment = 0;
 
         watchServices.forEach(item => {
-            const price = Number(item.unitPrice) || 0;
+            const enteredPrice = Number(item.unitPrice) || 0;
+            const vatRate = item.vatRate || 0;
             const discount = Number(item.discountAmount) || 0;
             const isPercent = item.discountType === 'percentage';
 
-            const netPrice = isPercent ? price - (price * (discount / 100)) : price - discount;
-            const vat = netPrice * ((item.vatRate || 0) / 100);
+            // vatIncluded=true ise girilen fiyat KDV dahildir; net fiyatı geri hesapla
+            const basePrice = item.vatIncluded && vatRate > 0
+                ? enteredPrice / (1 + vatRate / 100)
+                : enteredPrice;
+
+            const netPrice = isPercent ? basePrice - (basePrice * (discount / 100)) : basePrice - discount;
+            const vat = netPrice * (vatRate / 100);
 
             totalNet += netPrice;
             totalVat += vat;
@@ -308,8 +331,14 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/5 flex-shrink-0">
                     <div>
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Çoklu Hizmet Ata</h3>
-                        <p className="text-sm text-gray-500 mt-1">Öğrenciye (veya sınıfa) ait taksitli hizmet paketlerini konfigüre edin.</p>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                            {defaultStudentId ? 'Hizmet Ekle' : 'Çoklu Hizmet Ata'}
+                        </h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                            {defaultStudentId
+                                ? 'Öğrenciye taksitli hizmet paketi ekleyin.'
+                                : 'Öğrenciye (veya sınıfa) ait taksitli hizmet paketlerini konfigüre edin.'}
+                        </p>
                     </div>
                     <button
                         onClick={onClose}
@@ -470,7 +499,20 @@ export function FeeAssignmentDialog({ onClose, currency, defaultStudentId }: Rea
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <div>
-                                                        <label htmlFor={`unitPrice-${index}`} className={labelClass}>Birim Fiyat</label>
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <label htmlFor={`unitPrice-${index}`} className={labelClass}>
+                                                                {watchServices[index]?.vatIncluded ? 'Birim Fiyat (KDV Dahil)' : 'Birim Fiyat'}
+                                                            </label>
+                                                            <label htmlFor={`vatIncluded-${index}`} className="flex items-center gap-1 cursor-pointer select-none">
+                                                                <input
+                                                                    id={`vatIncluded-${index}`}
+                                                                    type="checkbox"
+                                                                    {...register(`services.${index}.vatIncluded`)}
+                                                                    className="w-3 h-3 rounded border-gray-300 text-blue-600 cursor-pointer"
+                                                                />
+                                                                <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">KDV Dahil</span>
+                                                            </label>
+                                                        </div>
                                                         <div className="relative">
                                                             <input id={`unitPrice-${index}`} type="number" step="0.01" {...register(`services.${index}.unitPrice`)} className={`${inputClass} pr-8`} />
                                                             <span className="absolute right-3 top-2 text-xs text-muted-foreground">{currency}</span>
