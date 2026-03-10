@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import * as Sentry from '@sentry/nextjs';
 import {
     ArrowLeft, Calendar, CreditCard, CheckCircle2, Clock,
     AlertTriangle, XCircle, Receipt, Box, Plus, Trash2
@@ -116,9 +117,15 @@ export function StudentFeeDetail({ fees, installments, payments, currency, stude
     };
 
     const handleCancelPayment = async (paymentId: string) => {
-        if (!window.confirm('Bu tahsilatı iptal etmek istediğinize emin misiniz? Bu işlem geri alınamaz ve ilgili taksit durumu tekrar "bekliyor" olacaktır.')) {
+        if (!globalThis.confirm('Bu tahsilatı iptal etmek istediğinize emin misiniz? Bu işlem geri alınamaz ve ilgili taksit durumu tekrar "bekliyor" olacaktır.')) {
             return;
         }
+
+        Sentry.addBreadcrumb({
+            message: `Tahsilat iptal ediliyor: ${paymentId}`,
+            category: 'action.payment',
+            level: 'info',
+        });
 
         try {
             const result = await cancelFeePayment(paymentId, 'Kullanıcı tarafından iptal edildi.');
@@ -128,7 +135,12 @@ export function StudentFeeDetail({ fees, installments, payments, currency, stude
             } else {
                 toast.error(`İptal işlemi başarısız: ${result.error}`);
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
+            Sentry.withScope((scope) => {
+                scope.setTags({ feature: 'fee-payment', action: 'cancel' });
+                scope.setExtra('paymentId', paymentId);
+                Sentry.captureException(error);
+            });
             toast.error('Beklenmeyen bir hata oluştu.');
         }
     };

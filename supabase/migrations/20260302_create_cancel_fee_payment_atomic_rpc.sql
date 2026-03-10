@@ -28,6 +28,9 @@ DECLARE
     v_new_paid_amount   NUMERIC;
     v_new_status        TEXT;
     v_fee_status        TEXT;
+
+    C_SUCCESS           CONSTANT TEXT := 'success';
+    C_ERROR             CONSTANT TEXT := 'error';
 BEGIN
     -- ---- 0. Security (RLS) Kontrolü ----
     IF p_organization_id::text != (auth.jwt()->>'organization_id')::text THEN
@@ -42,7 +45,7 @@ BEGIN
       AND organization_id = p_organization_id;
 
     IF NOT FOUND THEN
-        RETURN jsonb_build_object('success', false, 'error', 'İptal edilecek tahsilat kaydı bulunamadı.');
+        RETURN jsonb_build_object(C_SUCCESS, false, C_ERROR, 'İptal edilecek tahsilat kaydı bulunamadı.');
     END IF;
 
     -- ---- 2. Tahsilatı (fee_payments) ve İlgili Muhasebe Kaydını Temizle ----
@@ -109,11 +112,11 @@ BEGIN
     END IF;
 
     -- ---- Başarılı Dönüş ----
-    RETURN jsonb_build_object('success', true);
+    RETURN jsonb_build_object(C_SUCCESS, true);
 
 EXCEPTION
     WHEN OTHERS THEN
-        RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+        RETURN jsonb_build_object(C_SUCCESS, false, C_ERROR, SQLERRM);
 END;
 $$;
 

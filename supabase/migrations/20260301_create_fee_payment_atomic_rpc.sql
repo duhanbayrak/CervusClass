@@ -40,6 +40,9 @@ DECLARE
     v_all_paid          BOOLEAN;
     v_subtotal          NUMERIC;
     v_description       TEXT;
+
+    C_SUCCESS           CONSTANT TEXT := 'success';
+    C_ERROR             CONSTANT TEXT := 'error';
 BEGIN
     -- ---- 0. Security (RLS) Kontrolü ----
     IF p_organization_id::text != (auth.jwt()->>'organization_id')::text THEN
@@ -57,13 +60,13 @@ BEGIN
           AND organization_id = p_organization_id;
 
         IF NOT FOUND THEN
-            RETURN jsonb_build_object('success', false, 'error', 'Taksit kaydı bulunamadı.');
+            RETURN jsonb_build_object(C_SUCCESS, false, C_ERROR, 'Taksit kaydı bulunamadı.');
         END IF;
 
         IF p_amount > v_remaining THEN
             RETURN jsonb_build_object(
-                'success', false,
-                'error', format(
+                C_SUCCESS, false,
+                C_ERROR, format(
                     'Tahsilat tutarı aşımı! Bu taksit için en fazla %s ödeme alınabilir.',
                     to_char(v_remaining, 'FM999G999G990D00')
                 )
@@ -180,7 +183,7 @@ BEGIN
 
     -- ---- Başarılı ----
     RETURN jsonb_build_object(
-        'success',    true,
+        C_SUCCESS,    true,
         'payment_id', v_payment_id
     );
 
@@ -188,8 +191,8 @@ EXCEPTION
     WHEN OTHERS THEN
         -- PostgreSQL transaction zaten otomatik rollback yapar.
         RETURN jsonb_build_object(
-            'success', false,
-            'error',   SQLERRM
+            C_SUCCESS, false,
+            C_ERROR,   SQLERRM
         );
 END;
 $$;

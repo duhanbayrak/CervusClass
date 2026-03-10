@@ -31,6 +31,10 @@ DECLARE
     v_fee_student_id    UUID;
     v_refunded_amount   NUMERIC := 0;
     v_reason_text       TEXT;
+
+    C_SUCCESS           CONSTANT TEXT := 'success';
+    C_ERROR             CONSTANT TEXT := 'error';
+    C_CANCELLED         CONSTANT TEXT := 'cancelled';
 BEGIN
     -- RLS Güvenlik Kontrolü (Yetki Atlatmayı Önlemek İçin)
     IF p_organization_id::text != (auth.jwt()->>'organization_id')::text THEN
@@ -45,20 +49,20 @@ BEGIN
       AND organization_id = p_organization_id;
 
     IF NOT FOUND THEN
-        RETURN jsonb_build_object('success', false, 'error', 'Ücret kaydı bulunamadı.');
+        RETURN jsonb_build_object(C_SUCCESS, false, C_ERROR, 'Ücret kaydı bulunamadı.');
     END IF;
 
-    IF v_fee_status = 'cancelled' THEN
-        RETURN jsonb_build_object('success', false, 'error', 'Bu ücret zaten iptal edilmiş.');
+    IF v_fee_status = C_CANCELLED THEN
+        RETURN jsonb_build_object(C_SUCCESS, false, C_ERROR, 'Bu ücret zaten iptal edilmiş.');
     END IF;
 
     -- ---- 2. Bekleyen / kısmi taksitleri iptal et ----
     UPDATE fee_installments
     SET
-        status     = 'cancelled',
+        status     = C_CANCELLED,
         updated_at = now()
     WHERE fee_id = p_fee_id
-      AND status NOT IN ('paid', 'cancelled');
+      AND status NOT IN ('paid', C_CANCELLED);
 
     -- ---- 3. İade işlemi (opsiyonel) ----
     IF p_refund AND p_refund_account_id IS NOT NULL AND p_category_id IS NOT NULL THEN
@@ -109,7 +113,7 @@ BEGIN
     -- ---- 4. student_fees.status = 'cancelled' ----
     UPDATE student_fees
     SET
-        status     = 'cancelled',
+        status     = C_CANCELLED,
         notes      = CASE
                          WHEN p_reason IS NOT NULL THEN p_reason
                          ELSE notes
@@ -119,7 +123,7 @@ BEGIN
 
     -- ---- Başarılı ----
     RETURN jsonb_build_object(
-        'success',          true,
+        C_SUCCESS,          true,
         'refunded_amount',  v_refunded_amount
     );
 
@@ -127,8 +131,8 @@ EXCEPTION
     WHEN OTHERS THEN
         -- PostgreSQL transaction otomatik rollback yapar.
         RETURN jsonb_build_object(
-            'success', false,
-            'error',   SQLERRM
+            C_SUCCESS, false,
+            C_ERROR,   SQLERRM
         );
 END;
 $$;

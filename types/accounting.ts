@@ -10,7 +10,7 @@ export type PaymentMethod = 'cash' | 'bank_transfer' | 'credit_card' | 'other';
 /** Hesap tipi seçenekleri */
 export type AccountType = 'cash' | 'bank' | 'pos';
 
-/** İşlem tipi seçenekleri. TODO: 'transfer' tipi DB'de ve UI'da tam olarak implemente edilmemiştir. */
+/** İşlem tipi seçenekleri. 'transfer' tipi henüz aktif kullanımda değildir; ilerleyen sürümlerde desteklenecektir. */
 export type TransactionType = 'income' | 'expense' | 'transfer';
 
 /** Kategori tipi seçenekleri */

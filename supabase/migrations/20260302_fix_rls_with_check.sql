@@ -11,17 +11,34 @@
 --        ekleyebilir / güncelleyebilir.
 -- ============================================================
 
+-- ============================================================
+-- Yardımcı: Admin veya super_admin kontrolü
+-- 'admin' ve 'super_admin' literallerini tek noktada tutar;
+-- tüm RLS policy'leri bu fonksiyonu kullanır.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.is_admin_or_super_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $$
+    SELECT get_auth_role() IN ('admin', 'super_admin')
+$$;
+
+REVOKE ALL ON FUNCTION public.is_admin_or_super_admin FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_admin_or_super_admin TO authenticated;
+
 -- 1. finance_accounts
 DROP POLICY IF EXISTS "Admin manage finance accounts" ON "finance_accounts";
 CREATE POLICY "Admin manage finance accounts" ON "finance_accounts"
     FOR ALL
     USING (
         organization_id = get_auth_org_id()
-        AND get_auth_role() IN ('admin', 'super_admin')
+        AND public.is_admin_or_super_admin()
     )
     WITH CHECK (
         organization_id = get_auth_org_id()
-        AND get_auth_role() IN ('admin', 'super_admin')
+        AND public.is_admin_or_super_admin()
     );
 
 -- 2. finance_categories
@@ -30,11 +47,11 @@ CREATE POLICY "Admin manage finance categories" ON "finance_categories"
     FOR ALL
     USING (
         organization_id = get_auth_org_id()
-        AND get_auth_role() IN ('admin', 'super_admin')
+        AND public.is_admin_or_super_admin()
     )
     WITH CHECK (
         organization_id = get_auth_org_id()
-        AND get_auth_role() IN ('admin', 'super_admin')
+        AND public.is_admin_or_super_admin()
     );
 
 -- 3. finance_transactions
@@ -43,11 +60,11 @@ CREATE POLICY "Admin manage finance transactions" ON "finance_transactions"
     FOR ALL
     USING (
         organization_id = get_auth_org_id()
-        AND get_auth_role() IN ('admin', 'super_admin')
+        AND public.is_admin_or_super_admin()
     )
     WITH CHECK (
         organization_id = get_auth_org_id()
-        AND get_auth_role() IN ('admin', 'super_admin')
+        AND public.is_admin_or_super_admin()
     );
 
 -- 4. student_fees
@@ -56,11 +73,11 @@ CREATE POLICY "Admin manage student fees" ON "student_fees"
     FOR ALL
     USING (
         organization_id = get_auth_org_id()
-        AND get_auth_role() IN ('admin', 'super_admin')
+        AND public.is_admin_or_super_admin()
     )
     WITH CHECK (
         organization_id = get_auth_org_id()
-        AND get_auth_role() IN ('admin', 'super_admin')
+        AND public.is_admin_or_super_admin()
     );
 
 -- 5. fee_installments
@@ -69,11 +86,11 @@ CREATE POLICY "Admin manage fee installments" ON "fee_installments"
     FOR ALL
     USING (
         organization_id = get_auth_org_id()
-        AND get_auth_role() IN ('admin', 'super_admin')
+        AND public.is_admin_or_super_admin()
     )
     WITH CHECK (
         organization_id = get_auth_org_id()
-        AND get_auth_role() IN ('admin', 'super_admin')
+        AND public.is_admin_or_super_admin()
     );
 
 -- 6. fee_payments
@@ -82,9 +99,9 @@ CREATE POLICY "Admin manage fee payments" ON "fee_payments"
     FOR ALL
     USING (
         organization_id = get_auth_org_id()
-        AND get_auth_role() IN ('admin', 'super_admin')
+        AND public.is_admin_or_super_admin()
     )
     WITH CHECK (
         organization_id = get_auth_org_id()
-        AND get_auth_role() IN ('admin', 'super_admin')
+        AND public.is_admin_or_super_admin()
     );

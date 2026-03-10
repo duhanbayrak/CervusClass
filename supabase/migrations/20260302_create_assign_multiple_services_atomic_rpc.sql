@@ -53,6 +53,11 @@ DECLARE
     v_dp_installment_id UUID;
     v_category_id       UUID;
     v_student_name      TEXT;
+
+    C_SUCCESS           CONSTANT TEXT := 'success';
+    C_ERROR             CONSTANT TEXT := 'error';
+    C_INCOME            CONSTANT TEXT := 'income';
+    C_CATEGORY_NAME     CONSTANT TEXT := 'Öğrenci Ücreti';
 BEGIN
     -- ---- 0. Security (RLS) Kontrolü ----
     IF p_organization_id::text != (auth.jwt()->>'organization_id')::text THEN
@@ -68,13 +73,13 @@ BEGIN
     -- Bu fonksiyon dışarıda bir TypeScript yardımcı ile halledilebilir ama biz burada basitçe select yapıyoruz.
     SELECT id INTO v_category_id 
     FROM finance_categories 
-    WHERE organization_id = p_organization_id AND name = 'Öğrenci Ücreti' AND type = 'income'
+    WHERE organization_id = p_organization_id AND name = C_CATEGORY_NAME AND type = C_INCOME
     LIMIT 1;
 
     -- Eğer bulunamadıysa insert edelim (RPC içinde yapılabilir)
     IF v_category_id IS NULL THEN
         INSERT INTO finance_categories (organization_id, name, type, icon)
-        VALUES (p_organization_id, 'Öğrenci Ücreti', 'income', '🎓')
+        VALUES (p_organization_id, C_CATEGORY_NAME, C_INCOME, '🎓')
         RETURNING id INTO v_category_id;
     END IF;
 
@@ -150,7 +155,7 @@ BEGIN
                 description, transaction_date, created_by
             ) VALUES (
                 p_organization_id, v_down_payment_acc, v_category_id, (v_service->>'serviceId')::UUID,
-                'income', v_down_payment, 
+                C_INCOME, v_down_payment, 
                 CASE WHEN v_vat_rate > 0 THEN ROUND((v_down_payment / (1 + v_vat_rate / 100)), 2) ELSE v_down_payment END,
                 v_vat_rate,
                 CASE WHEN v_vat_rate > 0 THEN ROUND((v_down_payment - ROUND((v_down_payment / (1 + v_vat_rate / 100)), 2)), 2) ELSE 0 END,
@@ -217,10 +222,10 @@ BEGIN
 
     END LOOP;
 
-    RETURN jsonb_build_object('success', true);
+    RETURN jsonb_build_object(C_SUCCESS, true);
 EXCEPTION
     WHEN OTHERS THEN
-        RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+        RETURN jsonb_build_object(C_SUCCESS, false, C_ERROR, SQLERRM);
 END;
 $$;
 
