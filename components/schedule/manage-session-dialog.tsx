@@ -12,7 +12,7 @@ import {
 import { approveSession, cancelSession, assignStudentToSession } from "@/lib/actions/study-session"
 import { updateStudySessionStatus } from "@/lib/actions/study-session-admin"
 import { getStudents } from "@/lib/actions/student"
-import { Check, X, Ban } from "lucide-react"
+import { Check, Ban } from "lucide-react"
 import { useState, useEffect } from "react"
 
 import { toast } from "sonner"
@@ -77,7 +77,7 @@ export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Ma
                 toast.success("Öğrenci başarıyla atandı")
                 onClose()
             }
-        } catch (e) { toast.error("Hata oluştu") }
+        } catch { toast.error("Hata oluştu") }
         finally { setLoading(false) }
     }
 
@@ -90,7 +90,7 @@ export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Ma
                 toast.success("Talep onaylandı")
                 onClose()
             }
-        } catch (e) { toast.error("Hata oluştu") }
+        } catch { toast.error("Hata oluştu") }
         finally { setLoading(false) }
     }
 
@@ -104,7 +104,7 @@ export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Ma
                 toast.success("Talep silindi")
                 onClose()
             }
-        } catch (e) { toast.error("Hata oluştu") }
+        } catch { toast.error("Hata oluştu") }
         finally { setLoading(false) }
     }
 
@@ -117,7 +117,7 @@ export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Ma
                 toast.success("Durum güncellendi")
                 onClose()
             }
-        } catch (e) {
+        } catch {
             toast.error("Hata oluştu")
         }
         finally { setLoading(false) }
@@ -170,7 +170,7 @@ export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Ma
                         <>
                             <div className="flex flex-col gap-1">
                                 <span className="text-sm text-muted-foreground">Öğrenci</span>
-                                <span className="font-medium text-lg">{session.status === 'available' ? '-' : studentName}</span>
+                                <span className="font-medium text-lg">{studentName}</span>
                             </div>
 
                             {session.topic && (

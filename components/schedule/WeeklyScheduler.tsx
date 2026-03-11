@@ -29,6 +29,10 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
     const [startDate, setStartDate] = useState(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        // Haftanın Pazartesi'sine git (Pazar=0 → -6, diğerleri → 1-day)
+        const day = today.getDay();
+        const diff = day === 0 ? -6 : 1 - day;
+        today.setDate(today.getDate() + diff);
         return today;
     });
 
@@ -107,6 +111,9 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
     const handleToday = () => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        const day = today.getDay();
+        const diff = day === 0 ? -6 : 1 - day;
+        today.setDate(today.getDate() + diff);
         setStartDate(today);
     }
 
