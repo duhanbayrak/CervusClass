@@ -124,11 +124,11 @@ export function BookSessionDialog({ userId }: Readonly<{ userId: string }>) {
     const handleEventClick = (event: ScheduleEvent | StudySessionEvent) => {
         // Only allow clicking 'available' study sessions
         if ('scheduled_at' in event) {
-            const session = event as StudySessionEvent
+            const session = event as StudySessionEvent // NOSONAR - narrowed by 'scheduled_at' check
             
             // Çakışma kontrolü Frontend tarafında (öğretmenin veya öğrencinin dersi varsa engelle)
             const sessionStart = new Date(session.scheduled_at).getTime()
-            const sessionEnd = new Date(session.end_time || sessionStart + 60*60*1000).getTime()
+            const sessionEnd = session.end_time ? new Date(session.end_time).getTime() : sessionStart + 60 * 60 * 1000
             const dayOfWeek = new Date(session.scheduled_at).getDay() || 7
 
             const hasConflict = events.some(e => {
@@ -243,7 +243,9 @@ export function BookSessionDialog({ userId }: Readonly<{ userId: string }>) {
                             ) : (
                                 <div
                                     className="flex-1 border rounded-md overflow-hidden min-h-0 relative bg-white dark:bg-slate-950"
+                                    role="presentation"
                                     onClick={() => setSelectedSessions([])}
+                                    onKeyDown={(e) => { if (e.key === 'Escape') setSelectedSessions([]) }}
 
                                 >
                                     <WeeklyScheduler

@@ -3,7 +3,7 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAuthContext } from '@/lib/auth-context'
 import { handleError } from '@/lib/utils/error'
-import { ScheduleEvent } from '@/types/schedule'
+
 
 export async function getStudentClasses() {
     try {

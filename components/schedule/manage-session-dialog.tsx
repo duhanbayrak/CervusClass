@@ -43,7 +43,7 @@ interface ManageSessionDialogProps {
     onClose: () => void
 }
 
-export function ManageSessionDialog({ session, open, onOpenChange, onClose }: ManageSessionDialogProps) {
+export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Readonly<ManageSessionDialogProps>) {
     const [loading, setLoading] = useState(false)
     const [students, setStudents] = useState<Profile[]>([])
     const [selectedStudentId, setSelectedStudentId] = useState<string>('')

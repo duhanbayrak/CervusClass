@@ -12,33 +12,15 @@ export default async function StudentSchedulePage() {
 
     if (!profile?.class_id) return <div>Sınıf bilginiz bulunamadı.</div>
 
-    const [scheduleResponse, studySessionsResponse] = await Promise.all([
-        supabase
-            .from('schedule')
-            .select(`
-                *,
-                courses ( name, code ),
-                classes ( name ),
-                profiles ( full_name ) 
-            `)
-            .eq('class_id', profile.class_id),
-
-        supabase
-            .from('study_sessions')
-            .select(`
-                *,
-                profiles:teacher_id ( full_name ),
-                teacher:teacher_id ( full_name ),
-                study_session_statuses ( name )
-            `)
-            .eq('student_id', user.id)
-    ]);
-
-    const events = scheduleResponse.data;
-    const studySessions = studySessionsResponse.data?.filter((s: any) => {
-        const status = s.study_session_statuses?.name || s.status_legacy;
-        return status !== 'rejected' && status !== 'cancelled';
-    });
+    const { data: events } = await supabase
+        .from('schedule')
+        .select(`
+            *,
+            courses ( name, code ),
+            classes ( name ),
+            profiles ( full_name ) 
+        `)
+        .eq('class_id', profile.class_id);
 
     return (
         <div className="space-y-6 h-full">
