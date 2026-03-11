@@ -9,12 +9,32 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { approveSession, cancelSession } from "@/lib/actions/study-session"
+import { approveSession, cancelSession, assignStudentToSession } from "@/lib/actions/study-session"
 import { updateStudySessionStatus } from "@/lib/actions/study-session-admin"
+import { getStudents } from "@/lib/actions/student"
 import { Check, Ban } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+
 import { toast } from "sonner"
 import { StudySessionEvent } from "@/types/schedule";
+import { Profile } from "@/types/database"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+
+
+const SESSION_STATUS_LABELS: Record<string, string> = {
+    available: 'Müsait (Talep Bekleniyor)',
+    pending: 'Onay Bekliyor',
+    approved: 'Onaylandı',
+    completed: 'Tamamlandı',
+    no_show: 'Gelmedi',
+    cancelled: 'İptal Edildi',
+    rejected: 'Reddedildi',
+}
+
+function getSessionStatusLabel(status: string): string {
+    return SESSION_STATUS_LABELS[status] ?? status
+}
 
 interface ManageSessionDialogProps {
     session: StudySessionEvent | null
@@ -23,48 +43,86 @@ interface ManageSessionDialogProps {
     onClose: () => void
 }
 
-const SESSION_STATUS_LABELS: Record<string, string> = {
-    available: 'Müsait (Talep Bekleniyor)',
-    pending: 'Onay Bekliyor',
-    approved: 'Onaylandı',
-    completed: 'Tamamlandı',
-    no_show: 'Gelmedi',
-}
-
-function getSessionStatusLabel(status: string): string {
-    return SESSION_STATUS_LABELS[status] ?? status
-}
-
-async function executeSessionAction(
-    action: () => Promise<{ error?: string } | null | undefined>,
-    successMsg: string,
-    setLoading: (v: boolean) => void,
-    onClose: () => void
-): Promise<void> {
-    setLoading(true)
-    try {
-        const res = await action()
-        if (res?.error) toast.error(res.error)
-        else { toast.success(successMsg); onClose() }
-    } catch { toast.error("Hata oluştu") }
-    finally { setLoading(false) }
-}
-
-export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Readonly<ManageSessionDialogProps>) { // NOSONAR
+export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Readonly<ManageSessionDialogProps>) {
     const [loading, setLoading] = useState(false)
+    const [students, setStudents] = useState<Profile[]>([])
+    const [selectedStudentId, setSelectedStudentId] = useState<string>('')
+    const [topic, setTopic] = useState<string>('')
+
+    useEffect(() => {
+        if (session?.status === 'available' && open) {
+            getStudents({ page: 1, limit: 100 }).then(res => {
+                if (res.success) setStudents((res.data as any).students ?? [])
+            })
+        }
+        if (!open) {
+            setSelectedStudentId('')
+            setTopic('')
+        }
+    }, [session?.status, open])
+
 
     if (!session) return null;
 
-    const runAction = (action: () => Promise<{ error?: string } | null | undefined>, successMsg: string) =>
-        executeSessionAction(action, successMsg, setLoading, onClose)
-
-    const handleApprove = () => runAction(() => approveSession(session.id), "Talep onaylandı")
-    const handleReject = () => {
-        if (!confirm("Bu talebi reddetmek/silmek istediğinize emin misiniz?")) return Promise.resolve()
-        return runAction(() => cancelSession(session.id), "Talep silindi")
+    const handleAssign = async () => {
+        if (!selectedStudentId) {
+            toast.error("Lütfen bir öğrenci seçin")
+            return
+        }
+        setLoading(true)
+        try {
+            const res = await assignStudentToSession(session.id, selectedStudentId, topic)
+            if (res.error) toast.error(res.error)
+            else {
+                toast.success("Öğrenci başarıyla atandı")
+                onClose()
+            }
+        } catch { toast.error("Hata oluştu") }
+        finally { setLoading(false) }
     }
-    const handleStatusUpdate = (newStatus: 'completed' | 'no_show') =>
-        runAction(() => updateStudySessionStatus(session.id, newStatus), "Durum güncellendi")
+
+    const handleApprove = async () => {
+        setLoading(true)
+        try {
+            const res = await approveSession(session.id)
+            if (res.error) toast.error(res.error)
+            else {
+                toast.success("Talep onaylandı")
+                onClose()
+            }
+        } catch { toast.error("Hata oluştu") }
+        finally { setLoading(false) }
+    }
+
+    const handleReject = async () => {
+        if (!confirm("Bu talebi reddetmek/silmek istediğinize emin misiniz?")) return;
+        setLoading(true)
+        try {
+            const res = await cancelSession(session.id)
+            if (res.error) toast.error(res.error)
+            else {
+                toast.success("Talep silindi")
+                onClose()
+            }
+        } catch { toast.error("Hata oluştu") }
+        finally { setLoading(false) }
+    }
+
+    const handleStatusUpdate = async (newStatus: 'completed' | 'no_show') => {
+        setLoading(true)
+        try {
+            const res = await updateStudySessionStatus(session.id, newStatus)
+            if (res?.error) toast.error(res.error)
+            else {
+                toast.success("Durum güncellendi")
+                onClose()
+            }
+        } catch {
+            toast.error("Hata oluştu")
+        }
+        finally { setLoading(false) }
+
+    }
 
     const studentName = session.profiles?.full_name || "Öğrenci";
     const dateStr = session.scheduled_at ? new Date(session.scheduled_at).toLocaleString('tr-TR') : '';
@@ -84,16 +142,45 @@ export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Re
                 </DialogHeader>
 
                 <div className="py-4 space-y-4">
-                    <div className="flex flex-col gap-1">
-                        <span className="text-sm text-muted-foreground">Öğrenci</span>
-                        <span className="font-medium text-lg">{session.status === 'available' ? '-' : studentName}</span>
-                    </div>
+                    {session.status === 'available' ? (
+                        <>
+                            <div className="flex flex-col gap-2">
+                                <span className="text-sm font-medium">Öğrenci Seçin</span>
+                                <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Öğrenci seçin..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {students.map(s => (
+                                            <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <span className="text-sm font-medium">Konu (Opsiyonel)</span>
+                                <Input 
+                                    placeholder="Etüt konusu" 
+                                    value={topic} 
+                                    onChange={(e) => setTopic(e.target.value)} 
+                                />
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-sm text-muted-foreground">Öğrenci</span>
+                                <span className="font-medium text-lg">{studentName}</span>
+                            </div>
 
-                    {session.topic && (
-                        <div className="flex flex-col gap-1 w-full overflow-hidden">
-                            <span className="text-sm text-muted-foreground shrink-0">Konu</span>
-                            <span className="font-medium break-all whitespace-pre-wrap">{session.topic}</span>
-                        </div>
+                            {session.topic && (
+                                <div className="flex flex-col gap-1 w-full overflow-hidden">
+                                    <span className="text-sm text-muted-foreground shrink-0">Konu</span>
+                                    <span className="font-medium break-all whitespace-pre-wrap">{session.topic}</span>
+                                </div>
+                            )}
+                        </>
+
                     )}
 
                     <div className="flex flex-col gap-1">
@@ -113,6 +200,12 @@ export function ManageSessionDialog({ session, open, onOpenChange, onClose }: Re
                     )}
 
                     <div className="flex gap-2 justify-end w-full sm:w-auto">
+                        {session.status === 'available' && (
+                            <Button onClick={handleAssign} isLoading={loading} className="bg-primary hover:bg-primary/90">
+                                Kaydet ve Ata
+                            </Button>
+                        )}
+
                         {isApprovable && (
                             <Button onClick={handleApprove} isLoading={loading} className="bg-green-600 hover:bg-green-700">
                                 Onayla

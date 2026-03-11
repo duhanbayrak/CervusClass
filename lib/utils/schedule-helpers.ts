@@ -26,7 +26,8 @@ export const getEventClasses = (
     event: ScheduleEvent | StudySessionEvent,
     isStudySession: boolean,
     currentUserId?: string,
-    role?: 'admin' | 'teacher' | 'student'
+    role?: 'admin' | 'teacher' | 'student',
+    hasConflict?: boolean
 ) => {
     // 1. Etüt Renkleri (Study Sessions)
     if (isStudySession) {
@@ -36,6 +37,14 @@ export const getEventClasses = (
 
         switch (s.status) {
             case 'available': // Boş Slot
+                if (hasConflict) {
+                    return {
+                        container: "bg-red-500/20 border-2 border-dashed border-red-500/50 opacity-70 cursor-not-allowed",
+                        title: "text-red-900 font-semibold",
+                        subtitle: "text-red-700",
+                        icon: "text-red-600"
+                    };
+                }
                 return {
                     container: "bg-emerald-50 border-2 border-dashed border-emerald-400 opacity-90 hover:opacity-100",
                     title: "text-emerald-900 font-semibold",
