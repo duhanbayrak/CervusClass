@@ -309,7 +309,7 @@ export function WeeklyScheduler({ events, studySessions = [], role, onDelete, on
 
                                     {/* Study Sessions */}
                                     {daySessions.map(session => {
-                                        let duration = 60 / 60 * HOUR_HEIGHT; // default 1 hour
+                                        let duration = HOUR_HEIGHT; // default 1 hour
                                         if (session.end_time) {
                                             const startD = new Date(session.scheduled_at);
                                             const endD = new Date(session.end_time);

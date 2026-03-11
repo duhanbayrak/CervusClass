@@ -243,7 +243,6 @@ export function BookSessionDialog({ userId }: Readonly<{ userId: string }>) {
                             ) : (
                                 <div
                                     className="flex-1 border rounded-md overflow-hidden min-h-0 relative bg-white dark:bg-slate-950"
-                                    role="presentation"
                                     onClick={() => setSelectedSessions([])}
                                     onKeyDown={(e) => { if (e.key === 'Escape') setSelectedSessions([]) }}
 
